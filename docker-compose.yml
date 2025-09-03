@@ -9,6 +9,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/frontend:/front
+      - /front/node_modules
     restart: unless-stopped
     expose:
       - "5173"
