@@ -22,7 +22,7 @@ export class Router {
         if (route) {
             const htmlContent = route.view();
             document.getElementById('app')!.innerHTML = htmlContent;
-            document.title = route.title || 'Mon App';
+            document.title = route.title || 'Transcendence';
         } else {
             this.show404();
         }
@@ -33,6 +33,6 @@ export class Router {
     }
     
     private show404(): void {
-        document.getElementById('app')!.innerHTML = '<h1>Page non trouvée</h1>';
+        document.getElementById('app')!.innerHTML = '<h1>Erm... This page does not exist.</h1>';
     }
 }
