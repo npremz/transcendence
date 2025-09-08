@@ -1,5 +1,6 @@
 import type { Route } from './types';
 import { HomeView } from '../views/HomeView';
+import { TestView, initWebSocket } from '../views/TestView';
 
 export class Router {
     private routes: Route[];
@@ -15,15 +16,30 @@ export class Router {
             view: HomeView,
             title: 'Accueil'
         });
+
+		this.routes.push({
+            path: '/test',
+            view: TestView,
+			onMount: initWebSocket,
+            title: 'Test'
+        });
     }
     
     public navigate(path: string): void {
         const route = this.findRoute(path);
-        if (route) {
+        if (route)
+		{
             const htmlContent = route.view();
             document.getElementById('app')!.innerHTML = htmlContent;
             document.title = route.title || 'Transcendence';
-        } else {
+
+			if (route.onMount)
+			{
+                route.onMount();
+            }
+        }
+		else
+		{
             this.show404();
         }
     }

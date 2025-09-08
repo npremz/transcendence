@@ -2,8 +2,8 @@ import type { ViewFunction } from "../router/types";
 
 export const HomeView: ViewFunction = () => {
     return `
-        <div>
-            <h1 class="text-3xl">Home</h1>
+        <div class="container ml-auto mr-auto">
+            <h1 class="text-9xl text-amber-300">Home</h1>
         </div>
     `;
 };
