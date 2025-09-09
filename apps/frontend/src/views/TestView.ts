@@ -5,7 +5,9 @@ export const TestView: ViewFunction = () => {
 };
 
 export const initWebSocket = () => {
-	const ws = new WebSocket('ws://localhost:3000/ws');
+	const wsUrl = import.meta.env.GAMEBACK_WS_URL
+					|| 'wss://localhost:8443/gameback/ws';
+	const ws = new WebSocket(wsUrl);
 	const messagesDiv = document.getElementById('messages');
 	
 	ws.onopen = () => {

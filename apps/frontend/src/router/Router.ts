@@ -1,6 +1,7 @@
 import type { Route } from './types';
 import { HomeView } from '../views/HomeView';
 import { TestView, initWebSocket } from '../views/TestView';
+import { GameView, gameLogic } from '../views/GameView';
 
 export class Router {
     private routes: Route[];
@@ -21,6 +22,13 @@ export class Router {
             path: '/test',
             view: TestView,
 			onMount: initWebSocket,
+            title: 'Test'
+        });
+
+		this.routes.push({
+            path: '/game',
+            view: GameView,
+			onMount: gameLogic,
             title: 'Test'
         });
     }

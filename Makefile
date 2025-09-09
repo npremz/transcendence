@@ -15,7 +15,10 @@ logs-front:
 	$(DC) logs -f front
 
 logs-nginx:
-	$(DC) logs -f nginx
+	docker exec -it nginx tail -f /var/log/nginx/access.log
+
+logs-gameback:
+	$(DC) logs -f gameback
 
 restart: down up
 
