@@ -4,7 +4,7 @@ export const TestView: ViewFunction = () => {
 	return `<div id="messages">Connexion en cours...</div>`;
 };
 
-export const initWebSocket = () => {
+export const initWebSocket : (() => void | void) = () => {
 	const wsUrl = import.meta.env.GAMEBACK_WS_URL
 					|| 'wss://localhost:8443/gameback/ws';
 	const ws = new WebSocket(wsUrl);
@@ -22,4 +22,10 @@ export const initWebSocket = () => {
 	ws.onerror = () => {
 		messagesDiv!.innerHTML = 'Erreur de connexion';
 	};
+
+	return () => {
+		if (ws.readyState === WebSocket.OPEN) {
+			ws.close();
+		}
+	}
 }
