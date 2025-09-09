@@ -1,7 +1,11 @@
 import type { ViewFunction } from "../router/types";
+import { Header } from "../components/Header";
 
 export const TestView: ViewFunction = () => {
-	return `<div id="messages">Connexion en cours...</div>`;
+	return `
+	${Header({ isLogged: false })}
+	<div id="messages">Connexion en cours...</div>
+	`;
 };
 
 export const initWebSocket : (() => void | void) = () => {
