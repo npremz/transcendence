@@ -12,7 +12,8 @@ export function Button({
     variant = 'primary', 
     size = 'md',
     href,
-    className = '' 
+    className = '',
+    id
 }: ButtonProps): string {
     const variants = {
         primary: 'bg-blue-500 hover:bg-blue-600 text-white',
@@ -37,8 +38,8 @@ export function Button({
     const content = renderChildren(children);
     
     if (href) {
-        return `<a href="${href}" class="${baseClass}">${content}</a>`;
+        return `<a href="${href}" id=${id} class="${baseClass}">${content}</a>`;
     }
     
-    return `<button class="${baseClass}">${content}</button>`;
+    return `<button id=${id} class="${baseClass}">${content}</button>`;
 }
