@@ -9,5 +9,5 @@ export const GameView: ViewFunction = () => {
 };
 
 export const gameLogic = () => {
-	return ""
+
 }

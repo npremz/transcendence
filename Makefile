@@ -26,7 +26,7 @@ ps:
 	$(DC) ps
 
 health:
-	@curl -sk https://localhost:8443/health || true
+	@curl -sk https://localhost:8443/nginx-health || true
 
 clean:
 	$(DC) down -v --rmi local --remove-orphans
