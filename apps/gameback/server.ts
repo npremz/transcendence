@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
+import { handleChat } from './chat/chat'
 
 const fastify = Fastify({
 	logger: true
@@ -15,18 +16,11 @@ fastify.addHook('onRequest', async (request, reply) => {
     console.log('====================')
 })
 
-fastify.get('/ws', { websocket: true }, function wsHandler (socket, req)
+fastify.get('/chat', { websocket: true }, function chatHandler (socket, req)
 	{
-		fastify.log.info(`New Client: ${req.id}`)
-		socket.on('message', message =>
-			{
-				//message.toString() === 'hi from client'
-				fastify.log.info(`message client: ${message}`)
-				socket.send('hi from server')
-			}
-		)
+		handleChat(socket, req, fastify)
 	}
-)
+) 
 
 fastify.get('/', function (request, reply)
 	{
