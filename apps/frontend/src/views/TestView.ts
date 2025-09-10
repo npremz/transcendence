@@ -6,7 +6,7 @@ export const TestView: ViewFunction = () => {
 		${Header({ isLogged: false })}
 		<div class="container ml-auto mr-auto mt-8">
 			<h2 id="status" class="text-3xl">Connexion en cours...</h2>
-			<div id="chatHistory" class="mt-4"></div>
+			<div id="chatHistory" class="mt-4 flex flex-col gap-4"></div>
 			<input type="text" id="chatInput" name="chatInput"
 				placeholder="Tapez votre message..."
 				class="border-2 rounded-md p-4 w-full mt-4" />
@@ -14,9 +14,11 @@ export const TestView: ViewFunction = () => {
 	`;
 };
 
+const p_classes = `p-4 block bg-red-400 text-white rounded-xl w-fit`
+
 export const initWebSocket : (() => void | void) = () => {
-	const wsUrl = import.meta.env.GAMEBACK_WS_URL
-					|| 'wss://localhost:8443/gameback/chat';
+	const wsUrl = import.meta.env.chatback_WS_URL
+					|| 'wss://localhost:8443/chatback/ws';
 	const ws = new WebSocket(wsUrl);
 	const statusElem = document.getElementById('status');
 	const chatHistory = document.getElementById('chatHistory') as HTMLDivElement
@@ -46,7 +48,7 @@ export const initWebSocket : (() => void | void) = () => {
 	};
 	
 	ws.onmessage = (event) => {
-		chatHistory!.innerHTML += '<p>' + event.data + '</p>';
+		chatHistory!.innerHTML += `<p class="${p_classes}">` + event.data + '</p>';
 	};
 	
 	ws.onerror = () => {

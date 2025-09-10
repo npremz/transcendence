@@ -1,6 +1,6 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
-import { handleGame } from './game/game'
+import { handleChat } from './chat/chat'
 
 const fastify = Fastify({
 	logger: true
@@ -16,9 +16,9 @@ fastify.addHook('onRequest', async (request, reply) => {
     console.log('====================')
 })
 
-fastify.get('/game', { websocket: true }, function gameHandler (socket, req)
+fastify.get('/ws', { websocket: true }, function chatHandler (socket, req)
 	{
-		handleGame(socket, req, fastify)
+		handleChat(socket, req, fastify)
 	}
 )
 
@@ -28,7 +28,7 @@ fastify.get('/', function (request, reply)
 	}
 )
 
-fastify.listen({ port: 3010, host: '0.0.0.0'}, function (err, address)
+fastify.listen({ port: 3000, host: '0.0.0.0'}, function (err, address)
 	{
 		if (err)
 		{

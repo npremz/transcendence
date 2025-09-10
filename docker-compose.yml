@@ -14,6 +14,21 @@ services:
     expose:
       - "5173"
 
+  chatback:
+    container_name: chatback
+    networks:
+      - transcendence
+    build:
+      context: apps/chatback
+      dockerfile: ../../infra/docker/chatback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/chatback:/chatback
+      - /chatback/node_modules
+    restart: unless-stopped
+    expose:
+      - "3000"
+
   gameback:
     container_name: gameback
     networks:
@@ -27,7 +42,7 @@ services:
       - /gameback/node_modules
     restart: unless-stopped
     expose:
-      - "3000"
+      - "3010"
 
   nginx:
     container_name: nginx
