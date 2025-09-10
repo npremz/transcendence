@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { handleChat } from './chat/chat'
+import { handleGame } from './game/game'
 
 const fastify = Fastify({
 	logger: true
@@ -20,7 +21,13 @@ fastify.get('/chat', { websocket: true }, function chatHandler (socket, req)
 	{
 		handleChat(socket, req, fastify)
 	}
-) 
+)
+
+fastify.get('/game', { websocket: true }, function gameHandler (socket, req)
+	{	
+		handleGame(socket, req, fastify)	
+	}
+)
 
 fastify.get('/', function (request, reply)
 	{
