@@ -1,6 +1,6 @@
-import sqlite3 from 'sqlite3'
-import path, { resolve } from 'path'
-import fs from 'fs'
+import * as sqlite3 from 'sqlite3';
+import * as path from 'path';
+import * as fs from 'fs';
 import { rejects } from 'assert';
 
 interface DatabaseInterface {
@@ -24,7 +24,7 @@ class Database implements DatabaseInterface
 		}
 
 		return new Promise((resolve, reject) => {
-			this.db = new sqlite3.Database(dbPath, (err) => {
+			this.db = new sqlite3.Database(dbPath, (err: Error | null) => {
 				if (err)
 				{
 					reject(err);
@@ -49,7 +49,7 @@ class Database implements DatabaseInterface
 		const schema = fs.readFileSync(schemaPath, 'utf8')
 
 		return new Promise((resolve, reject) => {
-			this.db!.exec(schema, (err) => {
+			this.db!.exec(schema, (err: Error | null) => {
 				if (err)
 				{
 					reject(err)

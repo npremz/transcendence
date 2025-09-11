@@ -11,9 +11,6 @@ fastify.register(cors, {
 	credentials: true
 })
 
-// Adding db to fastify instance
-fastify.decorate('db', database.getDb())
-
 declare module 'fastify'
 {
 	interface FastifyInstance
@@ -47,6 +44,9 @@ const start = async (): Promise<void> => {
 		await database.connect()
 		await database.init()
 
+		// Adding db to fastify instance
+		fastify.decorate('db', database.getDb())
+
 		await fastify.listen({
 			port: 3020,
 			host: '0.0.0.0'
@@ -65,3 +65,5 @@ process.on('SIGINT', async () => {
 	await fastify.close()
 	process.exit()
 })
+
+start()

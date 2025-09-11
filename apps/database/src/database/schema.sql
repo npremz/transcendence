@@ -5,11 +5,11 @@ CREATE TABLE IF NOT EXISTS games (
 	player2_name TEXT NOT NULL,
 	player1_score INTEGER NOT NULL DEFAULT 0,
 	player2_score INTEGER NOT NULL DEFAULT 0,
-	duration INTEGER NOT NULL DEFAULT 0, -- secondes
-	status TEXT NOT NULL DEFAULT 'active', -- 'active', 'finish'
+	duration INTEGER NOT NULL DEFAULT 0,
+	status TEXT NOT NULL DEFAULT 'active',
 	started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	finished_at DATETIME NULL
-)
+);
 
 -- Chat global
 CREATE TABLE IF NOT EXISTS global_messages (
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS global_messages (
 	username TEXT NOT NULL,
 	content TEXT NOT NULL,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)
+);
 
 -- Room chat (supp 10min apres la fin de game)
 CREATE TABLE IF NOT EXISTS game_messages (
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS game_messages (
 	content TEXT NOT NULL,
 	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-)
+);
 
 CREATE INDEX IF NOT EXISTS idx_games_status ON games(status);
 CREATE INDEX IF NOT EXISTS idx_game_messages_game_id ON game_messages(game_id);

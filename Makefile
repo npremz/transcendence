@@ -20,6 +20,12 @@ logs-nginx:
 logs-chatback:
 	$(DC) logs -f chatback
 
+logs-gameback:
+	$(DC) logs -f gameback
+
+logs-db:
+	$(DC) logs -f database
+
 restart: down up
 
 ps:
