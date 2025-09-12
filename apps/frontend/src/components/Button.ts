@@ -66,18 +66,15 @@ export function SettingsButton({
 }
 
 // ============= SKIN BUTTON =============
-interface SkinButtonProps {
-    className?: string;
-    size?: 'sm' | 'md' | 'lg';
+interface SkinButtonProps extends ButtonProps {
     showLabel?: boolean;
-    variant?: 'primary' | 'secondary' | 'danger';
 }
 
 export function SkinButton({ 
     className = '', 
     size = 'md',
     showLabel = true,
-    variant = 'primary'
+    variant = 'primary',
 }: SkinButtonProps = {}): string {
     const buttonContent = showLabel ? "🎨" : "🎨";
     

@@ -1,9 +1,9 @@
 
 export interface Route {
-    path: string;
-    view: ViewFunction;
+	path: string;
+	view: ViewFunction;
 	onMount?: () => CleanupFunction | void;
-    title?: string;
+	title?: string;
 }
 
 export type ViewFunction = () => string;
