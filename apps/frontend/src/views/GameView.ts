@@ -1,8 +1,12 @@
 import type { ViewFunction } from "../router/types";
-import { Button } from "../components/Button";
+import { 
+	Button,
+	BackButton
+ } from "../components/Button";
 
 export const GameView: ViewFunction = () => {
 	return `
+		${BackButton()}
 		<div class="container ml-auto mr-auto flex flex-col items-center">
 			<canvas id="pong-canvas"></canvas>
 			${Button({
