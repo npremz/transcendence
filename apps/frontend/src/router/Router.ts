@@ -4,6 +4,8 @@ import { HomeView } from '../views/HomeView';
 import { TestView, initWebSocket } from '../views/TestView';
 import { GameView, gameLogic } from '../views/GameView';
 import { StartGameView } from '../views/StartGameView';
+import { LoginView } from '../views/LoginView';
+import { CreateAccountView } from '../views/CreateAccountView';
 
 export class Router {
     private routes: Route[];
@@ -44,6 +46,20 @@ export class Router {
 		this.routes.push({
             path: '/startgame',
             view: StartGameView,
+			onMount: gameLogic,
+            title: 'Test'
+        });
+
+		this.routes.push({
+            path: '/login',
+            view: LoginView,
+			onMount: gameLogic,
+            title: 'Test'
+        });
+
+		this.routes.push({
+            path: '/create',
+            view: CreateAccountView,
 			onMount: gameLogic,
             title: 'Test'
         });

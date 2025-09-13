@@ -26,14 +26,16 @@ export function Header({
 					children: "Profile",
 					id: "profileBtn",
 					variant: "secondary",
-					size: "md"
+					size: "md",
+					href: ""
 				})
 					:
 				Button({
 					children: "Login",
 					id: "loginBtn",
 					variant: "secondary",
-					size: "md"
+					size: "md",
+					href: "/login"
 				})
 			}
 		</header>
