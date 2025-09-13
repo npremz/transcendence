@@ -9,3 +9,8 @@ export function renderChildren(children?: string | string[]): string {
     if (!children) return '';
     return Array.isArray(children) ? children.join('') : children;
 }
+
+export interface Component
+{
+    cleanup(): void;
+}

@@ -1,5 +1,8 @@
 import './style.css'
 import { Router } from './router/Router';
+import { registerComponents } from './components';
+
+registerComponents(); 
 
 const router = new Router();
 

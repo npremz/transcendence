@@ -1,4 +1,5 @@
 import type { Route, CleanupFunction } from './types';
+import { ComponentManager } from '../components/ComponantManager'
 import { HomeView } from '../views/HomeView';
 import { TestView, initWebSocket } from '../views/TestView';
 import { GameView, gameLogic } from '../views/GameView';
@@ -7,15 +8,19 @@ import { StartGameView } from '../views/StartGameView';
 export class Router {
     private routes: Route[];
 	private currentCleanup: CleanupFunction | null = null;
+    private componentManager: ComponentManager;
     
-    constructor() {
+    constructor()
+    {
         this.routes = [];
+        this.componentManager = new ComponentManager();
         this.setupRoutes();
 		this.setupLinkInterception();
 		this.setupHistoryNavigation();
     }
     
-    private setupRoutes(): void {
+    private setupRoutes(): void
+    {
         this.routes.push({
             path: '/',
             view: HomeView,
@@ -44,17 +49,20 @@ export class Router {
         });
     }
 
-	private setupLinkInterception(): void {
+	private setupLinkInterception(): void
+    {
 		document.addEventListener('click', (e: MouseEvent) => {
 			const target = e.target as HTMLElement;
 			const link = target.closest('a');
 			
-			if (link && link instanceof HTMLAnchorElement) {
+			if (link && link instanceof HTMLAnchorElement)
+            {
 				const href = link.getAttribute('href');
 				
 				if (!href) return;
 				
-				if (this.isExternalLink(href)) {
+				if (this.isExternalLink(href))
+                {
 					return;
 				}
 				
@@ -64,63 +72,83 @@ export class Router {
 		});
 	}
 
-	private isExternalLink(href: string): boolean {
+	private isExternalLink(href: string): boolean
+    {
 		return /^(https?:\/\/|mailto:|tel:|ftp:)/.test(href);
 	}
 
-	private setupHistoryNavigation(): void {
+	private setupHistoryNavigation(): void
+    {
         window.addEventListener('popstate', () => {
             this.navigate(window.location.pathname, false);
         });
     }
 
-	public navigateTo(path: string): void {
-        if (window.location.pathname !== path) {
+	public navigateTo(path: string): void
+    {
+        if (window.location.pathname !== path)
+        {
             window.history.pushState({}, '', path);
             this.navigate(path);
         }
     }
     
-    public navigate(path: string, updateHistory: boolean = true): void {
+    public navigate(path: string, updateHistory: boolean = true): void
+    {
         this.cleanup();
         
         const route = this.findRoute(path);
-        if (route) {
+        if (route)
+        {
             const htmlContent = route.view();
             const app = document.getElementById('app');
-            if (app) {
+            if (app)
+            {
                 app.innerHTML = htmlContent;
             }
             
             document.title = route.title || 'Transcendence';
             
-            if (updateHistory && window.location.pathname !== path) {
+            if (updateHistory && window.location.pathname !== path)
+            {
                 window.history.pushState({}, '', path);
             }
             
-            if (route.onMount) {
+            this.componentManager.scanAndMount();
+
+            if (route.onMount)
+            {
                 const cleanup = route.onMount();
-                if (cleanup && typeof cleanup === 'function') {
+                if (cleanup && typeof cleanup === 'function')
+                {
                     this.currentCleanup = cleanup;
                 }
             }
-        } else {
+        }
+        else
+        {
             this.show404();
         }
     }
 
-	private cleanup(): void {
-        if (this.currentCleanup) {
+	private cleanup(): void
+    {
+        this.componentManager.cleanupAll();
+
+        if (this.currentCleanup)
+        {
             this.currentCleanup();
             this.currentCleanup = null;
         }
     }
     
-    private findRoute(path: string): Route | undefined {
+    private findRoute(path: string): Route | undefined
+    {
         return this.routes.find(route => route.path === path);
     }
     
-    private show404(): void {
+    private show404(): void
+    {
         document.getElementById('app')!.innerHTML = '<h1>Erm... This page does not exist.</h1>';
     }
 }
