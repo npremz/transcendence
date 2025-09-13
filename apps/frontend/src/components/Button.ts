@@ -3,7 +3,7 @@ import { renderChildren } from './types';
 
 // ============= BUTTON DE BASE =============
 interface ButtonProps extends ComponentProps {
-    variant?: 'primary' | 'secondary' | 'danger';
+    variant?: 'primary' | 'secondary' | 'danger' | 'default';
     size?: 'sm' | 'md' | 'lg';
     href?: string;
 }
@@ -19,7 +19,8 @@ export function Button({
     const variants = {
         primary: 'bg-blue-500 hover:bg-blue-600 text-white',
         secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800',
-        danger: 'bg-red-500 hover:bg-red-600 text-white'
+        danger: 'bg-red-500 hover:bg-red-600 text-white',
+		default: ''
     };
     
     const sizes = {
@@ -57,7 +58,7 @@ export function SettingsButton({
 }: SettingsButtonProps = {}): string {
     return Button({
         children: "⚙️",
-        variant: "secondary",
+        variant: "default",
         size: size,
         href: "/settings",
         className: className,
@@ -68,13 +69,14 @@ export function SettingsButton({
 // ============= SKIN BUTTON =============
 interface SkinButtonProps extends ButtonProps {
     showLabel?: boolean;
+    variant?: 'primary' | 'secondary' | 'danger' | 'default';
 }
 
 export function SkinButton({ 
     className = '', 
     size = 'md',
     showLabel = true,
-    variant = 'primary',
+    variant = 'default'
 }: SkinButtonProps = {}): string {
     const buttonContent = showLabel ? "🎨" : "🎨";
     
@@ -104,7 +106,7 @@ export function CoffeeButton({
     
     return Button({
         children: content,
-        variant: "primary",
+        variant: "default",
         size: size,
         href: "/cafe",
         className: `bg-yellow-500 hover:bg-yellow-600 ${className}`,
@@ -117,14 +119,14 @@ interface BackButtonProps {
     className?: string;
     size?: 'sm' | 'md' | 'lg';
     text?: string;
-    variant?: 'primary' | 'secondary' | 'danger';
+    variant?: 'primary' | 'secondary' | 'danger' | 'default';
 }
 
 export function BackButton({ 
     className = '', 
-    size = 'md',
+    size,
     text = "←",
-    variant = 'secondary'
+    variant = 'default'
 }: BackButtonProps = {}): string {
     return `
         <button 

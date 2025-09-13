@@ -11,8 +11,11 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.12",
     "tailwindcss": "4.1",
+    "tsx": "^4.20.5",
     "typescript": "~5.8.3",
-    "vite": "^7.1.2",
-	"tsx": "^4.20.5"
+    "vite": "^7.1.2"
+  },
+  "dependencies": {
+    "gsap": "^3.13.0"
   }
 }
