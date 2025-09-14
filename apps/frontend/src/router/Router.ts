@@ -46,21 +46,18 @@ export class Router {
 		this.routes.push({
             path: '/startgame',
             view: StartGameView,
-			onMount: gameLogic,
             title: 'Test'
         });
 
 		this.routes.push({
             path: '/login',
             view: LoginView,
-			onMount: gameLogic,
             title: 'Test'
         });
 
 		this.routes.push({
             path: '/create',
             view: CreateAccountView,
-			onMount: gameLogic,
             title: 'Test'
         });
     }
