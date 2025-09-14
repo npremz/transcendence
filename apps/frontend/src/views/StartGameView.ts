@@ -26,7 +26,7 @@ export const StartGameView: ViewFunction = () => {
                 const offsetY = mouseY - centerY;
                 
                 // Limiter le mouvement (max 300px du centre)
-                const clampedY = Math.max(-300, Math.min(300, offsetY));
+                const clampedY = Math.max(-300, Math.min(200, offsetY));
                 
                 // Animation fluide vers la position de la souris
                 gsap.to("#spaceship", {
@@ -93,7 +93,6 @@ export const StartGameView: ViewFunction = () => {
             duration: 1,
             ease: "power2.out",
         });
-        
     }, 0);
     
     return `
@@ -127,7 +126,7 @@ export const StartGameView: ViewFunction = () => {
                 width: 128px;
                 height: 128px;
                 top: 50%;
-                left: 30%;
+                left: 20%;
                 transform: translate(-50%, -50%);
             ">
                 <img 
@@ -140,7 +139,7 @@ export const StartGameView: ViewFunction = () => {
         </div>
 
         <!-- Container des boutons -->
-        <div id="menu-buttons" class="fixed inset-0 flex flex-col items-center justify-center opacity-0 pointer-events-none">
+		<div id="menu-buttons" class="fixed inset-0 flex flex-col items-center justify-center opacity-0 pointer-events-none">
 
 			<div class="absolute top-8 left-8">
 				${BackButton({
@@ -156,31 +155,56 @@ export const StartGameView: ViewFunction = () => {
 				})}
 			</div>
 
-            <div class="absolute right-48 top-1/2 -translate-y-1/2 flex flex-col gap-16">
-                ${Button({
-                    children: "⚡ Quickplay",
-					variant: "default",
-                    size: "lg",
-                    href: "/game",
-					className: "min-w-[350px] px-10 py-6 text-2xl text-center bg-[#101C69]/20 backdrop-blur-sm border border-white/20 text-white hover:bg-[#1D31B8]/20"
-                })}
-                
-                ${Button({
-                    children: "🏆 Tournament",
-                    variant: "default",
-                    size: "lg",
-                    href: "/tournament",
-					className: "min-w-[350px] px-10 py-6 text-2xl text-center bg-[#101C69]/20 backdrop-blur-sm border border-white/20 text-white hover:bg-[#1D31B8]/20"
-                })}
+			<!-- Texte central qui change -->
+			<div id="center-text" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/70 text-4xl font-bold text-center">
+				Choisissez votre destination !
+			</div>
 
-				${Button({
-                    children: "Skin",
-                    variant: "default",
-                    size: "lg",
-                    href: "/skin",
-					className: "min-w-[350px] px-10 py-6 text-2xl text-center bg-[#101C69]/20 backdrop-blur-sm border border-white/20 text-white hover:bg-[#1D31B8]/20"
-                })}
-            </div>
+			<div class="absolute right-0 top-0 w-1/3 h-full">
+				<!-- Bouton Quickplay -->
+				<a href="/game" 
+				class="absolute block w-[350px] h-[250px]" 
+				style="top: 10%; right: 40%;"
+				onmouseover="document.getElementById('center-text').textContent = '⚡ Partie Rapide'"
+				onmouseout="document.getElementById('center-text').textContent = 'Choisissez votre destination !'">
+					<img 
+						src="/sprites/blackhole.png" 
+						alt="Quickplay"
+						class="w-full h-full hover:scale-110 transition-transform cursor-pointer"
+						style="image-rendering: pixelated;"
+					/>
+				</a>
+				
+				<!-- Bouton Tournament -->
+				<a href="/tournament" 
+				class="absolute block w-[900px] h-[800px]" 
+				style="top: 65%; right: 50%;"
+				onmouseover="document.getElementById('center-text').textContent = '🏆 Mode Tournoi'"
+				onmouseout="document.getElementById('center-text').textContent = 'Choisissez votre destination !'">
+					<img 
+						src="/sprites/image.png" 
+						alt="Tournament"
+						class="w-full h-full hover:scale-110 transition-transform cursor-pointer"
+						style="image-rendering: pixelated;"
+					/>
+				</a>
+				
+				<!-- Bouton Skin -->
+				<a href="/skin" 
+				class="absolute block w-[125px] h-[125px]" 
+				style="top: 65%; right: 175px;"
+				onmouseover="document.getElementById('center-text').textContent = '🎨 Personnalisation'"
+				onmouseout="document.getElementById('center-text').textContent = 'Choisissez votre destination !'">
+					<img 
+						src="/sprites/satelite.png" 
+						alt="Skin"
+						class="w-full h-full hover:scale-110 transition-transform cursor-pointer"
+						style="image-rendering: pixelated;"
+					/>
+				</a>
+			</div>
+		</div>
+
     `;
 };
- 
+
