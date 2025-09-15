@@ -1,9 +1,3 @@
-Salut ! 👋 C'est une excellente initiative de vouloir compléter la documentation. Un `README` clair est la clé pour que tout le monde puisse contribuer efficacement au projet, c'est un pilier de l'approche de peer-learning de 42.
-
-Je vais t'aider à rédiger la documentation pour le routeur et les vues. On va expliquer le "pourquoi" avant le "comment", pour que le concept soit bien solide. Voici ce que je te propose d'ajouter au début de ton fichier `README.md`.
-
----
-
 # Documentation : Routeur, Vues et Composants
 
 Ce document explique les trois concepts fondamentaux de notre architecture front-end : le **Routeur** (qui gère la navigation), les **Vues** (qui définissent le contenu des pages) et les **Composants** (qui sont les briques réutilisables de nos pages).

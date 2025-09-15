@@ -23,6 +23,9 @@ logs-chatback:
 logs-gameback:
 	$(DC) logs -f gameback
 
+logs-quickplay:
+	$(DC) logs -f quickplayback
+
 logs-db:
 	$(DC) logs -f database
 
