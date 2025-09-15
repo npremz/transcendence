@@ -1,6 +1,149 @@
-# Documentation : Créer et Utiliser des Composants
+Salut ! 👋 C'est une excellente initiative de vouloir compléter la documentation. Un `README` clair est la clé pour que tout le monde puisse contribuer efficacement au projet, c'est un pilier de l'approche de peer-learning de 42.
 
-Ce document explique comment créer, enregistrer et utiliser des composants réutilisables dans notre projet.
+Je vais t'aider à rédiger la documentation pour le routeur et les vues. On va expliquer le "pourquoi" avant le "comment", pour que le concept soit bien solide. Voici ce que je te propose d'ajouter au début de ton fichier `README.md`.
+
+---
+
+# Documentation : Routeur, Vues et Composants
+
+Ce document explique les trois concepts fondamentaux de notre architecture front-end : le **Routeur** (qui gère la navigation), les **Vues** (qui définissent le contenu des pages) et les **Composants** (qui sont les briques réutilisables de nos pages).
+
+## **Le Routeur : Le Chef d'Orchestre de la Navigation**
+
+Dans une application web moderne (Single Page Application ou SPA), l'utilisateur a l'impression de naviguer entre plusieurs pages, mais en réalité, il ne quitte jamais la page `index.html` initiale. C'est le **Routeur** qui orchestre cette illusion.
+
+Son rôle est de :
+1.  **Intercepter la navigation** : Quand tu cliques sur un lien (`<a>`), le routeur empêche le navigateur de recharger toute la page.
+2.  **Mettre à jour l'URL** : Il change l'URL dans la barre d'adresse pour qu'elle corresponde à la nouvelle "page".
+3.  **Afficher la bonne Vue** : En fonction de la nouvelle URL, il choisit la vue correspondante et injecte son contenu HTML dans la page.
+4.  **Gérer le cycle de vie** : Il s'assure que tout est "nettoyé" avant d'afficher une nouvelle vue pour éviter les bugs et les fuites de mémoire.
+
+Notre `Router.ts` est le cœur de ce système. Il écoute les clics sur les liens et les changements d'historique du navigateur (boutons "précédent"/"suivant") pour afficher le contenu adéquat sans jamais recharger la page.
+
+---
+
+## **Les Vues : Les "Pages" de notre Application**
+
+Une "Vue" est tout simplement une fonction qui retourne une chaîne de caractères contenant du HTML. C'est le plan de ce qui doit être affiché pour une URL donnée.
+
+```typescript
+// Une vue est une fonction qui ne prend pas d'arguments et retourne un string
+type ViewFunction = () => string;
+```
+
+L'avantage de cette approche est sa simplicité. Pour créer une nouvelle page, il suffit de créer une fonction qui retourne le HTML désiré, souvent en utilisant des templates literals (les backticks `` ` ``) pour facilement intégrer d'autres éléments, comme des composants.
+
+### **Comment Créer une Nouvelle Page (Vue + Route)**
+
+Suis ces deux étapes simples pour ajouter une page à l'application.
+
+#### **Étape 1 : Créer le Fichier de la Vue**
+
+Crée un nouveau fichier, par exemple `src/views/AboutView.ts`. À l'intérieur, écris la fonction qui définit le contenu de ta page.
+
+```typescript
+// src/views/AboutView.ts
+import { Header } from '../components/Header'; // Tu peux importer des composants
+
+// C'est notre vue. Une simple fonction qui retourne du HTML.
+export function AboutView(): string {
+    return `
+        ${Header({ isLogged: true })}
+        <main>
+            <h1>À propos de notre projet</h1>
+            <p>Ce projet est une implémentation de Transcendence.</p>
+        </main>
+    `;
+}
+```
+
+#### **Étape 2 : Déclarer la Route dans le Routeur**
+
+Maintenant, il faut dire au routeur qu'à une certaine URL (`path`), il doit afficher notre nouvelle vue. Ouvre `src/router/Router.ts` et ajoute un nouvel objet dans le tableau `this.routes` à l'intérieur de la méthode `setupRoutes`.
+
+```typescript
+// src/router/Router.ts
+import { AboutView } from '../views/AboutView'; // 1. Importer la nouvelle vue
+
+export class Router {
+    // ...
+    private setupRoutes(): void {
+        this.routes.push({
+            path: '/',
+            view: HomeView,
+            title: 'Accueil'
+        });
+
+        // 2. Ajouter la nouvelle route ici
+        this.routes.push({
+            path: '/about',       // L'URL dans le navigateur
+            view: AboutView,      // La fonction à appeler pour obtenir le HTML
+            title: 'À Propos'     // Le titre qui s'affichera dans l'onglet
+        });
+
+        // ... autres routes
+    }
+    // ...
+}
+```
+
+Et voilà ! Si tu lances ton application et que tu navigues vers `/about` (via un lien `<a href="/about">`), le routeur affichera le contenu de `AboutView`.
+
+### **Logique Spécifique à une Page : `onMount` et `cleanup`**
+
+Parfois, une vue a besoin d'exécuter du code JavaScript qui n'est pas lié à un composant réutilisable (par exemple, établir une connexion WebSocket, lancer une animation complexe, ou initialiser une librairie tierce). Pour cela, on utilise la propriété `onMount` dans la définition de la route.
+
+*   **`onMount`** : Une fonction qui est exécutée par le routeur **juste après** que le HTML de la vue a été inséré dans la page.
+*   **La fonction de `cleanup`** : Pour éviter les fuites de mémoire, `onMount` peut retourner une autre fonction. Cette fonction de "nettoyage" sera automatiquement appelée par le routeur **juste avant** de quitter la page.
+
+C'est le même principe que le `cleanup` des composants, mais au niveau de la page entière.
+
+**Exemple concret avec une connexion WebSocket :**
+
+```typescript
+// Dans un fichier de vue, par exemple TestView.ts
+
+// Cette fonction sera notre onMount
+export function initWebSocket(): () => void {
+    console.log("Connexion au WebSocket...");
+    const socket = new WebSocket('ws://localhost:8080');
+
+    socket.onopen = () => console.log("Connecté !");
+    socket.onmessage = (event) => console.log("Message reçu:", event.data);
+
+    // IMPORTANT : On retourne une fonction qui s'occupera du nettoyage
+    return () => {
+        console.log("Nettoyage : fermeture du WebSocket.");
+        socket.close();
+    };
+}
+```
+
+```typescript
+// Dans le Router.ts, on lie cette logique à la route
+
+import { TestView, initWebSocket } from '../views/TestView'; // On importe la logique
+
+// ...
+this.routes.push({
+    path: '/test',
+    view: TestView,
+    onMount: initWebSocket, // Le routeur appellera initWebSocket() après avoir affiché la vue
+    title: 'Page de Test'
+});
+// ...
+```
+
+**Ce qui se passe :**
+1.  L'utilisateur navigue vers `/test`.
+2.  Le routeur affiche le HTML de `TestView`.
+3.  Le routeur appelle `initWebSocket()`. La connexion WebSocket est établie.
+4.  Le routeur stocke la fonction de nettoyage retournée par `initWebSocket`.
+5.  L'utilisateur navigue vers une autre page (ex: `/`).
+6.  **Avant** d'afficher la nouvelle page, le routeur appelle la fonction de nettoyage stockée, ce qui exécute `socket.close()`.
+7.  La nouvelle page est affichée proprement.
+
+---
 
 ## **Le Concept de Composant**
 
@@ -94,7 +237,7 @@ export class CounterComponent implements Component {
 
 ### **Étape 3 : Creer la fonction qui retourne le DOM**
 
-Pour encapsuler l'usage dans une fonction on en defini une qui a le nom du composant qui retourne le DOM qui nous interesse, **C'est cette fonction qu'on appellera dans nos vues**
+Pour encapsuler le DOM de notre composant dans une fonction on en defini une nouvelle a qui on attribue le nom du composant qui retourne le DOM qui nous interesse, **C'est cette fonction qu'on appellera dans nos vues**
 
 ```typescript
 // 3. Fonction HTML
