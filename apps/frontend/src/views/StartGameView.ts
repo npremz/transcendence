@@ -164,7 +164,7 @@ export const StartGameView: ViewFunction = () => {
 				<!-- Bouton Quickplay -->
 				<a href="/game" 
 				class="absolute block w-[350px] h-[250px]" 
-				style="top: 10%; right: 40%;"
+				style="top: 10%; right: 30%;"
 				onmouseover="document.getElementById('center-text').textContent = '⚡ Partie Rapide'"
 				onmouseout="document.getElementById('center-text').textContent = 'Choisissez votre destination !'">
 					<img 
