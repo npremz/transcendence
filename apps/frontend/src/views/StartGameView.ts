@@ -182,7 +182,7 @@ export const StartGameView: ViewFunction = () => {
 				onmouseover="document.getElementById('center-text').textContent = '🏆 Mode Tournoi'"
 				onmouseout="document.getElementById('center-text').textContent = 'Choisissez votre destination !'">
 					<img 
-						src="/sprites/image.png" 
+						src="/sprites/earth.png" 
 						alt="Tournament"
 						class="w-full h-full hover:scale-110 transition-transform cursor-pointer"
 						style="image-rendering: pixelated;"
@@ -196,7 +196,7 @@ export const StartGameView: ViewFunction = () => {
 				onmouseover="document.getElementById('center-text').textContent = '🎨 Personnalisation'"
 				onmouseout="document.getElementById('center-text').textContent = 'Choisissez votre destination !'">
 					<img 
-						src="/sprites/satelite.png" 
+						src="/sprites/satellite.png" 
 						alt="Skin"
 						class="w-full h-full hover:scale-110 transition-transform cursor-pointer"
 						style="image-rendering: pixelated;"
