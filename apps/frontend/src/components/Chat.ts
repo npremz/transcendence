@@ -16,7 +16,7 @@ export class ChatComponant implements Component
 
 	constructor(element: HTMLElement)
 	{
-		const wsUrl = import.meta.env.chatback_WS_URL
+		const wsUrl = `wss://${import.meta.env.VITE_HOST}${import.meta.env.VITE_CHAT_ENDPOINT}`
 					|| 'wss://localhost:8443/chatback/ws';
 
         this.element = element;
