@@ -2,8 +2,12 @@ import { FastifyInstance } from 'fastify'
 import { RoomManager } from './RoomManager'
 import { Player, ClientMessage, ServerMessage } from './types'
 import { v4 as uuidv4 } from 'uuid'
+import https from 'https'
 
 const roomManager = new RoomManager()
+
+const isDevelopment = process.env.NODE_ENV === 'development'
+const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
 
 export function handleQuickPlay(fastify: FastifyInstance)
 {
@@ -49,7 +53,7 @@ export function handleQuickPlay(fastify: FastifyInstance)
 			}
 		})
 
-		function handleJoinQuickplay(username: string)
+		async function handleJoinQuickplay(username: string)
 		{
 			if (currentPlayer)
 			{
@@ -78,16 +82,44 @@ export function handleQuickPlay(fastify: FastifyInstance)
 				const player1 = room.players[0]
 				const player2 = room.players[1]
 
+				const host = process.env.VITE_HOST
+				const create_endpoint = process.env.VITE_CREATEGAME_ENDPOINT
+				const game_endpoint = process.env.VITE_GAME_ENDPOINT
+				const fetchURL = (host && create_endpoint) ? `https://${host}${create_endpoint}`
+								: `https://localhost:8443/gameback/create`
+				try {
+					console.log(fetchURL)
+					await fetch(fetchURL, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							roomId: room.id,
+							player1: { id: player1.id, username: player1.username },
+							player2: { id: player2.id, username: player2.username },
+						}),
+						agent: agent
+					})
+					console.log(`Game initialized in gameback for room ${room.id}`)
+				} 
+				catch (err)
+				{
+					console.log(`failed to initialize room ${room.id}`, err)
+				}
+
 				player1.socket.send(JSON.stringify({
 					type: `game_start`,
 					roomId: room.id,
-					playerNumber: 1
+					playerNumber: 1,
+					gameSeverURL: (host && game_endpoint) ? `wss://${host}${game_endpoint}?roomId=${room.id}`
+							: `wss://localhost:8443/gameback/game?roomId=${room.id}`
 				}))
 
 				player2.socket.send(JSON.stringify({
 					type: `game_start`,
 					roomId: room.id,
-					playerNumber: 2
+					playerNumber: 2,
+					gameSeverURL: (host && game_endpoint) ? `wss://${host}${game_endpoint}?roomId=${room.id}`
+							: `wss://localhost:8443/gameback/game?roomId=${room.id}`
 				}))
 
 				console.log(`Game starde in room ${room.id}!`)

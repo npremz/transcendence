@@ -1,5 +1,6 @@
 import type { ViewFunction } from "../router/types";
 import { Header } from "../components/Header";
+import { Router } from "../router/Router";
 
 export const TestView: ViewFunction = () => {
 	return `
@@ -204,6 +205,8 @@ export const initWebSocket = (): (() => void) => {
 				playerNumber = message.playerNumber;
 				updateStatus(`Partie démarrée! Vous êtes le joueur ${playerNumber}`, 'playing');
 				updateDebugInfo();
+				console.log(window.router)
+				//window.router.navigate("/game")
 				break;
 				
 			case 'opponent_disconnected':
