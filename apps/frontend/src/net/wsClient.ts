@@ -29,10 +29,14 @@ export class WSClient {
 
 	connect(url?: string) {
 		//const defaultUrl = `wss://${location.hostname}:8443/gameback/game`;
-		const defaultUrl = `wss://fu-r2-p4:8443/gameback/game`;
+		const host = import.meta.env.VITE_HOST
+		const endpoint = import.meta.env.VITE_GAME_ENDPOINT
+		const defaultUrl = (host && endpoint) ? `wss://${host}${endpoint}`
+					: 'wss://localhost:8443/gameback/game';
 		this.ws = new WebSocket(url ?? defaultUrl);
 
 		this.ws.onmessage = (ev) => {
+			console.log(ev.data)
 			const msg = JSON.parse(ev.data) as ServerMsg;
 			switch (msg.type) {
 				case 'welcome':

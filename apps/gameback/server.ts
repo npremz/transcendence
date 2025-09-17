@@ -22,6 +22,11 @@ fastify.get('/game', { websocket: true }, function gameHandler (socket, req)
 	}
 )
 
+fastify.post('/create', async (request, reply) => {
+	reply.send({success:true});
+	console.log(request);
+})
+
 fastify.get('/', function (request, reply)
 	{
 		reply.send({ hello: 'world' })
