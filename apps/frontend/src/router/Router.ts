@@ -2,7 +2,7 @@ import type { Route, CleanupFunction } from './types';
 import { ComponentManager } from '../components/ComponantManager'
 import { HomeView } from '../views/HomeView';
 import { TestView, initWebSocket } from '../views/TestView';
-import { GameView, gameLogic } from '../views/GameView';
+import { GameView } from '../views/GameView';
 import { StartGameView } from '../views/StartGameView';
 import { LoginView } from '../views/LoginView';
 import { CreateAccountView } from '../views/CreateAccountView';
@@ -39,7 +39,6 @@ export class Router {
 		this.routes.push({
             path: '/game',
             view: GameView,
-			onMount: gameLogic,
             title: 'Test'
         });
 
