@@ -28,7 +28,10 @@ export const checkPaddleCollision = (
 
 	const r = ball.radius;
 	const dist2 = nx * nx + ny * ny;
-	if (dist2 > r * r) return false;
+	if (dist2 > r * r) 
+	{
+		return false;
+	}
 
 	let dist = Math.sqrt(dist2);
 	if (dist === 0)
@@ -59,35 +62,12 @@ export const checkPaddleCollision = (
 	ball.x += nx * penetration;
 	ball.y += ny * penetration;
 
-	const vdotn = ball.vx * nx + ball.vy * ny;
-	ball.vx = ball.vx - 2 * vdotn * nx;
-	ball.vy = ball.vy - 2 * vdotn * ny;
-
-	if (isLeftPaddle && ball.vx < 0)
-	{
-		ball.vx = Math.abs(ball.vx);
-	}
-	if (!isLeftPaddle && ball.vx > 0)
-	{
-		ball.vx = -Math.abs(ball.vx);
-	}
-
 	const MAX_BOUNCE_RAD = (MAX_BOUNCE_DEG * Math.PI) / 180;
-	const MAX_RATIO = Math.tan(MAX_BOUNCE_RAD);
-	if (Math.abs(ball.vx) < 1e-6)
-	{
-		ball.vx = (isLeftPaddle ? 1 : -1) * 1e-6;
-	}
-	const ratio = Math.abs(ball.vy / ball.vx);
-	if (ratio > MAX_RATIO)
-	{
-		ball.vy = Math.sign(ball.vy || 1) * Math.abs(ball.vx) * MAX_RATIO;
-	}
-	const speedAfter = Math.max(1e-6, Math.hypot(ball.vx, ball.vy));
-	const targetSpeed = Math.min(speedBefore, BALL_MAX_SPEED);
-	const scale = targetSpeed / speedAfter;
-	ball.vx *= scale;
-	ball.vy *= scale;
+	const rel = clamp((ball.y - paddleY) / (PADDLE_HEIGHT / 2), -1, 1);
+	const angle = rel * MAX_BOUNCE_RAD;
+	const dir = isLeftPaddle ? 1 : -1;
+	ball.vx = Math.cos(angle) * speedBefore * dir;
+	ball.vy = Math.sin(angle) * speedBefore;
 	ball.lastPaddleHit = paddleName;
 	return true;
 };

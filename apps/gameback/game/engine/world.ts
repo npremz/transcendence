@@ -1,8 +1,10 @@
 import { 
 	WORLD_WIDTH, WORLD_HEIGHT, PADDLE_MARGIN, PADDLE_HEIGHT, PADDLE_SPEED,
 	PADDLE_SPEED_INCREASE, BALL_INITIAL_SPEED, BALL_SPEED_INCREASE, BALL_MAX_SPEED,
-	BALL_RADIUS, SCORE_TO_WIN } from "./constants";
-import type { Ball, GameState } from "./types";
+	BALL_RADIUS, SCORE_TO_WIN, PADDLE_MAX_SPEED, SMASH_ANIM_DURATION, SMASH_COOLDOWN,
+	SMASH_SPEED_MULTIPLIER, SMASH_TIMING_WINDOW,
+	PADDLE_WIDTH} from "./constants";
+import type { Ball, GameState, Side } from "./types";
 import { clamp } from "./helpers";
 import { bounceOnWalls, checkPaddleCollision, resolveBallBallCollision } from "./physics";
 import { activateSplit, endSplit, pruneExpiredPowerUps, scheduleNextPowerUp, spawnPowerUp } from "./powerups";
@@ -39,12 +41,21 @@ export class GameWorld {
 			powerUps: [],
 			nextPowerUpAt: 5 + Math.random() * 10,
 			splitActive: false,
-			splitEndsAt: 0
+			splitEndsAt: 0,
+			smash : {
+				left: {availableAt: 0, lastPressAt: -1e9, lastSmashAt: -1e9},
+				right: {availableAt: 0, lastPressAt: -1e9, lastSmashAt: -1e9}
+			}
 		};
 	}
 
 	applyInput(side: 'left' | 'right', intention: -1 | 0 | 1) {
 		(side === 'left' ? this.state.leftPaddle : this.state.rightPaddle).intention = intention;
+	}
+
+	pressSmash(side: Side)
+	{
+		this.state.smash[side].lastPressAt = this.state.clock;
 	}
 
 	startCountdown() {
@@ -109,7 +120,7 @@ export class GameWorld {
 		pruneExpiredPowerUps(s);
 
 		const leftX = PADDLE_MARGIN;
-		const rightX = WORLD_WIDTH - PADDLE_MARGIN - 15;
+		const rightX = WORLD_WIDTH - PADDLE_MARGIN - PADDLE_WIDTH;
 
 		for (let i = s.powerUps.length - 1; i >= 0; i--)
 		{
@@ -122,7 +133,7 @@ export class GameWorld {
 				if (Math.hypot(dx, dy) <= b.radius + pu.radius)
 				{
 					s.powerUps.splice(i, 1);
-					activateSplit(s);
+					activateSplit(s, b);
 					picked = true;
 					break;
 				}
@@ -138,7 +149,7 @@ export class GameWorld {
 			b.x += b.vx * dt;
 			b.y += b.vy * dt;
 			bounceOnWalls(b);
-			if (b.lastPaddleHit === 'left' && b.x - b.radius > leftX + 15 + 2)
+			if (b.lastPaddleHit === 'left' && b.x - b.radius > leftX + PADDLE_WIDTH + 2)
 			{
 				b.lastPaddleHit = '';
 			}
@@ -151,13 +162,28 @@ export class GameWorld {
 			if (hitL || hitR)
 			{
 				const curr = Math.max(1e-6, Math.hypot(b.vx, b.vy));
-				const target = Math.min(curr * BALL_SPEED_INCREASE, BALL_MAX_SPEED);
+				let target = Math.min(curr * BALL_SPEED_INCREASE, BALL_MAX_SPEED);
+
+				const side: Side | '' = hitL ? 'left' : hitR ? 'right' : '';
+				if (side)
+				{
+					const sm = s.smash[side];
+					const pressedInWindow = (s.clock - sm.lastPressAt) <= SMASH_TIMING_WINDOW;
+					const ready = s.clock >= sm.availableAt;
+					if (pressedInWindow && ready)
+					{
+						target = Math.min(target * SMASH_SPEED_MULTIPLIER, BALL_MAX_SPEED);
+						sm.availableAt = s.clock + SMASH_COOLDOWN;
+						sm.lastSmashAt = s.clock;
+					}
+				}
+
 				const norm = Math.max(1e-6, Math.hypot(b.vx, b.vy));
 				const k = target / norm;
 				b.vx *= k;
 				b.vy *= k;
-				s.leftPaddle.speed *= PADDLE_SPEED_INCREASE;
-				s.rightPaddle.speed *= PADDLE_SPEED_INCREASE;
+				s.leftPaddle.speed = Math.min(s.leftPaddle.speed * PADDLE_SPEED_INCREASE, PADDLE_MAX_SPEED);
+				s.rightPaddle.speed = Math.min(s.rightPaddle.speed * PADDLE_SPEED_INCREASE, PADDLE_MAX_SPEED);
 			}
 		}
 		if (s.balls.length > 1)
@@ -223,7 +249,20 @@ export class GameWorld {
 			winner: s.winner,
 			countdownValue: s.countdownValue,
 			powerUps: s.powerUps.map(({x, y, radius}) => ({x, y, radius})),
-			splitActive: s.splitActive
+			splitActive: s.splitActive,
+			clock: s.clock,
+			smash: {
+				cooldown: SMASH_COOLDOWN,
+				animDuration: SMASH_ANIM_DURATION,
+				left: {
+					cooldownRemaining: Math.max(0, s.smash.left.availableAt - s.clock),
+					lastSmashAt: s.smash.left.lastSmashAt
+				},
+				right: {
+					cooldownRemaining: Math.max(0, s.smash.right.availableAt - s.clock),
+					lastSmashAt: s.smash.right.lastSmashAt
+				}
+			}
 		};
 	}
 }

@@ -17,6 +17,12 @@ export type PowerUp = {
 	expiresAt: number;
 };
 
+export type SmashSideState = {
+	availableAt: number;
+	lastPressAt: number;
+	lastSmashAt: number;
+};
+
 export type GameState = {
 	leftPaddle: {speed: number; y: number; intention: number};
 	rightPaddle: {speed: number; y: number; intention: number};
@@ -32,4 +38,9 @@ export type GameState = {
 	nextPowerUpAt: number;
 	splitActive: boolean;
 	splitEndsAt: number;
+
+	smash: {
+		left: SmashSideState;
+		right: SmashSideState;
+	}
 };

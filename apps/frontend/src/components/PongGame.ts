@@ -19,7 +19,14 @@ export class PongGame implements Component {
 		winner: '',
 		countdownValue: 0,
 		powerUps: [],
-		splitActive: false
+		splitActive: false,
+		clock: 0,
+		smash: {
+			cooldown: 0,
+			animDuration: 0.12,
+			left: {cooldownRemaining: 0, lastSmashAt: -1e9},
+			right: {cooldownRemaining: 0, lastSmashAt: -1e9}
+		}
 	};
 
 	private WORLD_WIDTH = 1920;
@@ -50,9 +57,12 @@ export class PongGame implements Component {
 				this.keys.down = true;
 				e.preventDefault();
 				break;
+			case ' ':
+				this.net.smash();
+				e.preventDefault();
+				break;
 			case 'p':
 			case 'P':
-			case ' ':
 			case 'Escape':
 				if (this.state.isPaused)
 					this.net.resume();
@@ -159,10 +169,41 @@ export class PongGame implements Component {
 	}
 
 	private sendIntent() {
-		const up = this.net.side === 'left' ? this.keys.w : this.keys.up;
-		const down = this.net.side === 'left' ? this.keys.s : this.keys.down;
+		const up = (this.keys.w || this.keys.up);
+		const down = (this.keys.s || this.keys.down);
 		this.net.sendInput(!!up, !!down);
 	}
+
+	private drawCooldownDonut(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, thickness: number, progress: number) {
+		const start = -Math.PI / 2;
+		const end = start + progress * Math.PI * 2;
+
+		ctx.strokeStyle = '#444';
+		ctx.lineWidth = thickness;
+		ctx.beginPath();
+		ctx.arc(x, y, r, 0, Math.PI * 2);
+		ctx.stroke();
+
+		ctx.strokeStyle = progress >= 1 ? '#00e676' : '#ffcc00';
+		ctx.beginPath();
+		ctx.arc(x, y, r, start, end);
+		ctx.stroke();
+	}
+
+	private smashOffsetX(side: 'left' | 'right'): number {
+		const smash = this.state.smash;
+		if (!smash) return 0;
+		const last = side === 'left' ? smash.left.lastSmashAt : smash.right.lastSmashAt;
+		const dur = smash.animDuration || 0.12;
+		const dt = Math.max(0, this.state.clock - last);
+		if (dt <= 0 || dt > dur) return 0;
+		const t = dt / dur;
+		const amp = 24;
+		const dir = side === 'left' ? 1 : -1;
+		return dir * amp * Math.sin(Math.PI * t);
+	}
+
+
 
 	private render() {
 		const ctx = this.ctx;
@@ -178,6 +219,9 @@ export class PongGame implements Component {
 		ctx.lineTo(W / 2, H);
 		ctx.stroke();
 		ctx.setLineDash([]);
+
+		const leftX = this.PADDLE_MARGIN + this.smashOffsetX('left');
+		const rightX = (W - this.PADDLE_MARGIN - this.PADDLE_WIDTH) + this.smashOffsetX('right');
 
 		ctx.fillStyle = '#fff';
 		ctx.fillRect(this.PADDLE_MARGIN, this.state.leftPaddle.y - this.PADDLE_HEIGHT / 2, this.PADDLE_WIDTH, this.PADDLE_HEIGHT);
@@ -206,6 +250,23 @@ export class PongGame implements Component {
 		ctx.textAlign = 'center';
 		ctx.fillText(String(this.state.score.left), W / 2 - 100, 60);
 		ctx.fillText(String(this.state.score.right), W / 2 + 100, 60);
+
+		if ((this.net.side === 'left' || this.net.side === 'right') && (this.state as any).smash) 
+		{
+			const smash = (this.state as any).smash;
+			const mine = this.net.side === 'left' ? smash.left : smash.right;
+			const progress = smash.cooldownSec > 0
+			? Math.max(0, Math.min(1, 1 - (mine.cooldownRemaining / smash.cooldownSec)))
+			: 1;
+			this.drawCooldownDonut(ctx, 60, 60, 28, 10, progress);
+
+			ctx.fillStyle = '#fff';
+			ctx.font = '16px monospace';
+			ctx.textAlign = 'left';
+			if (mine.cooldownRemaining > 0) {
+			ctx.fillText(mine.cooldownRemaining.toFixed(1) + 's', 95, 66);
+			}
+		}
 
 		if (this.state.countdownValue > 0) {
 		ctx.fillStyle = 'rgba(0,0,0,0.7)';

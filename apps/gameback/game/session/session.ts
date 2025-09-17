@@ -60,7 +60,6 @@ class GameSession {
 		const msg = safeParse<ClientMessage>(raw.toString());
 		if (!msg)
 		{
-			console.log('No msg');
 			return;
 		}
 		this.log?.info({ role: this.roles.get(ws), bytes: raw.byteLength }, 'ws <- message');
@@ -75,13 +74,38 @@ class GameSession {
 				}
 				break;
 			}
+			case 'smash': {
+				const role = this.roles.get(ws);
+				if (role === 'left' || role === 'right')
+				{
+					this.world.pressSmash(role);
+				}
+				break;
+			}
 			case 'pause':
 				this.world.pause();
 				this.broadcast({type: 'paused'});
 				break;
-			case 'resume':
-				this.world.resume();
+			case 'resume': {
+				if (this.world.state.isGameOver)
+				{
+					if (this.leftCtrl && this.rightCtrl)
+					{
+						this.world.restart();
+						this.broadcast({type: 'resumed'});
+					}
+					else
+					{
+						this.send(ws, {type: 'error', message: 'Two players required'});
+					}
+				}
+				else
+				{
+					this.world.resume();
+					this.broadcast({type: 'resumed'});
+				}
 				break;
+			}
 			case 'ping':
 				this.send(ws, {type: 'pong', t: msg.t});
 				break;

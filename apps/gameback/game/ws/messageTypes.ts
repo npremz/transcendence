@@ -2,7 +2,8 @@ export type ClientMessage =
 	| {type: 'input'; up: boolean; down: boolean }
 	| {type: 'pause'}
 	| {type: 'resume'}
-	| {type: 'ping'; t: number};
+	| {type: 'ping'; t: number}
+	| {type: 'smash'};
 
 export type ServerMessage = 
 	| {type: 'welcome'; side: 'left' | 'right'}
@@ -25,6 +26,14 @@ export type PublicState = {
 	countdownValue: number;
 	powerUps: {x: number; y: number; radius: number}[];
 	splitActive: boolean;
+	clock: number;
+
+	smash: {
+		cooldown: number;
+		animDuration: number;
+		left: {cooldownRemaining: number; lastSmashAt: number};
+		right: {cooldownRemaining: number; lastSmashAt: number};
+	};
 };
 
 export function safeParse<T>(raw: string): T | null {

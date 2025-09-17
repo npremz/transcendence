@@ -6,8 +6,10 @@ export const PADDLE_HEIGHT = 100;
 export const PADDLE_MARGIN = 30;
 export const PADDLE_SPEED = 400;
 export const PADDLE_SPEED_INCREASE = 1.05;
+export const PADDLE_MAX_SPEED = 1600;
 
-export const BALL_RADIUS = 100;
+
+export const BALL_RADIUS = 15;
 export const BALL_INITIAL_SPEED = 600;
 export const BALL_SPEED_INCREASE = 1.05;
 export const BALL_MAX_SPEED = 1500;
@@ -20,8 +22,17 @@ export const POWERUP_MIN_DELAY_SEC = 6;
 export const POWERUP_EXTRA_RANDOM_SEC = 6;
 export const POWERUP_LIFETIME_SEC = 9;
 export const SPLIT_DURATION_SEC = 10;
-export const POWERUP_MAX_ON_SCREEN = 1;
+export const POWERUP_MAX_ON_SCREEN = 5;
 
-export const SERVER_TICK_HZ = 60;
+export const MAX_BALLS_ON_FIELD = 10;
+export const SPLIT_SPAWN_PER_PICKUP = 1;
+export const SPLIT_SPREAD_DEG = 20;
+
+export const SMASH_COOLDOWN = 3;
+export const SMASH_TIMING_WINDOW = 1;
+export const SMASH_SPEED_MULTIPLIER = 1.6;
+export const SMASH_ANIM_DURATION = 0.12;
+
+export const SERVER_TICK_HZ = 240;
 export const SERVER_DT = 1 / SERVER_TICK_HZ;
-export const BROADCAST_HZ = 60;
+export const BROADCAST_HZ = 240;

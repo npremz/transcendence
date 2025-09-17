@@ -9,6 +9,13 @@ export type PublicState = {
 	countdownValue: number;
 	powerUps: {x: number, y: number, radius: number}[];
 	splitActive: boolean;
+	clock: number;
+	smash: {
+		cooldown: number;
+		animDuration: number;
+		left: {cooldownRemaining: number; lastSmashAt: number};
+		right: {cooldownRemaining: number; lastSmashAt: number};
+	};
 };
 
 type ServerMsg = 
@@ -63,5 +70,8 @@ export class WSClient {
 	}
 	resume() {
 		this.ws?.send(JSON.stringify({type: 'resume'}));
+	}
+	smash() {
+		this.ws?.send(JSON.stringify({type: 'smash'}));
 	}
 }
