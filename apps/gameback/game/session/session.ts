@@ -97,6 +97,7 @@ class GameSession {
 					else
 					{
 						this.send(ws, {type: 'error', message: 'Two players required'});
+						this.world.restart();
 					}
 				}
 				else

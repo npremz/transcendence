@@ -95,6 +95,7 @@ export class PongGame implements Component {
 	};
 
 	private keys = { w: false, s: false, up: false, down: false };
+	private animationFrameId: number | null = null;
 
 	constructor(element: HTMLElement) {
 		this.el = element;
@@ -136,6 +137,35 @@ export class PongGame implements Component {
 
 		this.setupCanvas();
     	this.render();
+		this.startAnimationLoop();
+	}
+
+	private startAnimationLoop() {
+		const animate = () => {
+			this.render();
+			this.animationFrameId = requestAnimationFrame(animate);
+		};
+		animate();
+	}
+
+	private smashOffsetX(side: 'left' | 'right'): number {
+		const smash = this.state.smash;
+		if (!smash)
+		{
+			return (0);
+		}
+		const last = side === 'left' ? smash.left.lastSmashAt : smash.right.lastSmashAt;
+		const dur = smash.animDuration;
+		const dt = Math.max(0, this.state.clock - last);
+		if (dt <= 0 || dt > dur)
+		{
+			return (0);
+		}
+		const t = dt / dur;
+		const amp = 24;
+		const dir = side === 'left' ? 1 : -1;
+
+		return (dir * amp * Math.sin(Math.PI * t));
 	}
 
 	private handleStartClick = () => {
@@ -184,32 +214,21 @@ export class PongGame implements Component {
 		ctx.arc(x, y, r, 0, Math.PI * 2);
 		ctx.stroke();
 
-		ctx.strokeStyle = progress >= 1 ? '#00e676' : '#ffcc00';
-		ctx.beginPath();
-		ctx.arc(x, y, r, start, end);
-		ctx.stroke();
+		if (progress > 0)
+		{
+			ctx.strokeStyle = progress >= 1 ? '#00e676' : '#ffcc00';
+			ctx.lineWidth = thickness;
+			ctx.beginPath();
+			ctx.arc(x, y, r, start, end);
+			ctx.stroke();
+		}
 	}
-
-	private smashOffsetX(side: 'left' | 'right'): number {
-		const smash = this.state.smash;
-		if (!smash) return 0;
-		const last = side === 'left' ? smash.left.lastSmashAt : smash.right.lastSmashAt;
-		const dur = smash.animDuration || 0.12;
-		const dt = Math.max(0, this.state.clock - last);
-		if (dt <= 0 || dt > dur) return 0;
-		const t = dt / dur;
-		const amp = 24;
-		const dir = side === 'left' ? 1 : -1;
-		return dir * amp * Math.sin(Math.PI * t);
-	}
-
-
 
 	private render() {
 		const ctx = this.ctx;
 		const W = this.WORLD_WIDTH, H = this.WORLD_HEIGHT;
 
-		ctx.fillStyle = '#000';
+		ctx.fillStyle = '#000000ff';
 		ctx.fillRect(0, 0, W, H);
 
 		ctx.strokeStyle = '#fff';
@@ -224,8 +243,8 @@ export class PongGame implements Component {
 		const rightX = (W - this.PADDLE_MARGIN - this.PADDLE_WIDTH) + this.smashOffsetX('right');
 
 		ctx.fillStyle = '#fff';
-		ctx.fillRect(this.PADDLE_MARGIN, this.state.leftPaddle.y - this.PADDLE_HEIGHT / 2, this.PADDLE_WIDTH, this.PADDLE_HEIGHT);
-		ctx.fillRect(W - this.PADDLE_MARGIN - this.PADDLE_WIDTH, this.state.rightPaddle.y - this.PADDLE_HEIGHT / 2, this.PADDLE_WIDTH, this.PADDLE_HEIGHT);
+		ctx.fillRect(leftX, this.state.leftPaddle.y - this.PADDLE_HEIGHT / 2, this.PADDLE_WIDTH, this.PADDLE_HEIGHT);
+		ctx.fillRect(rightX - this.PADDLE_WIDTH, this.state.rightPaddle.y - this.PADDLE_HEIGHT / 2, this.PADDLE_WIDTH, this.PADDLE_HEIGHT);
 
 		for (const powerUp of this.state.powerUps)
 		{
@@ -253,49 +272,57 @@ export class PongGame implements Component {
 
 		if ((this.net.side === 'left' || this.net.side === 'right') && (this.state as any).smash) 
 		{
-			const smash = (this.state as any).smash;
+			const smash = this.state.smash;
 			const mine = this.net.side === 'left' ? smash.left : smash.right;
-			const progress = smash.cooldownSec > 0
-			? Math.max(0, Math.min(1, 1 - (mine.cooldownRemaining / smash.cooldownSec)))
-			: 1;
+			const progress = mine.cooldownRemaining > 0 ? Math.max(0, Math.min(1, 1 - (mine.cooldownRemaining / smash.cooldown))) : 1;
 			this.drawCooldownDonut(ctx, 60, 60, 28, 10, progress);
-
 			ctx.fillStyle = '#fff';
 			ctx.font = '16px monospace';
 			ctx.textAlign = 'left';
 			if (mine.cooldownRemaining > 0) {
 			ctx.fillText(mine.cooldownRemaining.toFixed(1) + 's', 95, 66);
 			}
+			ctx.textAlign = 'center';
 		}
 
-		if (this.state.countdownValue > 0) {
-		ctx.fillStyle = 'rgba(0,0,0,0.7)';
-		ctx.fillRect(0, 0, W, H);
-		ctx.fillStyle = '#fff';
-		ctx.font = '120px monospace';
-		ctx.fillText(String(this.state.countdownValue), W / 2, H / 2);
-		} else if (this.state.isGameOver) {
-		ctx.fillStyle = 'rgba(0,0,0,0.7)';
-		ctx.fillRect(0, 0, W, H);
-		ctx.fillStyle = '#fff';
-		ctx.font = '72px monospace';
-		ctx.fillText('GAME OVER', W / 2, H / 2 - 40);
-		ctx.font = '36px monospace';
-		ctx.fillText(`${this.state.winner} wins`, W / 2, H / 2 + 10);
-		ctx.font = '24px monospace';
-		ctx.fillText('Click "Rejouer" to restart', W / 2, H / 2 + 60);
-		} else if (this.state.isPaused) {
-		ctx.fillStyle = 'rgba(0,0,0,0.7)';
-		ctx.fillRect(0, 0, W, H);
-		ctx.fillStyle = '#fff';
-		ctx.font = '72px monospace';
-		ctx.fillText('PAUSED', W / 2, H / 2);
-		ctx.font = '24px monospace';
-		ctx.fillText('Press P, SPACE or ESC to resume', W / 2, H / 2 + 60);
+		if (this.state.countdownValue > 0) 
+		{
+			ctx.fillStyle = 'rgba(0,0,0,0.7)';
+			ctx.fillRect(0, 0, W, H);
+			ctx.fillStyle = '#fff';
+			ctx.font = '120px monospace';
+			ctx.fillText(String(this.state.countdownValue), W / 2, H / 2);
+		} 
+		else if (this.state.isGameOver) 
+		{
+			ctx.fillStyle = 'rgba(0,0,0,0.7)';
+			ctx.fillRect(0, 0, W, H);
+			ctx.fillStyle = '#fff';
+			ctx.font = '72px monospace';
+			ctx.fillText('GAME OVER', W / 2, H / 2 - 40);
+			ctx.font = '36px monospace';
+			ctx.fillText(`${this.state.winner} wins`, W / 2, H / 2 + 10);
+			ctx.font = '24px monospace';
+			ctx.fillText('Click "Replay" to restart', W / 2, H / 2 + 60);
+		} 
+		else if (this.state.isPaused) 
+		{
+			ctx.fillStyle = 'rgba(0,0,0,0.7)';
+			ctx.fillRect(0, 0, W, H);
+			ctx.fillStyle = '#fff';
+			ctx.font = '72px monospace';
+			ctx.fillText('PAUSED', W / 2, H / 2);
+			ctx.font = '24px monospace';
+			ctx.fillText('Press P, SPACE or ESC to resume', W / 2, H / 2 + 60);
 		}
 	}
 
 	cleanup(): void {
+		if (this.animationFrameId !== null)
+		{
+			cancelAnimationFrame(this.animationFrameId);
+			this.animationFrameId = null;
+		}
 		this.startBtn.removeEventListener('click', this.handleStartClick);
 		window.removeEventListener('resize', this.onResize);
 		window.removeEventListener('keydown', this.onKeyDown);
