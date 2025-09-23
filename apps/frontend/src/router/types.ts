@@ -1,10 +1,14 @@
 
-export interface Route {
+export interface Route
+{
 	path: string;
 	view: ViewFunction;
-	onMount?: () => CleanupFunction | void;
+	onMount?: (params?: RouteParams) => CleanupFunction | void;
 	title?: string;
+	regex?: RegExp;
+    paramNames?: string[];
 }
 
-export type ViewFunction = () => string;
+export type ViewFunction = (params?: RouteParams) => string;
 export type CleanupFunction = () => void;
+export type RouteParams = Record<string, string>;
