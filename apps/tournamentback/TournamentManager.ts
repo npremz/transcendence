@@ -1,4 +1,4 @@
-import type { Match, Player, registration, Tournament } from "./types";
+import type { ClientMessage, ServerMessage, Match, Player, registration, Tournament } from "./types";
 import { v4 as uuidv4 } from 'uuid'
 
 export class TournamentManager
@@ -54,19 +54,82 @@ export class TournamentManager
 		if (!tournament || tournament.status !== 'registration') return false;
 		if (tournament.currentPlayers. length >= tournament.maxPlayers) return false;
 
+		this.removePlayerFromOtherRegistrations(newPlayer.id, tournamentId);
+
 		const isPlayerInTournament = tournament.currentPlayers.some(
 			player => player.id === newPlayer.id
 		);
-		tournament.currentPlayers.push(newPlayer);
+		if (!isPlayerInTournament) 
+		{
+			tournament.currentPlayers.push(newPlayer);
+		}
 
 		if (tournament.currentPlayers.length === tournament.maxPlayers)
 		{
 			this.startTournament(tournamentId);
 		}
 
-		updateRegistratedPlayers(tournamentId)
-
+		this.updateAllRegistrations();
 		return true;
+	}
+
+	removePlayerFromRegistration(playerId: string): boolean
+	{
+		for (const [_, tournament] of this.tournaments)
+		{
+			if (tournament.status === 'registration')
+			{
+				const playerIndex = tournament.currentPlayers.findIndex(p => p.id === playerId);
+				if (playerIndex !== -1)
+				{
+					tournament.currentPlayers.splice(playerIndex, 1);
+
+					console.log(`Player ${playerId} removed from tournament ${tournament.name}`);
+					this.updateAllRegistrations();
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	removePlayerFromOtherRegistrations(playerId: string, excludeTournamentId: string): void
+	{
+		for (const [tournamentId, tournament] of this.tournaments)
+		{
+			if (tournament.status === 'registration' && tournamentId !== excludeTournamentId)
+			{
+				const playerIndex = tournament.currentPlayers.findIndex(p => p.id === playerId);
+				if (playerIndex !== -1)
+				{
+					tournament.currentPlayers.splice(playerIndex, 1);
+					console.log(`Player ${playerId} removed from tournament ${tournament.name} (switching tournaments)`);
+				}
+			}
+		}
+	}
+
+	removePlayerFromAllRegistrations(playerId: string): boolean
+	{
+		let removed = false;
+		for (const [_, tournament] of this.tournaments)
+		{
+			if (tournament.status === 'registration')
+			{
+				const playerIndex = tournament.currentPlayers.findIndex(p => p.id === playerId);
+				if (playerIndex !== -1)
+				{
+					tournament.currentPlayers.splice(playerIndex, 1);
+					console.log(`Player ${playerId} removed from tournament ${tournament.name}`);
+					removed = true;
+				}
+			}
+		}
+		if (removed)
+		{
+			this.updateAllRegistrations();
+		}
+		return removed;
 	}
 
 	startTournament(tournamentId: string): void
@@ -268,13 +331,28 @@ export class TournamentManager
 		}
 	}
 
-	updateRegistratedPlayers(tournamentId: string)
+	updateAllRegistrations(): void
 	{
-		const tournament = this.tournaments.get(tournamentId)
-		if (!tournament) return;
+		const registrations = this.getCurrentRegistrations();
+		const updateMsg: ServerMessage = { type: 'update', registrations };
 
-		tournament.forEach(element => {
-			
+		this.tournaments.forEach(tournament => {
+			if (tournament.status === 'registration')
+			{
+				tournament.currentPlayers.forEach(player => {
+					try
+					{
+						if (player.ws.readyState === player.ws.OPEN)
+						{
+							player.ws.send(JSON.stringify(updateMsg));
+						}
+					}
+					catch (err)
+					{
+						console.error("Error updating player:", err);
+					}
+				});
+			}
 		});
 	}
 

@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid'
 
 export interface registration
 {
@@ -11,15 +12,17 @@ type ServerMsg =
 	| {type: 'update', registrations: registration[]}
 
 export type ClientMessage =
-	| {type: 'join', tournamentId: string | null, username: string}
+	| {type: 'join', tournamentId: string | null, username: string, playerId: string}
 
 export class wsTournament {
 	private ws?: WebSocket | null = null;
 	private tournamentBtns;
+	private id: string
 
 	constructor(elems: NodeListOf<Element>)
 	{
 		this.tournamentBtns = elems
+		this.id = uuidv4()
 	}
 
 	connect(url?: string) {
@@ -33,7 +36,8 @@ export class wsTournament {
 		this.ws.onmessage = (ev) => {
 			const msg = JSON.parse(ev.data) as ServerMsg;
 			console.log(msg)
-			switch (msg.type) {
+			switch (msg.type)
+			{
 				case 'update':
 					this.tournamentBtns.forEach(btn => {
 						const span: HTMLSpanElement | null = btn.querySelector("span");
@@ -50,12 +54,14 @@ export class wsTournament {
 		};
 	}
 
-	
-
-	join(id: string | null, username: string) {
-		const msg: ClientMessage = {type: 'join', tournamentId: id, username: username}
+	join(tournamentId: string | null, username: string) {
+		const msg: ClientMessage = {
+			type: 'join',
+			tournamentId: tournamentId,
+			username: username,
+			playerId: this.id
+		}
 		this.ws?.send(JSON.stringify(msg))
-		
 	}
 
 	close(): void

@@ -45,7 +45,7 @@ export interface registration
 }
 
 export type ClientMessage =
-	| {type: 'join', tournamentId: string, username: string}
+	| {type: 'join', tournamentId: string, username: string, playerId: string}
 
 export type ServerMessage = 
 	| {type: 'update', registrations: registration[]}

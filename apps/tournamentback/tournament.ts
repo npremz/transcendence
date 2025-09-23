@@ -14,6 +14,7 @@ export function handleTournament(fastify: FastifyInstance)
 {
 	fastify.get('/ws', { websocket: true }, (connection, request) => {
 		console.log(`New WebSocket connexion /tournamentback/ws`)
+		let currentPlayerId: string | null = null;
 
 		sendMessage({type: 'update', registrations: tournamentManager.getCurrentRegistrations()})
 
@@ -26,6 +27,7 @@ export function handleTournament(fastify: FastifyInstance)
 				switch (msg.type)
 				{
 					case 'join':
+						currentPlayerId = msg.playerId;
 						handleJoinTournament(msg, connection)
 						break
 					default:
@@ -39,18 +41,36 @@ export function handleTournament(fastify: FastifyInstance)
 			}
 		})
 
+        connection.on('close', () => {
+            console.log('WebSocket connection closed');
+            if (currentPlayerId) {
+                const removed = tournamentManager.removePlayerFromAllRegistrations(currentPlayerId);
+                if (removed) {
+                    console.log(`Player ${currentPlayerId} removed from all registrations due to connection close`);
+                }
+            }
+        });
+
 		function handleJoinTournament(msg: ClientMessage, socket: WebSocket)
 		{
 			const newPlayer : Player= {
-				id: uuidv4(),
+				id: msg.playerId,
 				username: msg.username,
 				currentTournament: msg.tournamentId,
 				isEleminated: false,
 				ws: socket
 			}
 			tournamentManager.registerPlayer(msg.tournamentId, newPlayer);
-			console.log(`Player ${msg.username} registered to tournament ${msg.tournamentId}`)
-			sendMessage({type: 'update', registrations: tournamentManager.getCurrentRegistrations()})
+
+			const success = tournamentManager.registerPlayer(msg.tournamentId, newPlayer);
+            if (success)
+			{
+                console.log(`Player ${msg.username} (${msg.playerId}) switched to tournament ${msg.tournamentId}`)
+            }
+			else
+			{
+                sendError(`Cannot join tournament: tournament full or unavailable`)
+            }
 		}
 
 		function sendMessage(message: ServerMessage)
