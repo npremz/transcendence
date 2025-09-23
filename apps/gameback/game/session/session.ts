@@ -5,7 +5,8 @@ import { SERVER_DT, SERVER_TICK_HZ, BROADCAST_HZ } from "../engine/constants";
 import type { ClientMessage, ServerMessage } from "../ws/messageTypes";
 import { safeParse } from "../ws/messageTypes";
 
-type Role = 'left' | 'right';
+type Role = 'left' | 'right' | 'spectator';
+type Player = {id: string; username: string};
 
 class GameSession {
 	private log?: FastifyBaseLogger;
@@ -15,45 +16,73 @@ class GameSession {
 	private roles = new Map<WebSocket, Role>();
 	private leftCtrl?: WebSocket;
 	private rightCtrl?: WebSocket;
+    
+    private expected: {left?: Player; right?: Player} = {};
 
 	private tickTimer?: NodeJS.Timeout;
 	private broadcastTimer?: NodeJS.Timeout;
 
-	constructor(log?: FastifyBaseLogger) {
+	constructor(private readonly roomId?: string, log?: FastifyBaseLogger) {
 		this.startLoops();
 		this.log = log;
 	}
 
-	addClient(ws: WebSocket) {
-		const role = this.assignRole(ws);
+    setPlayers(players: {left: Player; right: Player}) {
+        this.expected.left = players.left;
+        this.expected.right = players.right;
+        this.log?.info({roomId: this.roomId, players: this.expected}, 'match set');
+    }
+
+	addClient(ws: WebSocket, info?: {id?: string; username?: string}) {
+		const role = this.assignRole(ws, info?.id);
 		this.clients.add(ws);
 		this.roles.set(ws, role);
 		this.send(ws, {type: 'welcome', side: role});
-		this.log?.info({ role, clients: this.clients.size }, 'client connected');
+		this.log?.info({ roomId: this.roomId, role, clients: this.clients.size, playerId: info?.id }, 'client connected');
 
 		ws.on('message', (raw: Buffer) => this.onMessage(ws, raw));
 		ws.on('close', () => this.onClose(ws));
 		ws.on('error', () => this.onClose(ws));
 
-		this.log?.info({role}, 'client connected');
 		if (this.leftCtrl && this.rightCtrl)
 		{
-			this.world.startCountdown();
-		}
-		if (this.leftCtrl && this.rightCtrl && this.world.state.isGameOver)
-		{
-			this.world.restart();
+			if (this.world.state.isGameOver)
+            {
+                this.world.restart();
+            }
+            else
+            {
+                this.world.startCountdown();
+            }
 		}
 	}
 
-	private assignRole(ws: WebSocket): Role {
-		if (!this.leftCtrl)
-		{
-			this.leftCtrl = ws; 
-			return ('left');
-		}
-		this.rightCtrl = ws;
-		return ('right');
+	private assignRole(ws: WebSocket, playerId?: string): Role {
+		if (this.expected.left?.id || this.expected.right?.id) 
+        {
+            if (playerId && this.expected.left?.id === playerId && !this.leftCtrl)
+            {
+                this.leftCtrl = ws;
+                return ('left');
+            }
+            if (playerId && this.expected.right?.id === playerId && !this.rightCtrl)
+            {
+                this.rightCtrl = ws;
+                return ('right');
+            }
+            return ('spectator');
+        }
+        if (!this.leftCtrl)
+        {
+            this .leftCtrl = ws;
+            return ('left');
+        }
+        if (!this.rightCtrl)
+        {
+            this.rightCtrl = ws;
+            return ('left');
+        }
+        return ('spectator');
 	}
 
 	private onMessage(ws: WebSocket, raw: Buffer) {
@@ -62,17 +91,20 @@ class GameSession {
 		{
 			return;
 		}
-		this.log?.info({ role: this.roles.get(ws), bytes: raw.byteLength }, 'ws <- message');
-		this.log?.info(msg.type);
+        const role = this.roles.get(ws);
 		switch (msg.type) {
 			case 'input': {
-				const role = this.roles.get(ws);
-				if (role === 'left' || role === 'right')
+				if (role === 'left' && ws === this.leftCtrl)
 				{
 					const intention = msg.up && !msg.down ? -1 : msg.down && !msg.up ? 1 : 0;
-					this.world.applyInput(role, intention);
+                    this.world.applyInput('left', intention);
 				}
-				break;
+				else if (role === 'right' && ws === this.rightCtrl)
+                {
+                    const intention = msg.up && !msg.down ? -1 : msg.down && !msg.up ? 1 : 0;
+                    this.world.applyInput('right', intention)
+                }
+                break;
 			}
 			case 'smash': {
 				const role = this.roles.get(ws);
@@ -125,7 +157,7 @@ class GameSession {
 		{
 			this.rightCtrl = undefined;
 		}
-		this.log?.info({role}, 'client disconnected');
+		this.log?.info({roomId: this.roomId, role}, 'client disconnected');
 	}
 
 	private startLoops() {
@@ -161,6 +193,22 @@ class GameSession {
 			this.send(c, msg);
 		}
 	}
+}
+
+const rooms = new Map<string, GameSession>();
+
+export const getSessionForRoom = (roomId: string, log?: FastifyBaseLogger) => {
+    if (!rooms.has(roomId))
+    {
+        rooms.set(roomId, new GameSession(roomId, log));
+    }
+    return (rooms.get(roomId)!);
+}
+
+export const setMatchForRoom = (roomId: string, players: {left: Player; right: Player}, log?: FastifyBaseLogger) => {
+    const session = getSessionForRoom(roomId, log);
+    session.setPlayers(players);
+    return session;
 }
 
 let singleton: GameSession | null = null;

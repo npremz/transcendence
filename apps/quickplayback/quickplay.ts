@@ -104,21 +104,23 @@ export function handleQuickPlay(fastify: FastifyInstance)
 				{
 					console.log(`failed to initialize room ${room.id}`, err)
 				}
+                const baseGameWs = (host && game_endpoint) ? 
+                                        `wss://${host}${game_endpoint}/${room.id}` :
+                                        `wss://localhost:8443/gameback/game/${room.id}`;
+                const urlFor = (p: Player) => `${baseGameWs}?playerId=${encodeURIComponent(p.id)}&username=${encodeURIComponent(p.username)}`
 
 				player1.socket.send(JSON.stringify({
 					type: `game_start`,
 					roomId: room.id,
 					playerNumber: 1,
-					gameSeverURL: (host && game_endpoint) ? `wss://${host}${game_endpoint}?roomId=${room.id}`
-							: `wss://localhost:8443/gameback/game?roomId=${room.id}`
+					gameSeverURL: urlFor(player1)
 				}))
 
 				player2.socket.send(JSON.stringify({
 					type: `game_start`,
 					roomId: room.id,
 					playerNumber: 2,
-					gameSeverURL: (host && game_endpoint) ? `wss://${host}${game_endpoint}?roomId=${room.id}`
-							: `wss://localhost:8443/gameback/game?roomId=${room.id}`
+					gameSeverURL: urlFor(player2)
 				}))
 
 				console.log(`Game starde in room ${room.id}!`)

@@ -6,7 +6,7 @@ export type ClientMessage =
 	| {type: 'smash'};
 
 export type ServerMessage = 
-	| {type: 'welcome'; side: 'left' | 'right'}
+	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'}
 	| {type: 'state'; state: PublicState; serverTime: number}
 	| {type: 'countdown'; value: number}
 	| {type: 'paused'}
