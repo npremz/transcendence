@@ -25,7 +25,7 @@ fastify.get('/', function (request, reply)
 
 handleTournament(fastify);
 
-fastify.listen({ port: 3030, host: '0.0.0.0'}, function (err, address)
+fastify.listen({ port: 3040, host: '0.0.0.0'}, function (err, address)
 	{
 		if (err)
 		{

@@ -24,7 +24,7 @@ fastify.get('/game', { websocket: true }, function gameHandler (socket, req)
 
 fastify.post('/create', async (request, reply) => {
 	reply.send({success:true});
-	console.log(request);
+	console.log(request.body.roomId);
 })
 
 fastify.get('/', function (request, reply)

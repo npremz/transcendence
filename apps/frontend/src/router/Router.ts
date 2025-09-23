@@ -6,6 +6,7 @@ import { GameView } from '../views/GameView';
 import { StartGameView } from '../views/StartGameView';
 import { LoginView } from '../views/LoginView';
 import { CreateAccountView } from '../views/CreateAccountView';
+import { tournamentLogic, TournamentView } from '../views/TournamentView';
 
 export class Router {
     private routes: Route[];
@@ -40,6 +41,13 @@ export class Router {
             path: '/game',
             view: GameView,
             title: 'Test'
+        });
+
+        this.routes.push({
+            path: '/tournament',
+            view: TournamentView,
+            onMount: tournamentLogic,
+            title: 'Tournament'
         });
 
 		this.routes.push({

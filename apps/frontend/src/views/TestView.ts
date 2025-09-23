@@ -1,6 +1,5 @@
 import type { ViewFunction } from "../router/types";
 import { Header } from "../components/Header";
-import { Router } from "../router/Router";
 
 export const TestView: ViewFunction = () => {
 	return `

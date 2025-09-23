@@ -4,6 +4,7 @@ export interface Player
 	username: string;
 	currentTournament?: string;
 	isEleminated: boolean;
+	ws: WebSocket
 }
 
 export interface Match
@@ -11,6 +12,7 @@ export interface Match
 	id: string;
 	tournamentId: string;
 	round: number;
+	position: number;
 	player1?: Player;
 	player2?: Player;
 	winner?: Player;
@@ -34,3 +36,17 @@ export interface Tournament
 	StartedAt?: Date;
 	finishedAt?: Date;
 }
+
+export interface registration
+{
+	id: string;
+	name: string;
+	currentPlayerCount: number;
+}
+
+export type ClientMessage =
+	| {type: 'join', tournamentId: string, username: string}
+
+export type ServerMessage = 
+	| {type: 'update', registrations: registration[]}
+	| {type: 'error', message: string}
