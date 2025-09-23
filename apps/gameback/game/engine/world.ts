@@ -55,7 +55,13 @@ export class GameWorld {
 
 	pressSmash(side: Side)
 	{
-		this.state.smash[side].lastPressAt = this.state.clock;
+		const sm = this.state.smash[side];
+        if (this.state.clock >= sm.availableAt)
+        {
+            sm.lastSmashAt = this.state.clock;
+            sm.availableAt = this.state.clock + SMASH_COOLDOWN;
+            sm.lastPressAt = this.state.clock;
+        }
 	}
 
 	startCountdown() {
@@ -168,13 +174,10 @@ export class GameWorld {
 				if (side)
 				{
 					const sm = s.smash[side];
-					const pressedInWindow = (s.clock - sm.lastPressAt) <= SMASH_TIMING_WINDOW;
-					const ready = s.clock >= sm.availableAt;
-					if (pressedInWindow && ready)
+					const smashRecent = (s.clock - sm.lastSmashAt) <= SMASH_TIMING_WINDOW;
+					if (smashRecent)
 					{
 						target = Math.min(target * SMASH_SPEED_MULTIPLIER, BALL_MAX_SPEED);
-						sm.availableAt = s.clock + SMASH_COOLDOWN;
-						sm.lastSmashAt = s.clock;
 					}
 				}
 

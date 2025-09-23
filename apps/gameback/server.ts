@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { handleGame } from './game/game'
+import { setMatchForRoom } from './game/session/session'
 
 const fastify = Fastify({
 	logger: true
@@ -16,15 +17,33 @@ fastify.addHook('onRequest', async (request, reply) => {
     console.log('====================')
 })
 
-fastify.get('/game', { websocket: true }, function gameHandler (socket, req)
+fastify.get('/game/:roomId', { websocket: true }, function gameHandler (connection, _req)
 	{
-		handleGame(socket, req, fastify)
+		handleGame(connection.socket, _req, fastify)
 	}
 )
 
+type CreateBody = {
+    roomId: string;
+    player1: {id: string; username: string};
+    player2: {id: string; username: string};
+}
+
 fastify.post('/create', async (request, reply) => {
-	reply.send({success:true});
-	console.log(request);
+
+    console.log('Body:', JSON.stringify(request.body, null, 2));
+	const body = request.body as Partial<CreateBody>;
+    if (!body?.roomId || !body?.player1?.id || !body?.player2?.id)
+    {
+        reply.code(400).send({success: false, error: 'Invalid payload'});
+        return;
+    }
+    setMatchForRoom(body.roomId, {
+        left: {id: body.player1.id, username: body.player1.username || 'p1'},
+        right: {id: body.player2.id, username: body.player2.username || 'p2'}
+    }, fastify.log);
+
+    reply.send({success: true});
 })
 
 fastify.get('/', function (request, reply)

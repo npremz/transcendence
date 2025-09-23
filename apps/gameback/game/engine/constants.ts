@@ -29,7 +29,7 @@ export const SPLIT_SPAWN_PER_PICKUP = 1;
 export const SPLIT_SPREAD_DEG = 20;
 
 export const SMASH_COOLDOWN = 3;
-export const SMASH_TIMING_WINDOW = 1;
+export const SMASH_TIMING_WINDOW = 0.2;
 export const SMASH_SPEED_MULTIPLIER = 1.6;
 export const SMASH_ANIM_DURATION = 0.12;
 
