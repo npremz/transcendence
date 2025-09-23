@@ -1,4 +1,4 @@
-import type { Route, CleanupFunction } from './types';
+import type { Route, CleanupFunction, RouteParams } from './types';
 import { ComponentManager } from '../components/ComponantManager'
 import { HomeView } from '../views/HomeView';
 import { TestView, initWebSocket } from '../views/TestView';
@@ -38,7 +38,7 @@ export class Router {
         });
 
 		this.routes.push({
-            path: '/game',
+            path: '/game/:roomId',
             view: GameView,
             title: 'Test'
         });
@@ -66,6 +66,25 @@ export class Router {
             path: '/create',
             view: CreateAccountView,
             title: 'Test'
+        });
+
+        this.compileRoutes();
+    }
+
+    private compileRoutes(): void {
+        this.routes.forEach(route => {
+            if (route.path.includes(':'))
+            {
+                const paramNames: string[] = [];
+                
+                const regexPattern = route.path.replace(/:([^/]+)/g, (match, paramName) => {
+                    paramNames.push(paramName);
+                    return '([^/]+)';
+                });
+
+                route.regex = new RegExp(`^${regexPattern}$`);
+                route.paramNames = paramNames;
+            }
         });
     }
 
@@ -113,40 +132,34 @@ export class Router {
         }
     }
     
-    public navigate(path: string, updateHistory: boolean = true): void
-    {
+    public navigate(path: string, updateHistory: boolean = true): void {
         this.cleanup();
         
-        const route = this.findRoute(path);
-        if (route)
-        {
-            const htmlContent = route.view();
+        const matchResult = this.findRoute(path);
+        if (matchResult) {
+            const { route, params } = matchResult;
+            
+            const htmlContent = route.view(params);
             const app = document.getElementById('app');
-            if (app)
-            {
+            if (app) {
                 app.innerHTML = htmlContent;
             }
             
             document.title = route.title || 'Transcendence';
             
-            if (updateHistory && window.location.pathname !== path)
-            {
+            if (updateHistory && window.location.pathname !== path) {
                 window.history.pushState({}, '', path);
             }
             
             this.componentManager.scanAndMount();
 
-            if (route.onMount)
-            {
-                const cleanup = route.onMount();
-                if (cleanup && typeof cleanup === 'function')
-                {
+            if (route.onMount) {
+                const cleanup = route.onMount(params);
+                if (cleanup && typeof cleanup === 'function') {
                     this.currentCleanup = cleanup;
                 }
             }
-        }
-        else
-        {
+        } else {
             this.show404();
         }
     }
@@ -162,9 +175,31 @@ export class Router {
         }
     }
     
-    private findRoute(path: string): Route | undefined
-    {
-        return this.routes.find(route => route.path === path);
+    private findRoute(path: string): { route: Route; params: RouteParams } | undefined {
+        for (const route of this.routes)
+        {
+            if (!route.regex && route.path === path)
+            {
+                return { route, params: {} };
+            }
+            
+            if (route.regex && route.paramNames)
+            {
+                const match = path.match(route.regex);
+                if (match)
+                {
+                    const params: RouteParams = {};
+                    
+                    route.paramNames.forEach((paramName, index) => {
+                        params[paramName] = match[index + 1];
+                    });
+                    
+                    return { route, params };
+                }
+            }
+        }
+        
+        return undefined;
     }
     
     private show404(): void
