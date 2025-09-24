@@ -6,6 +6,8 @@ import { GameView } from '../views/GameView';
 import { StartGameView } from '../views/StartGameView';
 import { LoginView } from '../views/LoginView';
 import { CreateAccountView } from '../views/CreateAccountView';
+import { tournamentLogic, TournamentView } from '../views/TournamentView';
+import { BracketView, bracketLogic } from '../views/BracketView';
 
 export class Router {
     private routes: Route[];
@@ -40,6 +42,20 @@ export class Router {
             path: '/game/:roomId',
             view: GameView,
             title: 'Test'
+        });
+
+        this.routes.push({
+            path: '/tournament',
+            view: TournamentView,
+            onMount: tournamentLogic,
+            title: 'Tournament'
+        });
+
+        this.routes.push({
+            path: '/tournament/:id',
+            view: BracketView,
+            onMount: bracketLogic,
+            title: 'Tounament brackets'
         });
 
 		this.routes.push({

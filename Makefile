@@ -26,6 +26,9 @@ logs-gameback:
 logs-quickplay:
 	$(DC) logs -f quickplayback
 
+logs-tournament:
+	$(DC) logs -f tournamentback
+
 logs-db:
 	$(DC) logs -f database
 
