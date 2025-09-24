@@ -4,7 +4,12 @@ export interface Player
 	username: string;
 	currentTournament?: string;
 	isEleminated: boolean;
-	ws: WebSocket
+}
+
+export interface PlayerConnection {
+    playerId: string;
+    ws: WebSocket;
+    connectedAt: Date;
 }
 
 export interface Match

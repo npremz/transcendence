@@ -4,6 +4,8 @@ import { registerComponents } from './components';
 
 registerComponents(); 
 
+
+
 const router = new Router();
 
 const currentPath = window.location.pathname;

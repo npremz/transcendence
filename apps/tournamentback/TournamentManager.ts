@@ -1,9 +1,10 @@
-import type { ClientMessage, ServerMessage, Match, Player, registration, Tournament } from "./types";
+import type { ClientMessage, ServerMessage, Match, Player, PlayerConnection, registration, Tournament } from "./types";
 import { v4 as uuidv4 } from 'uuid'
 
 export class TournamentManager
 {
-	private tournaments = new Map<string, Tournament>
+	private tournaments = new Map<string, Tournament>()
+	private playerConnections = new Map<string, PlayerConnection>();
 
 	initTournaments(): void
 	{
@@ -48,31 +49,32 @@ export class TournamentManager
 		return tournament;
 	}
 
-	registerPlayer(tournamentId: string, newPlayer: Player): boolean
+    registerPlayer(tournamentId: string, newPlayer: Player): boolean
 	{
-		const tournament = this.tournaments.get(tournamentId);
-		if (!tournament || tournament.status !== 'registration') return false;
-		if (tournament.currentPlayers. length >= tournament.maxPlayers) return false;
+        const tournament = this.tournaments.get(tournamentId);
+        if (!tournament || tournament.status !== 'registration') return false;
+        if (tournament.currentPlayers.length >= tournament.maxPlayers) return false;
 
-		this.removePlayerFromOtherRegistrations(newPlayer.id, tournamentId);
+        this.removePlayerFromOtherRegistrations(newPlayer.id, tournamentId);
 
-		const isPlayerInTournament = tournament.currentPlayers.some(
-			player => player.id === newPlayer.id
-		);
-		if (!isPlayerInTournament) 
+        const isPlayerInTournament = tournament.currentPlayers.some(
+            player => player.id === newPlayer.id
+        );
+        
+        if (!isPlayerInTournament)
 		{
-			tournament.currentPlayers.push(newPlayer);
-		}
+            tournament.currentPlayers.push(newPlayer);
+        }
 
-		if (tournament.currentPlayers.length === tournament.maxPlayers)
+        if (tournament.currentPlayers.length === tournament.maxPlayers)
 		{
-			this.startTournament(tournamentId);
-			this.notifyTournamentStart(tournamentId);
-		}
+            this.startTournament(tournamentId);
+            this.notifyTournamentStart(tournamentId);
+        }
 
-		this.updateAllRegistrations();
-		return true;
-	}
+        this.updateAllRegistrations();
+        return true;
+    }
 
 	removePlayerFromRegistration(playerId: string): boolean
 	{
@@ -141,7 +143,7 @@ export class TournamentManager
 		const shuffledPlayers = this.shuffleArray([... tournament.currentPlayers])
 
 		const firstRoundMatches: Match[] = [];
-		for (var i = 0; i < shuffledPlayers.length; i += 2);
+		for (var i = 0; i < shuffledPlayers.length; i += 2)
 		{
 			const match: Match = {
 				id: uuidv4(),
@@ -281,104 +283,114 @@ export class TournamentManager
 		console.log(`Round ${nextRound} created with ${nextRoundMatches.length} matches`);
 	}
 
-	notifyTournamentEnd(tournament: Tournament)
+    notifyTournamentEnd(tournament: Tournament): void
 	{
-		tournament.bracket.forEach(match => {
-			const message = {type: 'tournamentEnd', winner: `${tournament.winner?.username}`}
-			try {
-				if (match.player1?.ws.readyState === match.player1?.ws.OPEN)
+        const message = { type: 'tournamentEnd', winner: `${tournament.winner?.username}` };
+        
+        tournament.currentPlayers.forEach(player => {
+            const connection = this.getPlayerConnection(player.id);
+            if (connection && connection.ws.readyState === connection.ws.OPEN)
+			{
+                try
 				{
-					match.player1?.ws.send(JSON.stringify(message))
-				}
-			} 
-			catch (err)
-			{
-				console.error("Error notifying player1:", err)
-			}
-			try {
-				if (match.player2?.ws.readyState === match.player2?.ws.OPEN)
-					{
-						match.player2?.ws.send(JSON.stringify(message))
-					}
-			} 
-			catch (err)
-			{
-				console.error("Error notifying player2:", err)
-			}
-		})
-	}
+                    connection.ws.send(JSON.stringify(message));
+                }
+				catch (err)
+				{
+                    console.error("Error notifying player:", err);
+                }
+            }
+        });
+    }
 
-	notifyPlayers(match: Match, message: object)
+    notifyPlayers(match: Match, message: object): void
 	{
-		try {
-			if (match.player1?.ws.readyState === match.player1?.ws.OPEN)
-				{
-					match.player1?.ws.send(JSON.stringify(message))
-				}
-		} 
-		catch (err)
+        if (match.player1)
 		{
-			console.error("Error notifying player1:", err)
-		}
-		try {
-			if (match.player2?.ws.readyState === match.player2?.ws.OPEN)
+            const connection1 = this.getPlayerConnection(match.player1.id);
+            if (connection1 && connection1.ws.readyState === connection1.ws.OPEN)
+			{
+                try
 				{
-					match.player2?.ws.send(JSON.stringify(message))
-				}
-		} 
-		catch (err)
+                    connection1.ws.send(JSON.stringify(message));
+                }
+				catch (err)
+				{
+                    console.error("Error notifying player1:", err);
+                }
+            }
+        }
+
+        if (match.player2)
 		{
-			console.error("Error notifying player2:", err)
-		}
-	}
+            const connection2 = this.getPlayerConnection(match.player2.id);
+            if (connection2 && connection2.ws.readyState === connection2.ws.OPEN)
+			{
+                try
+				{
+                    connection2.ws.send(JSON.stringify(message));
+                }
+				catch (err)
+				{
+                    console.error("Error notifying player2:", err);
+                }
+            }
+        }
+    }
 
 	notifyTournamentStart(tournamentId: string): void
 	{
-		const tournament = this.tournaments.get(tournamentId);
-		if (!tournament) return;
+        const tournament = this.tournaments.get(tournamentId);
+        if (!tournament) return;
 
-		const message = {
-			type: 'tournament_started',
-			tournamentId: tournamentId
-		};
+        const message = {
+            type: 'tournament_started',
+            tournamentId: tournamentId
+        };
 
-		console.log(`Notifying ${tournament.currentPlayers.length} players that tournament ${tournament.name} has started`);
+        console.log(`Notifying ${tournament.currentPlayers.length} players that tournament ${tournament.name} has started`);
 
-		tournament.currentPlayers.forEach(player => {
-			try {
-				if (player.ws.readyState === player.ws.OPEN) {
-					player.ws.send(JSON.stringify(message));
-				}
-			} catch (err) {
-				console.error(`Error notifying player ${player.username}:`, err);
-			}
-		});
-	}
-
-	updateAllRegistrations(): void
-	{
-		const registrations = this.getCurrentRegistrations();
-		const updateMsg: ServerMessage = { type: 'update', registrations };
-
-		this.tournaments.forEach(tournament => {
-			if (tournament.status === 'registration')
+        tournament.currentPlayers.forEach(player => {
+            const connection = this.getPlayerConnection(player.id);
+            if (connection && connection.ws.readyState === connection.ws.OPEN)
 			{
-				tournament.currentPlayers.forEach(player => {
-					try
-					{
-						if (player.ws.readyState === player.ws.OPEN)
-						{
-							player.ws.send(JSON.stringify(updateMsg));
-						}
-					}
-					catch (err)
-					{
-						console.error("Error updating player:", err);
-					}
-				});
-			}
-		});
+                try
+				{
+                    connection.ws.send(JSON.stringify(message));
+                }
+				catch (err)
+				{
+                    console.error(`Error notifying player ${player.username}:`, err);
+                }
+            }
+        });
 	}
+
+    updateAllRegistrations(): void
+	{
+        const registrations = this.getCurrentRegistrations();
+        const updateMsg: ServerMessage = { type: 'update', registrations };
+
+        this.tournaments.forEach(tournament => {
+            if (tournament.status === 'registration')
+			{
+                tournament.currentPlayers.forEach(player => {
+                    const connection = this.getPlayerConnection(player.id);
+                    if (connection && connection.ws.readyState === connection.ws.OPEN)
+					{
+                        try
+						{
+                            connection.ws.send(JSON.stringify(updateMsg));
+                        }
+						catch (err)
+						{
+                            console.error("Error updating player:", err);
+                        }
+                    }
+                });
+            }
+        });
+    }
 
 	findMatchById(id: string) : Match | null
 	{
@@ -393,6 +405,37 @@ export class TournamentManager
 			return match
 		return null;
 	}
+
+	cleanupClosedConnections(): void
+	{
+        for (const [playerId, connection] of this.playerConnections)
+		{
+            if (connection.ws.readyState === connection.ws.CLOSED)
+			{
+                this.playerConnections.delete(playerId);
+                console.log(`Cleaned up closed connection for player ${playerId}`);
+            }
+        }
+    }
+
+	setPlayerConnection(playerId: string, ws: WebSocket): void
+	{
+		this.playerConnections.set(playerId, {
+			playerId,
+			ws,
+			connectedAt: new Date()
+		});
+    }
+
+    removePlayerConnection(playerId: string): void
+	{
+        this.playerConnections.delete(playerId);
+    }
+
+    getPlayerConnection(playerId: string): PlayerConnection | undefined
+	{
+        return this.playerConnections.get(playerId);
+    }
 
 	getTournamentBrackets(tournamentId: string): Match[] | null
 	{

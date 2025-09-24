@@ -43,9 +43,12 @@ export function handleTournament(fastify: FastifyInstance)
 
         connection.on('close', () => {
             console.log('WebSocket connection closed');
-            if (currentPlayerId) {
+            if (currentPlayerId)
+			{
+                tournamentManager.removePlayerConnection(currentPlayerId);
                 const removed = tournamentManager.removePlayerFromAllRegistrations(currentPlayerId);
-                if (removed) {
+                if (removed)
+				{
                     console.log(`Player ${currentPlayerId} removed from all registrations due to connection close`);
                 }
             }
@@ -53,12 +56,13 @@ export function handleTournament(fastify: FastifyInstance)
 
 		function handleJoinTournament(msg: ClientMessage, socket: WebSocket)
 		{
+			tournamentManager.setPlayerConnection(msg.playerId, socket);
+
 			const newPlayer : Player= {
 				id: msg.playerId,
 				username: msg.username,
 				currentTournament: msg.tournamentId,
 				isEleminated: false,
-				ws: socket
 			}
 			tournamentManager.registerPlayer(msg.tournamentId, newPlayer);
 
