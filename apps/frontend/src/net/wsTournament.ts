@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid'
 
 export interface registration
 {
@@ -19,13 +18,12 @@ export type ClientMessage =
 export class wsTournament {
 	private ws?: WebSocket | null = null;
 	private tournamentBtns;
-	private id: string
-	private countdownElement?: HTMLElement | null = null;
+	private id: string | null
 
 	constructor(elems: NodeListOf<Element>)
 	{
 		this.tournamentBtns = elems
-		this.id = uuidv4()
+		this.id = window.simpleAuth.getPlayerId()
 	}
 
 	connect(url?: string) {
@@ -61,6 +59,11 @@ export class wsTournament {
 
 			}
 		};
+
+		this.ws.onopen = () => {
+            console.log('WebSocket connected with player ID:', window.simpleAuth.getPlayerId());
+            window.simpleAuth.renewSession();
+        };
 	}
 
 	private startCountdownAndRedirect(tournamentId: string): void {
@@ -91,7 +94,7 @@ export class wsTournament {
 			type: 'join',
 			tournamentId: tournamentId,
 			username: username,
-			playerId: this.id
+			playerId: this.id as string
 		}
 		this.ws?.send(JSON.stringify(msg))
 	}
