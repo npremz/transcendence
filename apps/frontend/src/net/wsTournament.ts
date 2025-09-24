@@ -10,6 +10,8 @@ export interface registration
 
 type ServerMsg = 
 	| {type: 'update', registrations: registration[]}
+	| {type: 'tournament_started', tournamentId: string}
+	| {type: 'error', message: string}
 
 export type ClientMessage =
 	| {type: 'join', tournamentId: string | null, username: string, playerId: string}
@@ -18,6 +20,7 @@ export class wsTournament {
 	private ws?: WebSocket | null = null;
 	private tournamentBtns;
 	private id: string
+	private countdownElement?: HTMLElement | null = null;
 
 	constructor(elems: NodeListOf<Element>)
 	{
@@ -50,8 +53,37 @@ export class wsTournament {
 							}
 						})
 					})
+					break
+
+				case 'tournament_started':
+                    this.startCountdownAndRedirect(msg.tournamentId);
+                    break;
+
 			}
 		};
+	}
+
+	private startCountdownAndRedirect(tournamentId: string): void {
+		const countdownModal = document.getElementById('countdown');
+		const countdownText = document.getElementById('countdown-text');
+		
+		if (!countdownModal || !countdownText) return;
+
+		let count = 3;
+		countdownModal.style.display = 'block';
+		countdownText.textContent = count.toString();
+
+		const countdownInterval = setInterval(() => {
+			count--;
+			
+			if (count > 0) {
+				countdownText.textContent = count.toString();
+			} else {
+				clearInterval(countdownInterval);
+				countdownModal.style.display = 'none';
+				window.location.href = `/tournament/${tournamentId}`;
+			}
+		}, 1000);
 	}
 
 	join(tournamentId: string | null, username: string) {

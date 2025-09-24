@@ -67,6 +67,7 @@ export class TournamentManager
 		if (tournament.currentPlayers.length === tournament.maxPlayers)
 		{
 			this.startTournament(tournamentId);
+			this.notifyTournamentStart(tournamentId);
 		}
 
 		this.updateAllRegistrations();
@@ -331,6 +332,29 @@ export class TournamentManager
 		}
 	}
 
+	notifyTournamentStart(tournamentId: string): void
+	{
+		const tournament = this.tournaments.get(tournamentId);
+		if (!tournament) return;
+
+		const message = {
+			type: 'tournament_started',
+			tournamentId: tournamentId
+		};
+
+		console.log(`Notifying ${tournament.currentPlayers.length} players that tournament ${tournament.name} has started`);
+
+		tournament.currentPlayers.forEach(player => {
+			try {
+				if (player.ws.readyState === player.ws.OPEN) {
+					player.ws.send(JSON.stringify(message));
+				}
+			} catch (err) {
+				console.error(`Error notifying player ${player.username}:`, err);
+			}
+		});
+	}
+
 	updateAllRegistrations(): void
 	{
 		const registrations = this.getCurrentRegistrations();
@@ -368,6 +392,20 @@ export class TournamentManager
 		if (match != undefined)
 			return match
 		return null;
+	}
+
+	getTournamentBrackets(tournamentId: string): Match[] | null
+	{
+		const tournament = this.tournaments.get(tournamentId);
+		if (!tournament) return null;
+		
+		return tournament.bracket;
+	}
+
+	getTournamentDetails(tournamentId: string): Tournament | null
+	{
+		const tournament = this.tournaments.get(tournamentId);
+		return tournament || null;
 	}
 
 	private shuffleArray<T>(array: T[]): T[]

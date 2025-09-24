@@ -90,4 +90,30 @@ export function handleTournament(fastify: FastifyInstance)
 			sendMessage({ type: 'error', message: errorMessage })
 		}
 	})
+
+	fastify.get('/tournament/:id/brackets', async (request, reply) => {
+        const { id } = request.params as { id: string };
+        
+        const brackets = tournamentManager.getTournamentBrackets(id);
+        
+        if (!brackets)
+		{
+            return reply.status(404).send({ error: 'Tournament not found' });
+        }
+        
+        return { tournamentId: id, brackets };
+    });
+
+    fastify.get('/tournament/:id', async (request, reply) => {
+        const { id } = request.params as { id: string };
+        
+        const tournament = tournamentManager.getTournamentDetails(id);
+        
+        if (!tournament)
+		{
+            return reply.status(404).send({ error: 'Tournament not found' });
+        }
+        
+        return tournament;
+    });
 }

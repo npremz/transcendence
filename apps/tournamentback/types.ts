@@ -49,4 +49,5 @@ export type ClientMessage =
 
 export type ServerMessage = 
 	| {type: 'update', registrations: registration[]}
+	| {type: 'tournament_started', tournamentId: string}
 	| {type: 'error', message: string}
