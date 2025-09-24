@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 
 class CookieManager {
-    static setCookie(name: string, value: string, days: number = 7): void
+    static setCookie(name: string, value: string | null, days: number = 7): void
 	{
         const expires = new Date();
         expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
@@ -30,14 +30,14 @@ class CookieManager {
 export class SimpleAuth
 {
     private static readonly COOKIE_NAME = 'player_session';
-    private playerId: string;
+    private playerId: string | null;
 
     constructor()
 	{
         this.playerId = this.getOrCreatePlayerId();
     }
 
-    private getOrCreatePlayerId(): string
+    private getOrCreatePlayerId(): string | null
 	{
         let playerId = CookieManager.getCookie(SimpleAuth.COOKIE_NAME);
         
@@ -55,7 +55,7 @@ export class SimpleAuth
         return playerId;
     }
 
-    getPlayerId(): string
+    getPlayerId(): string | null
 	{
         return this.playerId;
     }
