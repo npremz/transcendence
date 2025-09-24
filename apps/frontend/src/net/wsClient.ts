@@ -35,7 +35,6 @@ export class WSClient {
 	onGameOver?: (w: 'left' | 'right') => void;
 
 	connect(url?: string) {
-		//const defaultUrl = `wss://${location.hostname}:8443/gameback/game`;
 		const host = import.meta.env.VITE_HOST
 		const endpoint = import.meta.env.VITE_GAME_ENDPOINT
 		const defaultUrl = (host && endpoint) ? `wss://${host}${endpoint}`

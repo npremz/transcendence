@@ -206,7 +206,7 @@ export const initWebSocket = (): (() => void) => {
 				updateStatus(`Partie démarrée! Vous êtes le joueur ${playerNumber}`, 'playing');
 				updateDebugInfo();
 				console.log(window.router)
-				//window.router.navigate("/game")
+				window.router.navigate(`/game/${roomId}`)
 				break;
 				
 			case 'opponent_disconnected':
