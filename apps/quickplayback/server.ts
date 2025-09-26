@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { handleQuickPlay } from './quickplay'
+import { handleTournamentQuickPlay } from './TounamentQuickPlay'
 
 const fastify = Fastify({
 	logger: true
@@ -24,6 +25,7 @@ fastify.get('/', function (request, reply)
 )
 
 handleQuickPlay(fastify);
+handleTournamentQuickPlay(fastify)
 
 fastify.listen({ port: 3030, host: '0.0.0.0'}, function (err, address)
 	{
