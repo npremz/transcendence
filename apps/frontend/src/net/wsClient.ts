@@ -38,8 +38,15 @@ export class WSClient {
 		const host = import.meta.env.VITE_HOST
 		const endpoint = import.meta.env.VITE_GAME_ENDPOINT
 		const defaultUrl = (host && endpoint) ? `wss://${host}${endpoint}`
-					: 'wss://localhost:8443/gameback/game';
-		this.ws = new WebSocket(url ?? defaultUrl);
+					: undefined;
+		const finalUrl = url ?? defaultUrl;
+        if (!finalUrl)
+        {
+            console.warn('WSClient: no URL provided and no defaultUrl');
+            return;
+        }
+        console.log('WSClient: connecting to', finalUrl);
+        this.ws = new WebSocket(finalUrl);
 
 		this.ws.onmessage = (ev) => {
 			console.log(ev.data)

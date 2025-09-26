@@ -74,13 +74,13 @@ class GameSession {
         }
         if (!this.leftCtrl)
         {
-            this .leftCtrl = ws;
+            this.leftCtrl = ws;
             return ('left');
         }
         if (!this.rightCtrl)
         {
             this.rightCtrl = ws;
-            return ('left');
+            return ('right');
         }
         return ('spectator');
 	}
@@ -180,7 +180,7 @@ class GameSession {
 	}
 
 	private send(ws: WebSocket | undefined, msg: ServerMessage) {
-		if (!ws || ws.readyState !== ws.OPEN)
+		if (!ws || ws.readyState !== 1)
 		{
 			return;
 		}
