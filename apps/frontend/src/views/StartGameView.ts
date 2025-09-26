@@ -149,11 +149,12 @@ export const StartGameView: ViewFunction = () => {
 			</div>
 
 			<div class="absolute top-8 right-8">
-				${SettingsButton({
-					size: "lg",
-					className: "text-center text-white z-10 p-4 rounded bg-[#0C154D]/20 backdrop-blur-sm border border-white/20 text-white hover:bg-[#1D31B8]/20"
-				})}
+			${SettingsButton({
+				size: "lg",
+				className: "text-center text-white z-10 p-4 rounded bg-[#0C154D]/20 backdrop-blur-sm border border-white/20 text-white hover:bg-[#1D31B8]/20"
+			})}
 			</div>
+		
 
 			<!-- Texte central qui change -->
 			<div id="center-text" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/70 text-4xl font-bold text-center">
@@ -202,7 +203,6 @@ export const StartGameView: ViewFunction = () => {
 						style="image-rendering: pixelated;"
 					/>
 				</a>
-			</div>
 		</div>
 
     `;
