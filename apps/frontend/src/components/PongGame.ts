@@ -29,6 +29,13 @@ export class PongGame implements Component {
 		}
 	};
 
+    private timeoutStatus = {
+        leftActive: false,
+        leftRemainingMs: 0,
+        rightActive: false,
+        rightRemainingMs: 0
+    }
+
 	private WORLD_WIDTH = 1920;
 	private WORLD_HEIGHT = 1080;
 	private PADDLE_WIDTH = 15;
@@ -119,6 +126,25 @@ export class PongGame implements Component {
 			Object.assign(this.state, s);
 			this.render();
 		};
+        this.net.onPaused = () => {
+            this.state.isPaused = false,
+            this.timeoutStatus = {
+                leftActive: false,
+                leftRemainingMs: 0,
+                rightActive: false,
+                rightRemainingMs: 0
+            };
+            this.render();
+        };
+        this.net.onTimeoutStatus = (status) => {
+            this.timeoutStatus = {
+                leftActive: status.left.active,
+                leftRemainingMs: status.left.remainingMs,
+                rightActive: status.right.active,
+                rightRemainingMs: status.right.remainingMs
+            };
+            this.render();
+        };
 		this.net.onCountdown = (v) => {
 			this.state.countdownValue = v;
 			this.render();
@@ -323,9 +349,42 @@ export class PongGame implements Component {
 			ctx.fillRect(0, 0, W, H);
 			ctx.fillStyle = '#fff';
 			ctx.font = '72px monospace';
-			ctx.fillText('PAUSED', W / 2, H / 2);
-			ctx.font = '24px monospace';
-			ctx.fillText('Press P, SPACE or ESC to resume', W / 2, H / 2 + 60);
+            ctx.textAlign = 'center';
+
+			const iAmLeft = (this.net.side === 'left');
+            const opponentDisconnected = iAmLeft ? this.timeoutStatus.rightActive : this.timeoutStatus.leftActive;
+            const opponentRemainingMs = iAmLeft ? this.timeoutStatus.rightRemainingMs : this.timeoutStatus.leftRemainingMs;
+
+            if (opponentDisconnected && opponentRemainingMs > 0)
+            {
+                const secondsRemaining = Math.ceil(opponentRemainingMs / 1000);
+                ctx.font = '36px monospace';
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillText('⚠️ Adversaire déconnecté', W / 2, H / 2 + 20);
+                
+                ctx.font = '48px monospace';
+                ctx.fillStyle = '#fff';
+                ctx.fillText(`Forfait dans: ${secondsRemaining}s`, W / 2, H / 2 + 80);
+                
+                const barWidth = 400;
+                const barHeight = 10;
+                const barX = (W - barWidth) / 2;
+                const barY = H / 2 + 120;
+                const progress = opponentRemainingMs / 30000;
+                
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                
+                ctx.fillStyle = progress > 0.3 ? '#4CAF50' : '#ff6b6b';
+                ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+            }
+            else
+            {
+                ctx.fillText('PAUSED', W / 2, H / 2);
+                ctx.font = '24px monospace';
+                ctx.fillStyle = '#fff';
+                ctx.fillText('Press P, SPACE or ESC to resume', W / 2, H / 2 + 60);
+            }
 		}
 	}
 

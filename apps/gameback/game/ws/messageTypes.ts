@@ -11,7 +11,9 @@ export type ServerMessage =
 	| {type: 'countdown'; value: number}
 	| {type: 'paused'}
 	| {type: 'resumed'}
-	| {type: 'gameover'; winner: 'left' | 'right'}
+    | {type: 'timeout_status'; left: {active: boolean; remainingMs: number};
+                               right: {active: boolean; remainingMs: number}}
+	| {type: 'gameover'; winner: 'left' | 'right' | 'nobody'}
 	| {type: 'pong'; t: number}
 	| {type: 'error'; message: string};
 
@@ -22,7 +24,10 @@ export type PublicState = {
 	score: {left: number; right: number;};
 	isPaused: boolean;
 	isGameOver: boolean;
-	winner: '' | 'left' | 'right';
+    isTimeoutLeft: boolean;
+    isTimeoutRight: boolean;
+    isTimeoutBoth: boolean;
+	winner: '' | 'left' | 'right' | 'nobody';
 	countdownValue: number;
 	powerUps: {x: number; y: number; radius: number}[];
 	splitActive: boolean;

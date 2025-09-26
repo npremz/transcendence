@@ -23,6 +23,9 @@ type ServerMsg =
 	| {type: 'state'; state: PublicState; serverTime: number}
 	| {type: 'countdown'; value: number}
 	| {type: 'paused' | 'resumed'}
+    | {type: 'resumed'}
+    | {type: 'timeout_status'; left: {active: boolean; remainingMs: number};
+                               right: {active: boolean; remainingMs: number};}
 	| {type: 'gameover'; winner: 'left' | 'right'}
 	| {type: 'pong'; t: number};
 
@@ -33,7 +36,12 @@ export class WSClient {
 	onState?: (s: PublicState) => void;
 	onCountdown?: (v: number) => void;
 	onGameOver?: (w: 'left' | 'right') => void;
-
+    onPaused?: () => void;
+    onResumed?: () => void;
+    onTimeoutStatus?: (status: {
+        left: {active: boolean; remainingMs: number};
+        right: {active: boolean; remainingMs: number}
+    }) => void;
 	connect(url?: string) {
 		const host = import.meta.env.VITE_HOST
 		const endpoint = import.meta.env.VITE_GAME_ENDPOINT
@@ -62,6 +70,15 @@ export class WSClient {
 				case 'countdown':
 					this.onCountdown?.(msg.value);
 					break;
+                case 'paused':
+                    this.onPaused?.();
+                    break;
+                case 'resumed':
+                    this.onResumed?.();
+                    break;
+                case 'timeout_status':
+                    this.onTimeoutStatus?.(msg);
+                    break;
 				case 'gameover':
 					this.onGameOver?.(msg.winner);
 					break;
