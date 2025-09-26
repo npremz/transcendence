@@ -107,6 +107,24 @@ services:
     depends_on:
       database:
         condition: service_healthy
+  
+  authback:
+    container_name: authback
+    networks:
+      - transcendence
+    build:
+      context: apps/authback
+      dockerfile: ../../infra/docker/authback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/authback:/authback
+      - /authback/node_modules
+    restart: unless-stopped
+    expose:
+      - "3050"
+    depends_on:
+      database:
+        condition: service_healthy
 
   nginx:
     container_name: nginx
@@ -122,6 +140,7 @@ services:
       - database
       - chatback
       - gameback
+      - authback
     restart: unless-stopped
 
 networks:
