@@ -19,7 +19,7 @@ fastify.addHook('onRequest', async (request, reply) => {
 
 fastify.get('/game/:roomId', { websocket: true }, function gameHandler (connection, _req)
 	{
-		handleGame(connection.socket, _req, fastify)
+		handleGame(connection, _req, fastify)
 	}
 )
 

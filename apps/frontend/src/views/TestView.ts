@@ -128,6 +128,7 @@ export const initWebSocket = (): (() => void) => {
 			ws = null;
 			roomId = null;
 			playerNumber = null;
+            sessionStorage.removeItem('gameWsURL');
 			updateDebugInfo();
 		};
 		
@@ -202,6 +203,12 @@ export const initWebSocket = (): (() => void) => {
 			case 'game_start':
 				roomId = message.roomId;
 				playerNumber = message.playerNumber;
+                const wsUrl: string | undefined = message.gameServerURL;
+                if (wsUrl)
+                {
+                    console.log('[TestView] storing gameWsURL', wsUrl);
+                    sessionStorage.setItem('gameWsURL', wsUrl);
+                }
 				updateStatus(`Partie démarrée! Vous êtes le joueur ${playerNumber}`, 'playing');
 				updateDebugInfo();
 				console.log(window.router)

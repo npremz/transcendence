@@ -113,14 +113,14 @@ export function handleQuickPlay(fastify: FastifyInstance)
 					type: `game_start`,
 					roomId: room.id,
 					playerNumber: 1,
-					gameSeverURL: urlFor(player1)
+					gameServerURL: urlFor(player1)
 				}))
 
 				player2.socket.send(JSON.stringify({
 					type: `game_start`,
 					roomId: room.id,
 					playerNumber: 2,
-					gameSeverURL: urlFor(player2)
+					gameServerURL: urlFor(player2)
 				}))
 
 				console.log(`Game starde in room ${room.id}!`)

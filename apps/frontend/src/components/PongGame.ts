@@ -127,7 +127,19 @@ export class PongGame implements Component {
 			this.startBtn.textContent = 'Replay';
 			this.render();
 		};
-		this.net.connect();
+        const storedUrl = sessionStorage.getItem('gameWsURL');
+        if (storedUrl)
+        {
+            this.net.connect(storedUrl);
+        }
+        else
+        {
+            const host = import.meta.env.VITE_HOST;
+            const endpoint = import.meta.env.VITE_GAME_ENDPOINT;
+            const roomId = window.location.pathname.split('/').pop();
+            const fallback = (host && endpoint && roomId) ? `wss://${host}${endpoint}/${roomId}` : undefined;
+            this.net.connect(fallback);
+        }
 
 		this.startBtn.addEventListener('click', this.handleStartClick);
 
