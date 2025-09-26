@@ -1,5 +1,6 @@
 import type { ViewFunction } from "../router/types";
 import { Header } from "../components/Header";
+import { VolumeControl } from "../components/VolumeControl";
 import { 
     Button,
     SkinButton,
@@ -23,6 +24,12 @@ export const HomeView: ViewFunction = () => {
 			${SkinButton()}
 			${SettingsButton()}
 			${CoffeeButton()}
+			<div class="fixed bottom-4 right-4 z-20 bg-black/50 backdrop-blur-sm rounded-lg">
+            ${VolumeControl({ 
+                initialVolume: 0,
+                className: "w-32"
+            })}
+        </div>
         </div>
     `;
 };
