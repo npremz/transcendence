@@ -86,7 +86,7 @@ async function gamesRoutes(fastify: FastifyInstance)
 				}
 				else
 				{
-					const selectedQuery = 'SELECT * FROM games WHERE is = ?'
+					const selectedQuery = 'SELECT * FROM games WHERE id = ?'
 					fastify.db.get(selectedQuery, [this.lastID], (err, row: Game) => {
 						if (err)
 						{

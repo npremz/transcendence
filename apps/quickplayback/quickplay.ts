@@ -1,9 +1,11 @@
 import { FastifyInstance } from 'fastify'
 import { RoomManager } from './RoomManager'
 import { Player, ClientMessage, ServerMessage } from './types'
+import type { RoomFinishedPayload } from './types'
 import { v4 as uuidv4 } from 'uuid'
+import https from 'https'
 
-const roomManager = new RoomManager()
+export const roomManager = new RoomManager()
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
@@ -170,6 +172,30 @@ export function handleQuickPlay(fastify: FastifyInstance)
 		function sendError(errorMessage: string)
 		{
 			sendMessage({ type: 'error', message: errorMessage })
+		}
+	})
+
+	fastify.post('/room-finished', (request, reply) => {
+		try
+		{
+			const body = request.body as Partial<RoomFinishedPayload> | undefined;
+			if (!body || !body.roomId)
+			{
+				return reply.code(400).send({ success: false, error: 'Invalid payload' });
+			}
+
+			fastify.log.info({
+			route: '/room-finished',
+			body
+			}, 'room-finished received');
+
+			const deleted = roomManager.deleteRoom(body.roomId);
+			return reply.send({ success: true, deleted });
+		}
+		catch (err)
+		{
+			fastify.log.error(err);
+			return reply.code(500).send({ success: false, error: 'Internal server error' });
 		}
 	})
 }

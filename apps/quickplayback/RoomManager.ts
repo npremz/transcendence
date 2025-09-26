@@ -36,6 +36,31 @@ export class RoomManager
 		return newRoom
 	}
 
+	public deleteRoom(roomId: string): boolean
+	{
+		const room = this.rooms.get(roomId);
+		if (!room)
+		{
+			console.log(`deleteRoom: room ${roomId} not found`);
+			if (this.waitingRoom?.id === roomId)
+			{
+				this.waitingRoom = null;
+			}
+			return false;
+		}
+
+		this.rooms.delete(roomId);
+
+		if (this.waitingRoom?.id === roomId)
+		{
+			this.waitingRoom = null;
+		}
+
+		console.log(`Room ${roomId} deleted (room-finished received)`);
+		this.debugRooms();
+		return true;
+	}
+
 	public getRoom(roomId: string): Room | undefined
 	{
 		return (this.rooms.get(roomId))
@@ -51,7 +76,7 @@ export class RoomManager
 		room.players = room.players.filter(p => p.id !== player.id)
 		console.log(`Player ${player.username} removed from the room`)
 
-		if (room.players.length === 0)
+		if (room.players.length === 0 && room.status === 'waiting')
 		{
 			this.rooms.delete(room.id)
 			if (this.waitingRoom?.id === room.id)

@@ -15,6 +15,14 @@ export interface Room
 	createdAt: Date;
 }
 
+export type RoomFinishedPayload =
+{
+	roomId: string;
+	reason: 'score' | 'timeout';
+	winner?: Player | null;
+	score?: { left: number; right: number };
+};
+
 export type ClientMessage = 
 	| { type : 'join_quickplay'; username: string }
 	| { type : 'player_ready' }
