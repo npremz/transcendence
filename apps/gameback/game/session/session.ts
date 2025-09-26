@@ -1,7 +1,7 @@
 import type { WebSocket, WebsocketHandler } from "@fastify/websocket";
 import type { FastifyBaseLogger } from "fastify";
 import { GameWorld } from "../engine/world";
-import { SERVER_DT, SERVER_TICK_HZ, BROADCAST_HZ } from "../engine/constants";
+import { SERVER_DT, SERVER_TICK_HZ, BROADCAST_HZ, TIMEOUT_MS } from "../engine/constants";
 import type { ClientMessage, ServerMessage } from "../ws/messageTypes";
 import { safeParse } from "../ws/messageTypes";
 
@@ -21,6 +21,10 @@ class GameSession {
 
 	private tickTimer?: NodeJS.Timeout;
 	private broadcastTimer?: NodeJS.Timeout;
+    private reportedGameOver?: false;
+    private leftCtrlDisconnectedAt: number | null = null;
+    private rightCtrlDisconnectedAt: number | null = null;
+    private bothCtrlDisconnectedAt: number | null = null;
 
 	constructor(private readonly roomId?: string, log?: FastifyBaseLogger) {
 		this.startLoops();
@@ -63,25 +67,29 @@ class GameSession {
             if (playerId && this.expected.left?.id === playerId && !this.leftCtrl)
             {
                 this.leftCtrl = ws;
+                this.leftCtrlDisconnectedAt = null;
                 return ('left');
             }
             if (playerId && this.expected.right?.id === playerId && !this.rightCtrl)
             {
                 this.rightCtrl = ws;
+                this.rightCtrlDisconnectedAt = null;
                 return ('right');
             }
             return ('spectator');
         }
-        if (!this.leftCtrl)
-        {
-            this.leftCtrl = ws;
-            return ('left');
-        }
-        if (!this.rightCtrl)
-        {
-            this.rightCtrl = ws;
-            return ('right');
-        }
+        // if (!this.leftCtrl)
+        // {
+        //     this.leftCtrl = ws;
+        //     this.leftCtrlDisconnectedAt = null;
+        //     return ('left');
+        // }
+        // if (!this.rightCtrl)
+        // {
+        //     this.rightCtrl = ws;
+        //     this.rightCtrlDisconnectedAt = null;
+        //     return ('right');
+        // }
         return ('spectator');
 	}
 
@@ -152,11 +160,19 @@ class GameSession {
 		if (this.leftCtrl === ws)
 		{
 			this.leftCtrl = undefined;
+            this.leftCtrlDisconnectedAt = Date.now();
+            this.log?.info({roomId: this.roomId, role}, 'client disconnected starting 30s timeout');
 		}
 		if (this.rightCtrl === ws)
 		{
 			this.rightCtrl = undefined;
+            this.rightCtrlDisconnectedAt = Date.now();
+            this.log?.info({roomId: this.roomId, role}, 'client disconnected starting 30s timeout');
 		}
+        if (!this.leftCtrl && !this.rightCtrl)
+        {
+            this.log?.info({roomId: this.roomId, role}, 'Both client disconnected');
+        }
 		this.log?.info({roomId: this.roomId, role}, 'client disconnected');
 	}
 
@@ -166,6 +182,56 @@ class GameSession {
 		}, Math.round(1000 / SERVER_TICK_HZ));
 
 		this.broadcastTimer = setInterval(() => {
+            const now = Date.now();
+            const leftDisconnected = this.leftCtrlDisconnectedAt !== null && !this.leftCtrl;
+            const rightDisconnected = this.rightCtrlDisconnectedAt !== null && !this.rightCtrl;
+            const bothDisconnected = !this.leftCtrl && !this.rightCtrl;
+
+            if ((leftDisconnected || rightDisconnected) && !this.world.state.isGameOver)
+            {
+                this.world.pause();
+            }
+            let leftRemaining = 0;
+            let rightRemaining = 0;
+
+            if (leftDisconnected && this.leftCtrlDisconnectedAt)
+            {
+                const elapsed = now - this.leftCtrlDisconnectedAt;
+                leftRemaining = Math.max(0, TIMEOUT_MS - elapsed);
+                if (leftRemaining === 0 && !this.world.state.isGameOver)
+                {
+                    this.world.state.isGameOver = true;
+                    this.world.state.winner = 'right';
+                    this.world.state.isTimeoutLeft = true; 
+                }
+            }
+
+            if (rightDisconnected && this.rightCtrlDisconnectedAt)
+            {
+                const elapsed = now - this.rightCtrlDisconnectedAt;
+                rightRemaining = Math.max(0, TIMEOUT_MS);
+                if (rightRemaining === 0 && !this.world.state.isGameOver)
+                {
+                    this.world.state.isGameOver = true;
+                    this.world.state.winner = 'left';
+                    this.world.state.isTimeoutRight = true;
+                }
+            }
+
+            if ((leftDisconnected || rightDisconnected) && !this.world.state.isGameOver)
+            {
+                this.broadcast({
+                    type: 'timeout_status',
+                    left: {
+                        active: leftDisconnected,
+                        remainingMs: leftRemaining
+                    },
+                    right: {
+                        active: rightDisconnected,
+                        remainingMs: leftRemaining
+                    }
+                });
+            }
 			const state = this.world.publicState();
 			this.broadcast({type: 'state', state, serverTime: Date.now()});
 			if (state.countdownValue > 0)
@@ -210,12 +276,3 @@ export const setMatchForRoom = (roomId: string, players: {left: Player; right: P
     session.setPlayers(players);
     return session;
 }
-
-let singleton: GameSession | null = null;
-export const getSession = (log?: FastifyBaseLogger) => {
-	if (!singleton)
-	{
-		singleton = new GameSession(log);
-	}
-	return (singleton);
-};

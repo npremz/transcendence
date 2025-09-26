@@ -30,6 +30,9 @@ export type GameState = {
 	score: { left: number; right: number};
 	isPaused: boolean;
 	isGameOver: boolean;
+    isTimeoutLeft: boolean;
+    isTimeoutRight: boolean;
+    isTimeoutBoth: boolean;
 	winner: '' | 'left' | 'right';
 	clock: number;
 	countdownValue: number;

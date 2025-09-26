@@ -9,6 +9,6 @@ export const handleGame = (conn: WebSocket, _req: FastifyRequest, fastify: Fasti
 
     const id = typeof playerId === 'string' ? playerId : undefined;
     const name = typeof username === 'string' ? username : undefined;
-    const room = getSessionForRoom(roomId || 'default', fastify.log);
+    const room = getSessionForRoom(roomId || '', fastify.log);
     room.addClient(conn, { id, username: name });
 }

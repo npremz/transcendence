@@ -36,3 +36,4 @@ export const SMASH_ANIM_DURATION = 0.12;
 export const SERVER_TICK_HZ = 240;
 export const SERVER_DT = 1 / SERVER_TICK_HZ;
 export const BROADCAST_HZ = 240;
+export const TIMEOUT_MS = 30000;
