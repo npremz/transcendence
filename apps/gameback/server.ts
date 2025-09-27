@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { handleGame } from './game/game'
 import { setMatchForRoom } from './game/session/session'
+import { cleanupSession } from './game/session/session'
 
 const fastify = Fastify({
 	logger: true
@@ -22,6 +23,12 @@ fastify.get('/game/:roomId', { websocket: true }, function gameHandler (connecti
 		handleGame(connection, _req, fastify)
 	}
 )
+
+fastify.delete('/game/:roomId', async (request, reply) => {
+    const { roomId } = request.params as { roomId: string };
+    const deleted = cleanupSession(roomId);
+    return reply.send({ success: deleted });
+});
 
 type CreateBody = {
     roomId: string;

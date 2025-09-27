@@ -17,6 +17,8 @@ export class RoomManager
 			this.waitingRoom = null
 			completedRoom.status = 'playing'
 
+			this.rooms.set(completedRoom.id, completedRoom)
+
 			console.log(`Room ${completedRoom.id} is complete with 2 players`)
 			return completedRoom
 		}
@@ -48,6 +50,13 @@ export class RoomManager
 			}
 			return false;
 		}
+
+		room.players.forEach(player => {
+			this.sendToPlayer(player, { 
+				type: 'game_ended',
+				reason: 'Room closed' 
+			});
+		});
 
 		this.rooms.delete(roomId);
 
@@ -124,7 +133,11 @@ export class RoomManager
 		console.log(`Rooms actives: ${this.rooms.size}`);
 		console.log(`Room en attente: ${this.waitingRoom?.id || 'aucune'}`);
 		this.rooms.forEach(room => {
-		console.log(`Room ${room.id}: ${room.players.length} joueurs, status: ${room.status}`);
+			const playerNames = room.players.map(p => p.username).join(', ');
+			console.log(`Room ${room.id}:`);
+			console.log(`  - Joueurs (${room.players.length}): ${playerNames}`);
+			console.log(`  - Status: ${room.status}`);
+			console.log(`  - Créée il y a: ${Math.round((Date.now() - room.createdAt.getTime()) / 1000)}s`);
 		});
 		console.log('=====================');
 	}
