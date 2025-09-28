@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import fastifyCookie from '@fastify/cookie';
 import { LoginRequest, RegisterRequest, UserPayload } from './types';
+import { jwtChecker } from './jwtChecker'
 
 const app = Fastify({
 	logger: true
@@ -101,7 +102,7 @@ app.post('/login', async (request, reply) => {
 });
 
 // Verify/validate token
-app.get('/verify', async (request, reply) => {
+app.get('/verify', { preHandler: jwtChecker}, async (request, reply) => {
 	try {
 		await (request as any).jwtVerify();
 		const payload = (request as any).user as UserPayload;
@@ -116,6 +117,12 @@ app.get('/verify', async (request, reply) => {
 		return reply.status(401).send({valid: false, error: 'Invalid or expired token'});
 	}
 });
+
+//test profile (just send the username)
+app.get('/profile', { preHandler: jwtChecker}, async (request, reply) => {
+	const user = (request as any).user as UserPayload
+	return (reply.send({ username: user.username }))
+})
 
 // Health check
 app.get('/health', async (request, reply) => {
