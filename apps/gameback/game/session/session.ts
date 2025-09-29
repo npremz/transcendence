@@ -139,7 +139,6 @@ class GameSession {
                 break;
 			}
 			case 'smash': {
-				const role = this.roles.get(ws);
 				if (role === 'left' || role === 'right')
 				{
 					this.world.pressSmash(role);
@@ -165,6 +164,7 @@ class GameSession {
 					if (this.leftCtrl && this.rightCtrl)
 					{
 						this.world.restart();
+						this.lastGameOver = false;
 						this.broadcast({type: 'resumed'});
 					}
 					else
@@ -293,10 +293,10 @@ class GameSession {
 					this.destroy();
 					return;
 				}
-				else
-				{
-					this.emptySince = null;
-				}
+			else
+			{
+				this.emptySince = null;
+			}
 			}
 		}, Math.round(1000 / BROADCAST_HZ));
 	}
