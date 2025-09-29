@@ -79,8 +79,8 @@ class GameSession {
             {
                 this.world.startCountdown();
             }
-			this.hadBothCtrl = haveBoth; 
 		}
+		this.hadBothCtrl = haveBoth; 
 	}
 
 	private assignRole(ws: WebSocket, playerId?: string): Role {
