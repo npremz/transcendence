@@ -21,14 +21,33 @@ class GameSession {
 
 	private tickTimer?: NodeJS.Timeout;
 	private broadcastTimer?: NodeJS.Timeout;
-    private reportedGameOver?: false;
     private leftCtrlDisconnectedAt: number | null = null;
     private rightCtrlDisconnectedAt: number | null = null;
-    private bothCtrlDisconnectedAt: number | null = null;
+	private hadBothCtrl = false;
+
+	private lastPaused = false;
+	private lastGameOver = false;
+
+	private emptySince: number | null = null;
 
 	constructor(private readonly roomId?: string, log?: FastifyBaseLogger) {
 		this.startLoops();
 		this.log = log;
+	}
+
+	private destroy() {
+		if (this.tickTimer)
+		{
+			clearInterval(this.tickTimer);
+		}
+		if (this.broadcastTimer)
+		{
+			clearInterval(this.broadcastTimer);
+		}
+		this.clients.clear();
+		this.roles.clear();
+		this.leftCtrl = undefined;
+		this.rightCtrl = undefined;
 	}
 
     setPlayers(players: {left: Player; right: Player}) {
@@ -48,17 +67,20 @@ class GameSession {
 		ws.on('close', () => this.onClose(ws));
 		ws.on('error', () => this.onClose(ws));
 
-		if (this.leftCtrl && this.rightCtrl)
+		const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
+		if (haveBoth && !this.hadBothCtrl)
 		{
 			if (this.world.state.isGameOver)
             {
                 this.world.restart();
+				this.lastGameOver = false;
             }
             else
             {
                 this.world.startCountdown();
             }
 		}
+		this.hadBothCtrl = haveBoth; 
 	}
 
 	private assignRole(ws: WebSocket, playerId?: string): Role {
@@ -100,6 +122,8 @@ class GameSession {
 			return;
 		}
         const role = this.roles.get(ws);
+		const canCtrl = (role === 'left' && ws === this.leftCtrl) ||
+						(role === 'right' && ws === this.rightCtrl);
 		switch (msg.type) {
 			case 'input': {
 				if (role === 'left' && ws === this.leftCtrl)
@@ -115,7 +139,6 @@ class GameSession {
                 break;
 			}
 			case 'smash': {
-				const role = this.roles.get(ws);
 				if (role === 'left' || role === 'right')
 				{
 					this.world.pressSmash(role);
@@ -123,27 +146,35 @@ class GameSession {
 				break;
 			}
 			case 'pause':
+				if (!canCtrl)
+				{
+					this.send(ws, {type: 'error', message: 'Spectators can\'t pause the game'});
+					break;
+				}
 				this.world.pause();
-				this.broadcast({type: 'paused'});
 				break;
 			case 'resume': {
+				if (!canCtrl)
+				{
+					this.send(ws, {type: 'error', message: 'Spectators can\'t resume the game'});
+					break;
+				}
 				if (this.world.state.isGameOver)
 				{
 					if (this.leftCtrl && this.rightCtrl)
 					{
 						this.world.restart();
+						this.lastGameOver = false;
 						this.broadcast({type: 'resumed'});
 					}
 					else
 					{
 						this.send(ws, {type: 'error', message: 'Two players required'});
-						this.world.restart();
 					}
 				}
 				else
 				{
 					this.world.resume();
-					this.broadcast({type: 'resumed'});
 				}
 				break;
 			}
@@ -174,6 +205,11 @@ class GameSession {
             this.log?.info({roomId: this.roomId, role}, 'Both client disconnected');
         }
 		this.log?.info({roomId: this.roomId, role}, 'client disconnected');
+		if (this.clients.size === 0 && this.emptySince === null)
+		{
+			this.emptySince = Date.now();
+		}
+		this.hadBothCtrl = !!this.leftCtrl && !!this.rightCtrl;
 	}
 
 	private startLoops() {
@@ -209,7 +245,7 @@ class GameSession {
             if (rightDisconnected && this.rightCtrlDisconnectedAt)
             {
                 const elapsed = now - this.rightCtrlDisconnectedAt;
-                rightRemaining = Math.max(0, TIMEOUT_MS);
+                rightRemaining = Math.max(0, TIMEOUT_MS - elapsed);
                 if (rightRemaining === 0 && !this.world.state.isGameOver)
                 {
                     this.world.state.isGameOver = true;
@@ -228,7 +264,7 @@ class GameSession {
                     },
                     right: {
                         active: rightDisconnected,
-                        remainingMs: leftRemaining
+                        remainingMs: rightRemaining
                     }
                 });
             }
@@ -238,9 +274,29 @@ class GameSession {
 			{
 				this.broadcast({type: 'countdown', value: state.countdownValue});
 			}
-			if (state.isGameOver)
+			const pausedNow = state.isPaused;
+			if (pausedNow !== this.lastPaused)
 			{
+				this.broadcast({type: pausedNow ? 'paused' : 'resumed'});
+				this.lastPaused = pausedNow
+			}
+			if (state.isGameOver && !this.lastGameOver)
+			{
+				this.lastGameOver = true;
 				this.broadcast({type: 'gameover', winner: state.winner || 'left'});
+			}
+			if (this.clients.size === 0)
+			{
+				if (this.emptySince && (Date.now() - this.emptySince > 5 * 60_000))
+				{
+					rooms.delete(this.roomId || '');
+					this.destroy();
+					return;
+				}
+			else
+			{
+				this.emptySince = null;
+			}
 			}
 		}, Math.round(1000 / BROADCAST_HZ));
 	}
