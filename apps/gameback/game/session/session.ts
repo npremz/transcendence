@@ -21,8 +21,9 @@ class GameSession {
 
 	private tickTimer?: NodeJS.Timeout;
 	private broadcastTimer?: NodeJS.Timeout;
-    private leftCtrlDisconnectedAt: number | null = null;
-    private rightCtrlDisconnectedAt: number | null = null;
+
+  private leftCtrlDisconnectedAt: number | null = null;
+  private rightCtrlDisconnectedAt: number | null = null;
 	private hadBothCtrl = false;
 
 	private lastPaused = false;
@@ -212,6 +213,40 @@ class GameSession {
 		this.hadBothCtrl = !!this.leftCtrl && !!this.rightCtrl;
 	}
 
+	private async notifyGameEnd(reason: 'score' | 'timeout', winner?: 'left' | 'right'): Promise<void> {
+        if (this.reportedGameOver)
+		{
+            return;
+        }
+        this.reportedGameOver = true;
+
+        const host = process.env.VITE_HOST || 'localhost:8443';
+        const endpoint = '/quickplay/room-finished';
+        const url = `https://${host}${endpoint}`;
+
+        try {
+            const payload = {
+                roomId: this.roomId,
+                reason: reason,
+                winner: winner ? {
+                    id: winner === 'left' ? this.expected.left?.id : this.expected.right?.id,
+                    username: winner === 'left' ? this.expected.left?.username : this.expected.right?.username
+                } : null,
+                score: this.world.state.score
+            };
+
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            this.log?.info({ roomId: this.roomId, reason }, 'Game end notified to quickplay');
+        } catch (err) {
+            this.log?.error({ roomId: this.roomId, error: err }, 'Failed to notify game end');
+        }
+    }
+
 	private startLoops() {
 		this.tickTimer = setInterval(() => {
 			this.world.update(SERVER_DT);
@@ -238,7 +273,8 @@ class GameSession {
                 {
                     this.world.state.isGameOver = true;
                     this.world.state.winner = 'right';
-                    this.world.state.isTimeoutLeft = true; 
+                    this.world.state.isTimeoutLeft = true;
+					this.notifyGameEnd('timeout', 'right');
                 }
             }
 
@@ -251,6 +287,7 @@ class GameSession {
                     this.world.state.isGameOver = true;
                     this.world.state.winner = 'left';
                     this.world.state.isTimeoutRight = true;
+					this.notifyGameEnd('timeout', 'left');
                 }
             }
 
@@ -284,6 +321,7 @@ class GameSession {
 			{
 				this.lastGameOver = true;
 				this.broadcast({type: 'gameover', winner: state.winner || 'left'});
+				this.notifyGameEnd('score', state.winner as 'left' | 'right');
 			}
 			if (this.clients.size === 0)
 			{
@@ -315,6 +353,23 @@ class GameSession {
 			this.send(c, msg);
 		}
 	}
+
+	cleanup(): void
+	{
+        if (this.tickTimer)
+		{
+            clearInterval(this.tickTimer);
+            this.tickTimer = undefined;
+        }
+        if (this.broadcastTimer)
+		{
+            clearInterval(this.broadcastTimer);
+            this.broadcastTimer = undefined;
+        }
+        this.clients.clear();
+        this.roles.clear();
+        this.log?.info({ roomId: this.roomId }, 'GameSession cleaned up');
+    }
 }
 
 const rooms = new Map<string, GameSession>();
@@ -332,3 +387,13 @@ export const setMatchForRoom = (roomId: string, players: {left: Player; right: P
     session.setPlayers(players);
     return session;
 }
+
+export const cleanupSession = (roomId: string): boolean => {
+    const session = rooms.get(roomId);
+    if (session) {
+        session.cleanup();
+        rooms.delete(roomId);
+        return true;
+    }
+    return false;
+};
