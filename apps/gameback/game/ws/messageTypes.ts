@@ -3,7 +3,8 @@ export type ClientMessage =
 	| {type: 'pause'}
 	| {type: 'resume'}
 	| {type: 'ping'; t: number}
-	| {type: 'smash'};
+	| {type: 'smash'}
+	| {type: 'logIn'; id: string};
 
 export type ServerMessage = 
 	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'}

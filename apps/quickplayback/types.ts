@@ -2,7 +2,6 @@ export interface Player
 {
 	id: string;
 	username: string;
-	socket: any;
 	roomId ?: string;
 	isReady: boolean;
 }

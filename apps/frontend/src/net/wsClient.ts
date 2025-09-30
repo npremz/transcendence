@@ -55,7 +55,14 @@ export class WSClient {
         }
         console.log('WSClient: connecting to', finalUrl);
         this.ws = new WebSocket(finalUrl);
-
+		this.ws.onopen = () => {
+			const playerId = window.simpleAuth.getPlayerId();
+			console.log('WebSocket opened, sending logIn with ID:', playerId);
+			this.ws?.send(JSON.stringify({
+				type: 'logIn', 
+				id: playerId
+			}));
+		};
 		this.ws.onmessage = (ev) => {
 			console.log(ev.data)
 			const msg = JSON.parse(ev.data) as ServerMsg;
@@ -64,37 +71,37 @@ export class WSClient {
 					console.log('Welcome from server');
 					this.side = msg.side; 
 					break;
-				case 'state':
-					this.onState?.(msg.state);
-					break;
-				case 'countdown':
-					this.onCountdown?.(msg.value);
-					break;
-                case 'paused':
-                    this.onPaused?.();
-                    break;
-                case 'resumed':
-                    this.onResumed?.();
-                    break;
-                case 'timeout_status':
-                    this.onTimeoutStatus?.(msg);
-                    break;
-				case 'gameover':
-					this.onGameOver?.(msg.winner);
-					break;
-			}
-		};
-	}
-	sendInput(up: boolean, down: boolean) {
-		this.ws?.send(JSON.stringify({type: 'input', up, down}));
-	}
-	pause() {
-		this.ws?.send(JSON.stringify({type: 'pause'}));
-	}
-	resume() {
-		this.ws?.send(JSON.stringify({type: 'resume'}));
-	}
-	smash() {
+					case 'state':
+						this.onState?.(msg.state);
+						break;
+						case 'countdown':
+							this.onCountdown?.(msg.value);
+							break;
+							case 'paused':
+								this.onPaused?.();
+								break;
+								case 'resumed':
+									this.onResumed?.();
+									break;
+									case 'timeout_status':
+										this.onTimeoutStatus?.(msg);
+										break;
+										case 'gameover':
+											this.onGameOver?.(msg.winner);
+											break;
+										}
+									};
+								}
+								sendInput(up: boolean, down: boolean) {
+									this.ws?.send(JSON.stringify({type: 'input', up, down}));
+								}
+								pause() {
+									this.ws?.send(JSON.stringify({type: 'pause'}));
+								}
+								resume() {
+									this.ws?.send(JSON.stringify({type: 'resume'}));
+								}
+								smash() {
 		this.ws?.send(JSON.stringify({type: 'smash'}));
 	}
 }
