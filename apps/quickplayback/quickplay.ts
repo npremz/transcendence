@@ -75,7 +75,6 @@ export function handleQuickPlay(fastify: FastifyInstance)
 			return {
 				status: 'ready',
 				roomId,
-				playerNumber: 1,
 				gameServerURL: `${baseGameWs}`
 			};
 		}

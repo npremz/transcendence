@@ -22,9 +22,11 @@ class GameSession {
 	private tickTimer?: NodeJS.Timeout;
 	private broadcastTimer?: NodeJS.Timeout;
 
-  private leftCtrlDisconnectedAt: number | null = null;
-  private rightCtrlDisconnectedAt: number | null = null;
+	private leftCtrlDisconnectedAt: number | null = null;
+	private rightCtrlDisconnectedAt: number | null = null;
 	private hadBothCtrl = false;
+
+	private reportedGameOver = false;
 
 	private lastPaused = false;
 	private lastGameOver = false;
@@ -57,31 +59,10 @@ class GameSession {
         this.log?.info({roomId: this.roomId, players: this.expected}, 'match set');
     }
 
-	addClient(ws: WebSocket, info?: {id?: string; username?: string}) {
-		const role = this.assignRole(ws, info?.id);
-		this.clients.add(ws);
-		this.roles.set(ws, role);
-		this.send(ws, {type: 'welcome', side: role});
-		this.log?.info({ roomId: this.roomId, role, clients: this.clients.size, playerId: info?.id }, 'client connected');
-
+	addClient(ws: WebSocket) {
 		ws.on('message', (raw: Buffer) => this.onMessage(ws, raw));
 		ws.on('close', () => this.onClose(ws));
 		ws.on('error', () => this.onClose(ws));
-
-		const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
-		if (haveBoth && !this.hadBothCtrl)
-		{
-			if (this.world.state.isGameOver)
-            {
-                this.world.restart();
-				this.lastGameOver = false;
-            }
-            else
-            {
-                this.world.startCountdown();
-            }
-		}
-		this.hadBothCtrl = haveBoth; 
 	}
 
 	private assignRole(ws: WebSocket, playerId?: string): Role {
@@ -179,6 +160,27 @@ class GameSession {
 				}
 				break;
 			}
+			case 'logIn':
+				const assRole = this.assignRole(ws, msg.id);
+				this.clients.add(ws);
+				this.roles.set(ws, assRole);
+				this.send(ws, {type: 'welcome', side: assRole});
+				this.log?.info({ roomId: this.roomId, assRole, clients: this.clients.size, playerId: msg.id }, 'client connected');
+				const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
+				if (haveBoth && !this.hadBothCtrl)
+				{
+					if (this.world.state.isGameOver)
+					{
+						this.world.restart();
+						this.lastGameOver = false;
+					}
+					else
+					{
+						this.world.startCountdown();
+					}
+				}
+				this.hadBothCtrl = haveBoth;
+				break;
 			case 'ping':
 				this.send(ws, {type: 'pong', t: msg.t});
 				break;
