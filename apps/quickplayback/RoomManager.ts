@@ -51,13 +51,6 @@ export class RoomManager
 			return false;
 		}
 
-		room.players.forEach(player => {
-			this.sendToPlayer(player, { 
-				type: 'game_ended',
-				reason: 'Room closed' 
-			});
-		});
-
 		this.rooms.delete(roomId);
 
 		if (this.waitingRoom?.id === roomId)
@@ -97,34 +90,11 @@ export class RoomManager
 		else if (room.players.length === 1)
 		{
 			const remainingPlayer = room.players[0]
-			this.sendToPlayer(remainingPlayer, { type: 'opponent_disconnected' })
 
 			room.status = 'waiting'
 			this.waitingRoom = room
 			console.log(`Room ${room.id} waiting for a new player (one disconnected)`)
 		}
-	}
-
-	private sendToPlayer(player: Player, message: any): void
-	{
-		try
-		{
-			player.socket.send(JSON.stringify(message))
-		}
-		catch (err)
-		{
-			console.error(`Error while sending message to ${player.username}:`, err)
-		}
-	}
-
-	public broadcastToRoom(roomId: string, message: any): void
-	{
-		const room = this.rooms.get(roomId)
-		if (!room) return
-
-		room.players.forEach(player => {
-			this.sendToPlayer(player, message)
-		})
 	}
 
 	public debugRooms(): void

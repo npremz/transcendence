@@ -1,5 +1,6 @@
 import type { ViewFunction } from "../router/types";
 import { Header } from "../components/Header";
+import { SimpleAuth } from "../simpleAuth/SimpleAuth";
 
 export const TestView: ViewFunction = () => {
 	return `
@@ -23,18 +24,6 @@ export const TestView: ViewFunction = () => {
 						value="TestPlayer"
 						class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 					>
-					<button 
-						id="connect-btn" 
-						class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-					>
-						Se connecter
-					</button>
-					<button 
-						id="disconnect-btn" 
-						class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-					>
-						Se déconnecter
-					</button>
 				</div>
 			</div>
 			
@@ -47,18 +36,6 @@ export const TestView: ViewFunction = () => {
 						class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
 					>
 						Rejoindre QuickPlay
-					</button>
-					<button 
-						id="player-ready-btn" 
-						class="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-					>
-						Je suis prêt
-					</button>
-					<button 
-						id="send-input-btn" 
-						class="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
-					>
-						Envoyer Input Test
 					</button>
 				</div>
 			</div>
@@ -90,223 +67,59 @@ export const TestView: ViewFunction = () => {
 	`;
 };
 
-export const initWebSocket = (): (() => void) => {
-	let ws: WebSocket | null = null;
-	let roomId: string | null = null;
-	let playerNumber: string | null = null;
+export const quickplayLogic = (): CleanupFunction => {
+    let pollInterval: NodeJS.Timeout | null = null;
+    let roomId: string | null = null;
 
-	// Références aux éléments DOM
-	const connectBtn = document.getElementById('connect-btn') as HTMLButtonElement;
-	const disconnectBtn = document.getElementById('disconnect-btn') as HTMLButtonElement;
-	const joinQuickplayBtn = document.getElementById('join-quickplay-btn') as HTMLButtonElement;
-	const playerReadyBtn = document.getElementById('player-ready-btn') as HTMLButtonElement;
-	const sendInputBtn = document.getElementById('send-input-btn') as HTMLButtonElement;
+    const handleJoin = async () => {
+        const username = (document.getElementById('username') as HTMLInputElement).value;
+        const playerId = window.simpleAuth.getPlayerId();
 
-	// === EVENT LISTENERS ===
-	
-	const handleConnect = (): void => {
-		if (ws) {
-			addMessage('Déjà connecté!', 'error');
-			return;
-		}
+		console.log(`Attempting to join quickplay...`)
+		console.log(JSON.stringify({ username, playerId }))
 
-		ws = new WebSocket(`wss://${import.meta.env.VITE_HOST}${import.meta.env.VITE_QUICK_ENDPOINT}`);
-		
-		ws.onopen = function() {
-			addMessage('Connecté au serveur!', 'success');
-			updateStatus('Connecté', 'connected');
-		};
-		
-		ws.onmessage = function(event) {
-			const message = JSON.parse(event.data);
-			handleServerMessage(message);
-		};
-		
-		ws.onclose = function() {
-			addMessage('Connexion fermée', 'error');
-			updateStatus('Déconnecté', 'error');
-			ws = null;
-			roomId = null;
-			playerNumber = null;
-            sessionStorage.removeItem('gameWsURL');
-			updateDebugInfo();
-		};
-		
-		ws.onerror = function(error) {
-			addMessage('Erreur WebSocket: ' + error, 'error');
-		};
-	};
+        try {
+            const response = await fetch('/quickplay/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, playerId })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                roomId = data.roomId;
+                startPolling();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
-	const handleDisconnect = (): void => {
-		if (ws) {
-			ws.close();
-		}
-	};
+    const startPolling = () => {
+        pollInterval = setInterval(async () => {
+            if (!roomId) return;
+            
+            const response = await fetch(`/quickplay/status/${roomId}`);
+            const data = await response.json();
+            
+            if (data.status === 'ready') {
+                // Redirige vers le jeu
+                sessionStorage.setItem('gameWsURL', data.gameServerURL);
+                window.router.navigate(`/game/${roomId}`);
+                stopPolling();
+            }
+        }, 2000); // Poll toutes les 2s
+    };
 
-	const handleJoinQuickplay = (): void => {
-		if (!ws) {
-			addMessage('Pas connecté!', 'error');
-			return;
-		}
-		
-		const usernameInput = document.getElementById('username') as HTMLInputElement;
-		const username = usernameInput.value || 'TestPlayer';
-		const message = {
-			type: 'join_quickplay',
-			username: username
-		};
-		
-		ws.send(JSON.stringify(message));
-		addMessage('Demande de quickplay envoyée...', 'info');
-	};
+    const stopPolling = () => {
+        if (pollInterval) clearInterval(pollInterval);
+    };
 
-	const handlePlayerReady = (): void => {
-		if (!ws) {
-			addMessage('Pas connecté!', 'error');
-			return;
-		}
-		
-		ws.send(JSON.stringify({ type: 'player_ready' }));
-		addMessage('Signal "prêt" envoyé', 'info');
-	};
+    // Attache handleJoin à un bouton
+    document.getElementById('join-quickplay-btn')?.addEventListener('click', handleJoin);
 
-	const handleSendInput = (): void => {
-		if (!ws) {
-			addMessage('Pas connecté!', 'error');
-			return;
-		}
-		
-		ws.send(JSON.stringify({ 
-			type: 'player_input', 
-			input: { action: 'move', direction: 'up' }
-		}));
-		addMessage('Input test envoyé', 'info');
-	};
-
-	// Attacher les event listeners
-	connectBtn?.addEventListener('click', handleConnect);
-	disconnectBtn?.addEventListener('click', handleDisconnect);
-	joinQuickplayBtn?.addEventListener('click', handleJoinQuickplay);
-	playerReadyBtn?.addEventListener('click', handlePlayerReady);
-	sendInputBtn?.addEventListener('click', handleSendInput);
-
-	// === FONCTIONS UTILITAIRES ===
-
-	function handleServerMessage(message: any): void {
-		addMessage('Reçu: ' + JSON.stringify(message), 'server');
-		
-		switch(message.type) {
-			case 'waiting_for_opponent':
-				updateStatus('En attente d\'un adversaire...', 'waiting');
-				break;
-				
-			case 'game_start':
-				roomId = message.roomId;
-				playerNumber = message.playerNumber;
-                const wsUrl: string | undefined = message.gameServerURL;
-                if (wsUrl)
-                {
-                    console.log('[TestView] storing gameWsURL', wsUrl);
-                    sessionStorage.setItem('gameWsURL', wsUrl);
-                }
-				updateStatus(`Partie démarrée! Vous êtes le joueur ${playerNumber}`, 'playing');
-				updateDebugInfo();
-				console.log(window.router)
-				window.router.navigate(`/game/${roomId}`)
-				break;
-				
-			case 'opponent_disconnected':
-				updateStatus('Adversaire déconnecté', 'waiting');
-				break;
-				
-			case 'error':
-				updateStatus('Erreur: ' + message.message, 'error');
-				break;
-		}
-	}
-
-	function addMessage(text: string, type: string): void {
-		const messages = document.getElementById('messages');
-		if (!messages) return;
-
-		const time = new Date().toLocaleTimeString();
-		const div = document.createElement('div');
-		div.innerHTML = `<strong class="text-gray-600">[${time}]</strong> ${text}`;
-		
-		// Couleurs selon le type avec Tailwind
-		switch(type) {
-			case 'error':
-				div.className = 'text-red-600 mb-1';
-				break;
-			case 'server':
-				div.className = 'text-blue-600 mb-1';
-				break;
-			case 'success':
-				div.className = 'text-green-600 mb-1';
-				break;
-			case 'info':
-			default:
-				div.className = 'text-gray-800 mb-1';
-				break;
-		}
-		
-		messages.appendChild(div);
-		messages.scrollTop = messages.scrollHeight;
-	}
-
-	function updateStatus(text: string, type: string): void {
-		const status = document.getElementById('connection-status');
-		if (!status) return;
-
-		status.textContent = text;
-		
-		// Classes Tailwind selon le statut
-		switch(type) {
-			case 'connected':
-				status.className = 'p-4 mb-4 rounded-lg border bg-blue-100 text-blue-800 border-blue-300';
-				break;
-			case 'waiting':
-				status.className = 'p-4 mb-4 rounded-lg border bg-yellow-100 text-yellow-800 border-yellow-300';
-				break;
-			case 'playing':
-				status.className = 'p-4 mb-4 rounded-lg border bg-green-100 text-green-800 border-green-300';
-				break;
-			case 'error':
-				status.className = 'p-4 mb-4 rounded-lg border bg-red-100 text-red-800 border-red-300';
-				break;
-			default:
-				status.className = 'p-4 mb-4 rounded-lg border bg-gray-100 text-gray-800';
-				break;
-		}
-	}
-
-	function updateDebugInfo(): void {
-		const roomIdElement = document.getElementById('room-id');
-		const playerNumberElement = document.getElementById('player-number');
-		
-		if (roomIdElement) roomIdElement.textContent = roomId || '-';
-		if (playerNumberElement) playerNumberElement.textContent = playerNumber || '-';
-	}
-
-	// === FONCTION DE CLEANUP ===
-	return (): void => {
-		console.log('Nettoyage du WebSocket test...');
-		
-		// Fermer la connexion WebSocket
-		if (ws) {
-			ws.close();
-			ws = null;
-		}
-		
-		// Retirer tous les event listeners
-		connectBtn?.removeEventListener('click', handleConnect);
-		disconnectBtn?.removeEventListener('click', handleDisconnect);
-		joinQuickplayBtn?.removeEventListener('click', handleJoinQuickplay);
-		playerReadyBtn?.removeEventListener('click', handlePlayerReady);
-		sendInputBtn?.removeEventListener('click', handleSendInput);
-		
-		// Reset des variables
-		roomId = null;
-		playerNumber = null;
-	};
+    return () => {
+        stopPolling();
+        document.getElementById('join-quickplay-btn')?.removeEventListener('click', handleJoin);
+    };
 };

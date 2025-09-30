@@ -1,7 +1,7 @@
 import type { Route, CleanupFunction, RouteParams } from './types';
 import { ComponentManager } from '../components/ComponantManager'
 import { HomeView } from '../views/HomeView';
-import { TestView, initWebSocket } from '../views/TestView';
+import { TestView, quickplayLogic } from '../views/TestView';
 import { GameView } from '../views/GameView';
 import { StartGameView } from '../views/StartGameView';
 import { LoginView } from '../views/LoginView';
@@ -34,7 +34,7 @@ export class Router {
 		this.routes.push({
             path: '/test',
             view: TestView,
-			onMount: initWebSocket,
+			onMount: quickplayLogic,
             title: 'Test'
         });
 

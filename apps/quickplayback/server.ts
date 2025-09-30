@@ -1,13 +1,10 @@
 import Fastify from 'fastify'
-import websocket from '@fastify/websocket'
 import { handleQuickPlay } from './quickplay'
 import { handleTournamentQuickPlay } from './TounamentQuickPlay'
 
 const fastify = Fastify({
 	logger: true
 })
-
-await fastify.register(websocket)
 
 fastify.addHook('onRequest', async (request, reply) => {
     console.log('=== REQUÊTE REÇUE ===')
