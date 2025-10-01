@@ -2,12 +2,15 @@ import type { PongGameState, TimeoutStatus } from "./types";
 import type { PongParticleSystem } from "./PongParticles";
 import { WORLD_WIDTH, WORLD_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, PADDLE_MARGIN,
 COLORS, BALL_MAX_SPEED, TRAIL_THRESHOLD } from "./constants";
+import type { WSClient } from "../../net/wsClient";
 
 export class PongRenderer {
 	private ctx: CanvasRenderingContext2D;
 	private canvas: HTMLCanvasElement;
+	private net
 
-	constructor(canvas: HTMLCanvasElement) {
+	constructor(canvas: HTMLCanvasElement, net: WSClient) {
+		this.net = net;
 		this.canvas = canvas;
 		const ctx = canvas.getContext('2d');
 		if (!ctx) {
@@ -232,14 +235,31 @@ export class PongRenderer {
 		{
 			ctx.fillStyle = 'rgba(0,0,0,0.7)';
 			ctx.fillRect(0, 0, W, H);
-			ctx.fillStyle = '#fff';
-			ctx.font = '72px monospace';
-			ctx.textAlign = 'center';
-			ctx.fillText('GAME OVER', W / 2, H / 2 - 40);
-			ctx.font = '36px monospace';
-			ctx.fillText(`${state.winner} wins`, W / 2, H / 2 + 10);
-			ctx.font = '24px monospace';
-			ctx.fillText('Click "Replay" to restart', W / 2, H / 2 + 60);
+			if (this.net.isTournament) {
+				const amILeft = this.net.side === 'left';
+				const didIWin = (amILeft && state.winner === 'left') || 
+							(!amILeft && state.winner === 'right');
+				
+				ctx.fillStyle = didIWin ? '#00ff00' : '#ff0000';
+				ctx.font = '72px monospace';
+				ctx.fillText(didIWin ? 'VICTOIRE !' : 'DÉFAITE', W / 2, H / 2 - 40);
+				
+				ctx.fillStyle = '#fff';
+				ctx.font = '36px monospace';
+				ctx.fillText(`${state.winner} wins`, W / 2, H / 2 + 10);
+				
+				ctx.font = '24px monospace';
+				ctx.fillText('Redirection vers les brackets...', W / 2, H / 2 + 60);
+			} else {
+				// Affichage normal pour une partie classique
+				ctx.fillStyle = '#fff';
+				ctx.font = '72px monospace';
+				ctx.fillText('GAME OVER', W / 2, H / 2 - 40);
+				ctx.font = '36px monospace';
+				ctx.fillText(`${state.winner} wins`, W / 2, H / 2 + 10);
+				ctx.font = '24px monospace';
+				ctx.fillText('Click "Replay" to restart', W / 2, H / 2 + 60);
+			}
 		} 
 		else if (state.isPaused) 
 		{

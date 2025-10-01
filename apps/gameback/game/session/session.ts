@@ -33,6 +33,10 @@ class GameSession {
 
 	private emptySince: number | null = null;
 
+	private isTournament: boolean = false;
+	private tournamentId?: string;
+	private matchId?: string;
+
 	constructor(private readonly roomId?: string, log?: FastifyBaseLogger) {
 		this.startLoops();
 		this.log = log;
@@ -53,9 +57,20 @@ class GameSession {
 		this.rightCtrl = undefined;
 	}
 
-    setPlayers(players: {left: Player; right: Player}) {
+    setPlayers(players: {left: Player; right: Player}, metadata?: {
+		isTournament?: boolean;
+		tournamentId?: string;
+		matchId?: string;
+	}) {
         this.expected.left = players.left;
         this.expected.right = players.right;
+
+		if (metadata) {
+            this.isTournament = metadata.isTournament || false;
+            this.tournamentId = metadata.tournamentId;
+            this.matchId = metadata.matchId;
+        }
+
         this.log?.info({roomId: this.roomId, players: this.expected}, 'match set');
     }
 
@@ -164,8 +179,16 @@ class GameSession {
 				const assRole = this.assignRole(ws, msg.id);
 				this.clients.add(ws);
 				this.roles.set(ws, assRole);
-				this.send(ws, {type: 'welcome', side: assRole});
+
+				this.send(ws, {
+					type: 'welcome', 
+					side: assRole,
+					isTournament: this.isTournament,
+					tournamentId: this.tournamentId
+				});
+
 				this.log?.info({ roomId: this.roomId, assRole, clients: this.clients.size, playerId: msg.id }, 'client connected');
+				
 				const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
 				if (haveBoth && !this.hadBothCtrl)
 				{
@@ -222,11 +245,19 @@ class GameSession {
         }
         this.reportedGameOver = true;
 
+		const winnerId = winner === 'left' ? this.expected.left?.id : this.expected.right?.id;
+
+		if (this.isTournament && this.matchId && winnerId)
+		{
+            await this.notifyTournamentMatchEnd(this.matchId, winnerId);
+        }
+
         const host = process.env.VITE_HOST || 'localhost:8443';
         const endpoint = '/quickplay/room-finished';
         const url = `https://${host}${endpoint}`;
 
-        try {
+        try
+		{
             const payload = {
                 roomId: this.roomId,
                 reason: reason,
@@ -244,8 +275,41 @@ class GameSession {
             });
 
             this.log?.info({ roomId: this.roomId, reason }, 'Game end notified to quickplay');
-        } catch (err) {
+        }
+		catch (err)
+		{
             this.log?.error({ roomId: this.roomId, error: err }, 'Failed to notify game end');
+        }
+    }
+
+	private async notifyTournamentMatchEnd(matchId: string, winnerId: string): Promise<void> {
+        const host = process.env.VITE_HOST || 'localhost:8443';
+        const endpoint = '/tournamentback/match-finished';
+        const url = `https://${host}${endpoint}`;
+
+        try
+		{
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    matchId,
+                    winnerId
+                })
+            });
+
+            this.log?.info({ 
+                roomId: this.roomId, 
+                matchId, 
+                winnerId 
+            }, 'Tournament match end notified');
+        }
+		catch (err)
+		{
+            this.log?.error({ 
+                roomId: this.roomId, 
+                error: err 
+            }, 'Failed to notify tournament match end');
         }
     }
 
@@ -322,7 +386,12 @@ class GameSession {
 			if (state.isGameOver && !this.lastGameOver)
 			{
 				this.lastGameOver = true;
-				this.broadcast({type: 'gameover', winner: state.winner || 'left'});
+				this.broadcast({
+					type: 'gameover', 
+					winner: state.winner || 'left',
+					isTournament: this.isTournament,
+					tournamentId: this.tournamentId
+				});
 				this.notifyGameEnd('score', state.winner as 'left' | 'right');
 			}
 			if (this.clients.size === 0)
@@ -384,9 +453,18 @@ export const getSessionForRoom = (roomId: string, log?: FastifyBaseLogger) => {
     return (rooms.get(roomId)!);
 }
 
-export const setMatchForRoom = (roomId: string, players: {left: Player; right: Player}, log?: FastifyBaseLogger) => {
+export const setMatchForRoom = (
+	roomId: string,
+	players: {left: Player; right: Player},
+	metadata?: {
+		isTournament?: boolean;
+		tournamentId?: string;
+		matchId?: string;
+	},
+	log?: FastifyBaseLogger
+) => {
     const session = getSessionForRoom(roomId, log);
-    session.setPlayers(players);
+    session.setPlayers(players, metadata);
     return session;
 }
 

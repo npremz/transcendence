@@ -7,14 +7,14 @@ export type ClientMessage =
 	| {type: 'logIn'; id: string};
 
 export type ServerMessage = 
-	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'}
+	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'; isTournament?: boolean; tournamentId?: string}
 	| {type: 'state'; state: PublicState; serverTime: number}
 	| {type: 'countdown'; value: number}
 	| {type: 'paused'}
 	| {type: 'resumed'}
     | {type: 'timeout_status'; left: {active: boolean; remainingMs: number};
                                right: {active: boolean; remainingMs: number}}
-	| {type: 'gameover'; winner: 'left' | 'right' | 'nobody'}
+	| {type: 'gameover'; winner: 'left' | 'right' | 'nobody'; isTournament?: boolean; tournamentId?: string}
 	| {type: 'pong'; t: number}
 	| {type: 'error'; message: string};
 

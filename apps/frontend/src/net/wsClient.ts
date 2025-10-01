@@ -19,23 +19,26 @@ export type PublicState = {
 };
 
 type ServerMsg = 
-	| {type: 'welcome'; side: 'left' | 'right'}
+	| {type: 'welcome'; side: 'left' | 'right'; isTournament?: boolean; tournamentId?: string}
 	| {type: 'state'; state: PublicState; serverTime: number}
 	| {type: 'countdown'; value: number}
 	| {type: 'paused' | 'resumed'}
     | {type: 'resumed'}
     | {type: 'timeout_status'; left: {active: boolean; remainingMs: number};
                                right: {active: boolean; remainingMs: number};}
-	| {type: 'gameover'; winner: 'left' | 'right'}
+	| {type: 'gameover'; winner: 'left' | 'right'; isTournament?: boolean; tournamentId?: string}
 	| {type: 'pong'; t: number};
 
 export class WSClient {
 	private ws?: WebSocket;
 	side: 'left' | 'right' = 'left';
 
+	isTournament: boolean = false;
+    tournamentId?: string;
+
 	onState?: (s: PublicState) => void;
 	onCountdown?: (v: number) => void;
-	onGameOver?: (w: 'left' | 'right') => void;
+	onGameOver?: (w: 'left' | 'right', isTournament?: boolean, tournamentId?: string) => void;
     onPaused?: () => void;
     onResumed?: () => void;
     onTimeoutStatus?: (status: {
@@ -69,39 +72,39 @@ export class WSClient {
 			switch (msg.type) {
 				case 'welcome':
 					console.log('Welcome from server');
-					this.side = msg.side; 
+					this.side = msg.side;
 					break;
-					case 'state':
-						this.onState?.(msg.state);
-						break;
-						case 'countdown':
-							this.onCountdown?.(msg.value);
-							break;
-							case 'paused':
-								this.onPaused?.();
-								break;
-								case 'resumed':
-									this.onResumed?.();
-									break;
-									case 'timeout_status':
-										this.onTimeoutStatus?.(msg);
-										break;
-										case 'gameover':
-											this.onGameOver?.(msg.winner);
-											break;
-										}
-									};
-								}
-								sendInput(up: boolean, down: boolean) {
-									this.ws?.send(JSON.stringify({type: 'input', up, down}));
-								}
-								pause() {
-									this.ws?.send(JSON.stringify({type: 'pause'}));
-								}
-								resume() {
-									this.ws?.send(JSON.stringify({type: 'resume'}));
-								}
-								smash() {
-		this.ws?.send(JSON.stringify({type: 'smash'}));
+				case 'state':
+					this.onState?.(msg.state);
+					break;
+				case 'countdown':
+					this.onCountdown?.(msg.value);
+					break;
+				case 'paused':
+					this.onPaused?.();
+					break;
+				case 'resumed':
+					this.onResumed?.();
+					break;
+				case 'timeout_status':
+					this.onTimeoutStatus?.(msg);
+					break;
+				case 'gameover':
+					this.onGameOver?.(msg.winner, msg.isTournament, msg.tournamentId);
+					break;
+			}
+		};
+	}
+	sendInput(up: boolean, down: boolean) {
+		this.ws?.send(JSON.stringify({ type: 'input', up, down }));
+	}
+	pause() {
+		this.ws?.send(JSON.stringify({ type: 'pause' }));
+	}
+	resume() {
+		this.ws?.send(JSON.stringify({ type: 'resume' }));
+	}
+	smash() {
+		this.ws?.send(JSON.stringify({ type: 'smash' }));
 	}
 }
