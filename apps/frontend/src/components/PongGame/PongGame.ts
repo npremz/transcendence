@@ -1,0 +1,229 @@
+import type { Component } from "../types";
+import { WSClient, type PublicState } from "../../net/wsClient";
+import type { PongGameState, TimeoutStatus } from "./types";
+import { PongRenderer } from "./PongRenderer";
+import { PongInputHandler } from "./PongInput";
+import { PongParticleSystem } from "./PongParticles";
+import { PongAssets } from "./PongAssets";
+import { WORLD_HEIGHT, PADDLE_HEIGHT } from "./constants";
+import { Button } from "../Button";
+
+export class PongGame implements Component {
+	private el: HTMLElement;
+	private canvas: HTMLCanvasElement;
+	private startBtn: HTMLButtonElement;
+
+	private net = new WSClient();
+	private renderer: PongRenderer;
+	private input: PongInputHandler;
+	private particles: PongParticleSystem;
+	private assets: PongAssets;
+
+	private state: PublicState = {
+		leftPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
+		rightPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
+		balls: [],
+		score: {left: 0, right: 0},
+		isPaused: true,
+		isGameOver: false,
+		winner: '',
+		countdownValue: 0,
+		powerUps: [],
+		splitActive: false,
+		clock: 0,
+		smash: {
+			cooldown: 0,
+			animDuration: 0.12,
+			left: {cooldownRemaining: 0, lastSmashAt: -1e9},
+			right: {cooldownRemaining: 0, lastSmashAt: -1e9}
+		}
+	};
+
+    private timeoutStatus: TimeoutStatus = {
+        leftActive: false,
+        leftRemainingMs: 0,
+        rightActive: false,
+        rightRemainingMs: 0
+    };
+
+	private animationFrameId: number | null = null;
+
+	constructor(element: HTMLElement) {
+		this.el = element;
+
+		const canvas = this.el.querySelector('#pong-canvas') as HTMLCanvasElement | null;
+		const startBtn = this.el.querySelector('#startBtn') as HTMLButtonElement | null;
+		if (!canvas || !startBtn)
+		{
+			throw new Error('PongGame: canvas or button not found in the component.');
+		}
+		this.canvas = canvas;
+		this.startBtn = startBtn;
+
+		this.renderer = new PongRenderer(this.canvas);
+		this.input = new PongInputHandler(this.net);
+		this.particles = new PongParticleSystem();
+		this.assets = new PongAssets();
+
+		this.setupNetworkHandlers();
+		this.setupEventHandlers();
+		this.connectToServer();
+
+		this.startAnimationLoop();
+
+	}
+
+	private setupNetworkHandlers(): void {
+		this.net.onState = (s: PublicState) => {
+			for (const ball of s.balls) {
+				this.particles.createTrail(ball.x, ball.y, ball.vx, ball.vy);
+			}
+
+			Object.assign(this.state, s);
+		};
+
+		this.net.onPaused = () => {
+			this.state.isPaused = false;
+			this.timeoutStatus = {
+				leftActive: false,
+				leftRemainingMs: 0,
+				rightActive: false,
+				rightRemainingMs: 0
+			};
+		};
+
+		this.net.onTimeoutStatus = (status) => {
+			this.timeoutStatus = {
+				leftActive: status.left.active,
+				leftRemainingMs: status.left.remainingMs,
+				rightActive: status.right.active,
+				rightRemainingMs: status.right.remainingMs
+			};
+		};
+
+		this.net.onCountdown = (v: number) => {
+			this.state.countdownValue = v;
+		};
+
+		this.net.onGameOver = () => {
+			this.startBtn.textContent = 'Replay';
+			this.particles.createExplosion(
+				this.canvas.width / 2,
+				this.canvas.height / 2,
+				30
+			);
+		};
+	}
+
+	private setupEventHandlers(): void {
+		this.startBtn.addEventListener('click', this.handleStartClick);
+		window.addEventListener('resize', this.handleResize);
+		window.addEventListener('pong:togglePause', this.handleTogglePause);
+
+		this.input.attach();
+	}
+
+	private connectToServer(): void {
+		const storedUrl = sessionStorage.getItem('gameWsURL');
+		if (storedUrl) 
+		{
+			this.net.connect(storedUrl);
+		} 
+		else 
+		{
+			const host = import.meta.env.VITE_HOST;
+			const endpoint = import.meta.env.VITE_GAME_ENDPOINT;
+			const roomId = window.location.pathname.split('/').pop();
+			const fallback =
+				host && endpoint && roomId ? `wss://${host}${endpoint}/${roomId}` : undefined;
+			this.net.connect(fallback);
+		}
+	}
+
+	private handleStartClick = (): void => {
+		this.net.resume();
+	};
+
+	private handleResize = (): void => {
+		this.renderer.setupCanvas();
+	};
+
+	private handleTogglePause = (): void => {
+		if (this.state.isPaused) 
+		{
+			this.net.resume();
+		} 
+		else 
+		{
+			this.net.pause();
+		}
+	};
+
+	private smashOffsetX = (side: 'left' | 'right'): number => {
+		const smash = this.state.smash;
+		if (!smash) 
+		{
+			return 0;
+		}
+
+		const last = side === 'left' ? smash.left.lastSmashAt : smash.right.lastSmashAt;
+		const dur = smash.animDuration;
+		const dt = Math.max(0, this.state.clock - last);
+
+		if (dt <= 0 || dt > dur) 
+		{
+			return 0;
+		}
+
+		const t = dt / dur;
+		const amp = 24;
+		const dir = side === 'left' ? 1 : -1;
+
+		return (dir * amp * Math.sin(Math.PI * t));
+	};
+
+	private startAnimationLoop(): void {
+		const animate = (): void => {
+			this.particles.update();
+			this.renderer.render(
+				this.state,
+				this.timeoutStatus,
+				this.particles,
+				this.net.side,
+				this.smashOffsetX
+			);
+			this.animationFrameId = requestAnimationFrame(animate);
+		};
+		animate();
+	}
+
+	cleanup(): void {
+		if (this.animationFrameId !== null) 
+		{
+			cancelAnimationFrame(this.animationFrameId);
+			this.animationFrameId = null;
+		}
+
+		this.startBtn.removeEventListener('click', this.handleStartClick);
+		window.removeEventListener('resize', this.handleResize);
+		window.removeEventListener('pong:togglePause', this.handleTogglePause);
+
+		this.input.detach();
+		this.particles.clear();
+	}
+}
+
+export function Pong(): string {
+	return `
+		<div class="container ml-auto mr-auto flex flex-col items-center" data-component="pong-game">
+			<canvas id="pong-canvas"></canvas>
+			${Button({
+				children: 'Start',
+				variant: 'danger',
+				size: 'lg',
+				className: 'font-bold',
+				id: 'startBtn'
+			})}
+		</div>
+	`;
+}

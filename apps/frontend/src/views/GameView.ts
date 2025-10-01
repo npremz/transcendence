@@ -1,5 +1,5 @@
 import type { ViewFunction } from "../router/types";
-import { Pong } from "../components/PongGame";
+import { Pong } from "../components/PongGame/PongGame";
 import { gsap } from "gsap";
 import { BackButton } from "../components/Button";
 
