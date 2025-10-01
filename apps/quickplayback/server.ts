@@ -1,10 +1,13 @@
 import Fastify from 'fastify'
 import { handleQuickPlay } from './quickplay'
 import { handleTournamentQuickPlay } from './TounamentQuickPlay'
+import { RoomManager } from './RoomManager'
 
 const fastify = Fastify({
 	logger: true
 })
+
+export const roomManager = new RoomManager()
 
 fastify.addHook('onRequest', async (request, reply) => {
     console.log('=== REQUÊTE REÇUE ===')
@@ -21,8 +24,8 @@ fastify.get('/', function (request, reply)
 	}
 )
 
-handleQuickPlay(fastify);
-handleTournamentQuickPlay(fastify)
+handleQuickPlay(fastify, roomManager);
+handleTournamentQuickPlay(fastify, roomManager)
 
 fastify.listen({ port: 3030, host: '0.0.0.0'}, function (err, address)
 	{
