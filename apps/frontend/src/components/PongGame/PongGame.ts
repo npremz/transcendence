@@ -126,7 +126,7 @@ export class PongGame implements Component {
 		};
 
 		this.net.onPaused = () => {
-			this.state.isPaused = false;
+			this.state.isPaused = true;
 			this.timeoutStatus = {
 				leftActive: false,
 				leftRemainingMs: 0,

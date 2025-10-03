@@ -31,7 +31,6 @@ type ServerMsg =
 	| {type: 'state'; state: PublicState; serverTime: number}
 	| {type: 'countdown'; value: number}
 	| {type: 'paused' | 'resumed'}
-    | {type: 'resumed'}
     | {type: 'timeout_status'; left: {active: boolean; remainingMs: number};
                                right: {active: boolean; remainingMs: number};}
 	| {type: 'gameover'; winner: 'left' | 'right'; isTournament?: boolean; tournamentId?: string}
