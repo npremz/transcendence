@@ -9,7 +9,7 @@ export const PADDLE_SPEED_INCREASE = 1.05;
 export const PADDLE_MAX_SPEED = 1600;
 
 
-export const BALL_RADIUS = 15;
+export const BALL_RADIUS = 100;
 export const BALL_INITIAL_SPEED = 600;
 export const BALL_SPEED_INCREASE = 1.05;
 export const BALL_MAX_SPEED = 1500;
@@ -27,6 +27,9 @@ export const POWERUP_MAX_ON_SCREEN = 5;
 export const MAX_BALLS_ON_FIELD = 10;
 export const SPLIT_SPAWN_PER_PICKUP = 2;
 export const SPLIT_SPREAD_DEG = 20;
+
+export const BLACKOUT_DURATION_SEC = 5;
+export const BLACKOUT_FADE_DURATION_SEC = 0.5;
 
 export const SMASH_COOLDOWN = 3;
 export const SMASH_TIMING_WINDOW = 0.2;

@@ -1,11 +1,11 @@
 import type { Component } from "../types";
 import { WSClient, type PublicState } from "../../net/wsClient";
-import type { PongGameState, TimeoutStatus } from "./types";
+import type { TimeoutStatus } from "./types";
 import { PongRenderer } from "./PongRenderer";
 import { PongInputHandler } from "./PongInput";
 import { PongParticleSystem } from "./PongParticles";
 import { PongAssets } from "./PongAssets";
-import { WORLD_HEIGHT, PADDLE_HEIGHT } from "./constants";
+import { WORLD_HEIGHT } from "./constants";
 import { Button } from "../Button";
 
 export class PongGame implements Component {
@@ -31,6 +31,10 @@ export class PongGame implements Component {
 		powerUps: [],
 		splitActive: false,
 		clock: 0,
+		blackoutLeft: false,
+		blackoutRight: false,
+		blackoutLeftIntensity: 0,
+		blackoutRightIntensity: 0,
 		smash: {
 			cooldown: 0,
 			animDuration: 0.12,
@@ -47,6 +51,8 @@ export class PongGame implements Component {
     };
 
 	private animationFrameId: number | null = null;
+	private lastScore = { left: 0, right: 0 };
+	private lastBallPositions: Array<{x: number; y: number; vx: number; vy: number}> = [];
 
 	constructor(element: HTMLElement) {
 		this.el = element;
@@ -75,6 +81,43 @@ export class PongGame implements Component {
 
 	private setupNetworkHandlers(): void {
 		this.net.onState = (s: PublicState) => {
+			const currentBallPositions = s.balls.map(b => ({
+				x: b.x,
+				y: b.y,
+				vx: b.vx,
+				vy: b.vy
+			}))
+			if (s.score.left > this.lastScore.left)
+			{
+				const lastBall = this.lastBallPositions.find(b => b.x > this.canvas.width - 100);
+				if (lastBall)
+				{
+					this.particles.createGoalExplosion(
+						lastBall.x,
+						lastBall.y,
+						lastBall.vx,
+						lastBall.vy
+					);
+				}
+				this.triggerScreenShake();
+			}
+			if (s.score.right > this.lastScore.right)
+			{
+				const lastBall = this.lastBallPositions.find(b => b.x < 100);
+				if (lastBall)
+				{
+					this.particles.createGoalExplosion(
+						lastBall.x,
+						lastBall.y,
+						lastBall.vx,
+						lastBall.vy
+					);
+				}
+				this.triggerScreenShake();
+			}
+			this.lastBallPositions = currentBallPositions;
+			this.lastScore = {left: s.score.left, right: s.score.right};
+
 			for (const ball of s.balls) {
 				this.particles.createTrail(ball.x, ball.y, ball.vx, ball.vy);
 			}
@@ -123,6 +166,33 @@ export class PongGame implements Component {
 		};
 	}
 
+	private triggerScreenShake(): void 
+	{
+		const canvas = this.canvas;
+		const originalTransform = canvas.style.transform;
+		
+		let shakeIntensity = 8;
+		let shakeCount = 0;
+		const maxShakes = 10;
+		
+		const shake = () => {
+			if (shakeCount >= maxShakes) {
+				canvas.style.transform = originalTransform;
+				return;
+			}
+			
+			const x = (Math.random() - 0.5) * shakeIntensity;
+			const y = (Math.random() - 0.5) * shakeIntensity;
+			canvas.style.transform = `translate(${x}px, ${y}px)`;
+			
+			shakeIntensity *= 0.85;
+			shakeCount++;
+			
+			setTimeout(shake, 40);
+		};
+		
+		shake();
+	}
 	private handleTournamentGameOver(winner: 'left' | 'right', tournamentId: string) {
         const amILeft = this.net.side === 'left';
         const didIWin = (amILeft && winner === 'left') || (!amILeft && winner === 'right');

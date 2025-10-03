@@ -33,6 +33,10 @@ export type PublicState = {
 	powerUps: {x: number; y: number; radius: number}[];
 	splitActive: boolean;
 	clock: number;
+	blackoutLeft: boolean;
+	blackoutRight: boolean;
+	blackoutLeftIntensity: number;
+	blackoutRightIntensity: number;
 
 	smash: {
 		cooldown: number;

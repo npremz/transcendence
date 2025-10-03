@@ -7,9 +7,13 @@ export type PublicState = {
 	isGameOver: boolean;
 	winner: '' | 'left' | 'right';
 	countdownValue: number;
-	powerUps: {x: number, y: number, radius: number}[];
+	powerUps: {x: number, y: number, radius: number, type: string}[];
 	splitActive: boolean;
 	clock: number;
+	blackoutLeft: boolean;
+	blackoutRight: boolean;
+	blackoutLeftIntensity: number;
+	blackoutRightIntensity: number;
 	smash: {
 		cooldown: number;
 		animDuration: number;
