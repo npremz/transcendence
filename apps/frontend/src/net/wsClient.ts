@@ -14,6 +14,10 @@ export type PublicState = {
 	blackoutRight: boolean;
 	blackoutLeftIntensity: number;
 	blackoutRightIntensity: number;
+	blackholeActive: boolean;
+	blackholeProgress: number;
+	blackholeCenterX: number;
+	blackholeCenterY: number;
 	smash: {
 		cooldown: number;
 		animDuration: number;

@@ -30,13 +30,17 @@ export type PublicState = {
     isTimeoutBoth: boolean;
 	winner: '' | 'left' | 'right' | 'nobody';
 	countdownValue: number;
-	powerUps: {x: number; y: number; radius: number}[];
+	powerUps: {x: number; y: number; radius: number; type: 'split' | 'blackout' | 'blackhole'}[];
 	splitActive: boolean;
 	clock: number;
 	blackoutLeft: boolean;
 	blackoutRight: boolean;
 	blackoutLeftIntensity: number;
 	blackoutRightIntensity: number;
+	blackholeActive: boolean;
+	blackholeProgress: number;
+	blackholeCenterX: number;
+	blackholeCenterY: number;
 
 	smash: {
 		cooldown: number;

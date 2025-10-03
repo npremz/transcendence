@@ -7,6 +7,7 @@ export type Ball = {
 	vy: number;
 	radius: number;
 	lastPaddleHit: '' | 'left' | 'right';
+	bhSpeed?: number;
 };
 
 export type PowerUp = {
@@ -15,7 +16,7 @@ export type PowerUp = {
 	y: number;
 	radius: number;
 	expiresAt: number;
-	type: 'split' | 'blackout';
+	type: 'split' | 'blackout' | 'blackhole';
 };
 
 export type SmashSideState = {
@@ -49,6 +50,12 @@ export type GameState = {
 	blackoutRightEndsAt: number;
 	blackoutLeftIntensity: number;
 	blackoutRightIntensity: number;
+
+	blackholeActive: boolean;
+	blackholeStartAt: number;
+	blackholeEndsAt: number;
+	blackholeCenterX: number;
+	blackholeCenterY: number;
 
 	smash: {
 		left: SmashSideState;

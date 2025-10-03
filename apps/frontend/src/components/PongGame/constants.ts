@@ -11,6 +11,7 @@ export const COLORS = {
 	ballTrail: 'rgba(255, 255, 255, 0.5)',
 	powerUpSplit: '#FFD700',
 	powerUpBlackout: '#9B59B6',
+	powerUpBlackhole: '#20054bff',
 	net: '#FFFFFF',
 	text: '#FFFFFF'
 };
