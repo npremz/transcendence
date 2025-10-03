@@ -8,7 +8,7 @@ import type { Ball, GameState, Side } from "./types";
 import { clamp } from "./helpers";
 import { bounceOnWalls, checkPaddleCollision, resolveBallBallCollision } from "./physics";
 import { activateSplit, endSplit, pruneExpiredPowerUps, scheduleNextPowerUp, spawnPowerUp,
-	activateBlackout, updateBlackout } from "./powerups";
+	activateBlackout, updateBlackout, activateBlackhole, updateBlackhole } from "./powerups";
 import type { PublicState } from "../ws/messageTypes";
 
 const newBall = (vx: number, vy: number): Ball => ({
@@ -52,6 +52,11 @@ export class GameWorld {
 			blackoutRightEndsAt: 0,
 			blackoutLeftIntensity: 0,
 			blackoutRightIntensity: 0,
+			blackholeActive: false,
+			blackholeStartAt: 0,
+			blackholeEndsAt: 0,
+			blackholeCenterX: WORLD_WIDTH / 2,
+			blackholeCenterY: WORLD_HEIGHT / 2,
 			smash : {
 				left: {availableAt: 0, lastPressAt: -1e9, lastSmashAt: -1e9},
 				right: {availableAt: 0, lastPressAt: -1e9, lastSmashAt: -1e9}
@@ -122,6 +127,7 @@ export class GameWorld {
 		}
 		s.clock += dt;
 		updateBlackout(s, dt);
+		updateBlackhole(s, dt);
 		s.leftPaddle.y = clamp(s.leftPaddle.y + s.leftPaddle.intention * s.leftPaddle.speed * dt,
 			PADDLE_HEIGHT / 2, WORLD_HEIGHT - PADDLE_HEIGHT / 2);
 		s.rightPaddle.y = clamp(s.rightPaddle.y + s.rightPaddle.intention * s.rightPaddle.speed * dt,
@@ -156,6 +162,10 @@ export class GameWorld {
 					else if (pu.type === 'blackout')
 					{
 						activateBlackout(s, b);
+					}
+					else if (pu.type === 'blackhole')
+					{
+						activateBlackhole(s);
 					}
 					picked = true;
 					break;
@@ -259,6 +269,9 @@ export class GameWorld {
 
 	publicState(): PublicState {
 		const s = this.state;
+		const progress = s.blackholeActive ? 
+		Math.max(0, Math.min(1, 1 - (s.blackholeEndsAt - s.clock) / Math.max(1e-6, (s.blackholeEndsAt - s.blackholeStartAt)))) 
+		: 0;
 		return {
 			leftPaddle: {...s.leftPaddle},
 			rightPaddle: {...s.rightPaddle},
@@ -278,6 +291,10 @@ export class GameWorld {
 			blackoutRight: s.blackoutRight,
 			blackoutLeftIntensity: s.blackoutLeftIntensity,
 			blackoutRightIntensity: s.blackoutRightIntensity,
+			blackholeActive: s.blackholeActive,
+			blackholeProgress: progress,
+			blackholeCenterX: s.blackholeCenterX,
+			blackholeCenterY: s.blackholeCenterY,
 			smash: {
 				cooldown: SMASH_COOLDOWN,
 				animDuration: SMASH_ANIM_DURATION,

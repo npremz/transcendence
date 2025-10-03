@@ -1,7 +1,9 @@
 import { WORLD_WIDTH, WORLD_HEIGHT, POWERUP_MIN_DELAY_SEC,
 	POWERUP_EXTRA_RANDOM_SEC, POWERUP_LIFETIME_SEC, SPLIT_DURATION_SEC, 
 	POWERUP_RADIUS, MAX_BALLS_ON_FIELD, SPLIT_SPAWN_PER_PICKUP, SPLIT_SPREAD_DEG,
-	POWERUP_MAX_ON_SCREEN, BLACKOUT_DURATION_SEC, BLACKOUT_FADE_DURATION_SEC} from "./constants";
+	POWERUP_MAX_ON_SCREEN, BLACKOUT_DURATION_SEC, BLACKOUT_FADE_DURATION_SEC,
+	BLACKHOLE_DURATION_SEC, BLACKHOLE_PULL, BLACKHOLE_SWIRL, BALL_MAX_SPEED,
+	BALL_INITIAL_SPEED} from "./constants";
 import { length2, scheduleAfter } from "./helpers";
 import type { Ball, GameState } from "./types";
 
@@ -16,7 +18,8 @@ export const spawnPowerUp = (state: GameState) => {
 	{
 		return;
 	}
-	const type = Math.random() < 0.5 ? 'split' : 'blackout';
+	const types: Array<'split' | 'blackout' | 'blackhole'> = ['split', 'blackout', 'blackhole'];
+	const type = types[Math.floor(Math.random() * types.length)];
 	const margin = 150;
 	state.powerUps.push({
 		id: PU_ID++,
@@ -155,4 +158,73 @@ export const updateBlackout = (state: GameState, dt: number) => {
 			state.blackoutRightIntensity = 1;
 		}
 	}
+
 };
+
+export const activateBlackhole = (state: GameState) => {
+	state.blackholeActive = true;
+	state.blackholeStartAt = state.clock;
+	state.blackholeEndsAt = state.clock + BLACKHOLE_DURATION_SEC;
+	state.blackholeCenterX = WORLD_WIDTH / 2;
+	state.blackholeCenterY = WORLD_HEIGHT / 2;
+	for (const b of state.balls)
+	{
+		const sp = Math.max(1e-6, Math.hypot(b.vx, b.vy));
+		b.bhSpeed = sp > 1e-6 ? sp : BALL_INITIAL_SPEED;
+	}
+};
+
+export const updateBlackhole = (state: GameState, dt: number) => {
+	if (!state.blackholeActive)
+	{
+		return;
+	}
+
+	const cx = state.blackholeCenterX;
+	const cy = state.blackholeCenterY;
+	const progress = Math.max(0, Math.min(1, 1 - (state.blackholeEndsAt - state.clock) / BLACKHOLE_DURATION_SEC));
+	const pull = BLACKHOLE_PULL * (0.6 + 0.8 * progress);
+	const swirl = BLACKHOLE_SWIRL * (0.6 + 0.8 * progress);
+
+	for (const b of state.balls)
+	{
+		if (b.bhSpeed === undefined)
+		{
+			const sp0 = Math.max(1e-6, Math.hypot(b.vx, b.vy));
+			b.bhSpeed = sp0 > 1e-6 ? sp0 : BALL_INITIAL_SPEED;
+		}
+		const dx = cx - b.x;
+		const dy = cy - b.y;
+		const dist = Math.max(1e-3, Math.hypot(dx, dy));
+		const nx = dx / dist;
+		const ny = dy / dist;
+
+		const tx = -ny;
+		const ty = nx;
+
+		const ax = nx * pull + tx * swirl;
+		const ay = ny * pull + ty * swirl;
+
+		b.vx += ax * dt;
+		b.vy += ay * dt;
+
+		const target = b.bhSpeed!;
+		const cur = Math.max(1e-6, Math.hypot(b.vx, b.vy));
+		const k = target / cur;
+		b.vx *= k;
+		b.vy *= k;
+	}
+	if (state.clock >= state.blackholeEndsAt)
+	{
+		endBlackhole(state);
+	}
+};
+
+export const endBlackhole = (state: GameState) => {
+	for (const b of state.balls)
+	{
+		delete b.bhSpeed;
+	}
+	state.blackholeActive = false;
+	scheduleNextPowerUp(state);
+}
