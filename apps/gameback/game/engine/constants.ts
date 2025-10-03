@@ -21,11 +21,11 @@ export const POWERUP_RADIUS = 55;
 export const POWERUP_MIN_DELAY_SEC = 6;
 export const POWERUP_EXTRA_RANDOM_SEC = 6;
 export const POWERUP_LIFETIME_SEC = 9;
-export const SPLIT_DURATION_SEC = 10;
 export const POWERUP_MAX_ON_SCREEN = 5;
 
 export const MAX_BALLS_ON_FIELD = 10;
-export const SPLIT_SPAWN_PER_PICKUP = 2;
+export const SPLIT_DURATION_SEC = 10;
+export const SPLIT_SPAWN_PER_PICKUP = 1;
 export const SPLIT_SPREAD_DEG = 20;
 
 export const BLACKOUT_DURATION_SEC = 5;

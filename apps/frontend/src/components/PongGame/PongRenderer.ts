@@ -506,8 +506,6 @@ export class PongRenderer {
 				ctx.fillText('GAME OVER', W / 2, H / 2 - 40);
 				ctx.font = '36px monospace';
 				ctx.fillText(`${state.winner} wins`, W / 2, H / 2 + 10);
-				ctx.font = '24px monospace';
-				ctx.fillText('Click "Replay" to restart', W / 2, H / 2 + 60);
 			}
 		} 
 		else if (state.isPaused) 

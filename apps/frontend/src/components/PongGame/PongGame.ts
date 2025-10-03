@@ -6,12 +6,10 @@ import { PongInputHandler } from "./PongInput";
 import { PongParticleSystem } from "./PongParticles";
 import { PongAssets } from "./PongAssets";
 import { WORLD_HEIGHT } from "./constants";
-import { Button } from "../Button";
 
 export class PongGame implements Component {
 	private el: HTMLElement;
 	private canvas: HTMLCanvasElement;
-	private startBtn: HTMLButtonElement;
 
 	private net = new WSClient();
 	private renderer: PongRenderer;
@@ -35,6 +33,10 @@ export class PongGame implements Component {
 		blackoutRight: false,
 		blackoutLeftIntensity: 0,
 		blackoutRightIntensity: 0,
+		blackholeActive: false,
+		blackholeCenterX: 0,
+		blackholeCenterY: 0,
+		blackholeProgress: 0,
 		smash: {
 			cooldown: 0,
 			animDuration: 0.12,
@@ -58,13 +60,11 @@ export class PongGame implements Component {
 		this.el = element;
 
 		const canvas = this.el.querySelector('#pong-canvas') as HTMLCanvasElement | null;
-		const startBtn = this.el.querySelector('#startBtn') as HTMLButtonElement | null;
-		if (!canvas || !startBtn)
+		if (!canvas)
 		{
 			throw new Error('PongGame: canvas or button not found in the component.');
 		}
 		this.canvas = canvas;
-		this.startBtn = startBtn;
 
 		this.renderer = new PongRenderer(this.canvas, this.net);
 		this.input = new PongInputHandler(this.net);
@@ -159,10 +159,6 @@ export class PongGame implements Component {
 			{
                 this.handleTournamentGameOver(winner, tournamentId);
             }
-			else
-			{
-                this.startBtn.textContent = 'Replay';
-            }
 		};
 	}
 
@@ -213,7 +209,6 @@ export class PongGame implements Component {
     }
 
 	private setupEventHandlers(): void {
-		this.startBtn.addEventListener('click', this.handleStartClick);
 		window.addEventListener('resize', this.handleResize);
 		window.addEventListener('pong:togglePause', this.handleTogglePause);
 
@@ -301,7 +296,6 @@ export class PongGame implements Component {
 			this.animationFrameId = null;
 		}
 
-		this.startBtn.removeEventListener('click', this.handleStartClick);
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('pong:togglePause', this.handleTogglePause);
 
@@ -315,13 +309,6 @@ export function Pong(): string {
 	return `
 		<div class="container ml-auto mr-auto flex flex-col items-center" data-component="pong-game">
 			<canvas id="pong-canvas"></canvas>
-			${Button({
-				children: 'Start',
-				variant: 'danger',
-				size: 'lg',
-				className: 'font-bold',
-				id: 'startBtn'
-			})}
 		</div>
 	`;
 }
