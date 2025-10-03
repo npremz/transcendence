@@ -8,11 +8,19 @@ import { LoginView } from '../views/LoginView';
 import { CreateAccountView } from '../views/CreateAccountView';
 import { tournamentLogic, TournamentView } from '../views/TournamentView';
 import { BracketView, bracketLogic } from '../views/BracketView';
+import type { NavigationGuard } from './types';
+import {
+    logGuard,
+    tournamentExistsGuard,
+    roomExistsGuard
+} from './Guards'
 
 export class Router {
     private routes: Route[];
 	private currentCleanup: CleanupFunction | null = null;
     private componentManager: ComponentManager;
+    private currentRoute?: Route;
+    private globalBeforeEach?: NavigationGuard;
     
     constructor()
     {
@@ -21,6 +29,8 @@ export class Router {
         this.setupRoutes();
 		this.setupLinkInterception();
 		this.setupHistoryNavigation();
+
+        this.globalBeforeEach = logGuard;
     }
     
     private setupRoutes(): void
@@ -41,7 +51,10 @@ export class Router {
 		this.routes.push({
             path: '/game/:roomId',
             view: GameView,
-            title: 'Test'
+            title: 'Pong gaming',
+            beforeEnter: async (to, from, params) => {
+                return await roomExistsGuard(to, from, params);
+            },
         });
 
         this.routes.push({
@@ -55,7 +68,10 @@ export class Router {
             path: '/tournament/:id',
             view: BracketView,
             onMount: bracketLogic,
-            title: 'Tounament brackets'
+            title: 'Tounament brackets',
+            beforeEnter: async (to, from, params) => {
+                return await tournamentExistsGuard(to, from, params);
+            }
         });
 
 		this.routes.push({
@@ -140,12 +156,56 @@ export class Router {
         }
     }
     
-    public navigate(path: string, updateHistory: boolean = true): void {
+    public async navigate(path: string, updateHistory: boolean = true): Promise<void> {
         this.cleanup();
         
         const matchResult = this.findRoute(path);
         if (matchResult) {
             const { route, params } = matchResult;
+
+            if (this.globalBeforeEach)
+            {
+                const globalResult = await this.globalBeforeEach(
+                    route, 
+                    this.currentRoute, 
+                    params
+                );
+                
+                if (globalResult === false)
+                {
+                    console.log('Navigation unauthorized by global guard');
+                    return;
+                }
+                
+                if (typeof globalResult === 'string')
+                {
+                    console.log(`Global redirection to ${globalResult}`);
+                    this.navigateTo(globalResult);
+                    return;
+                }
+            }
+
+            if (route.beforeEnter)
+            {
+                const guardResult = await route.beforeEnter(
+                    route, 
+                    this.currentRoute, 
+                    params
+                );
+                
+                if (guardResult === false)
+                {
+                    console.log('Navigation unauthorized by local path guard');
+                    return;
+                }
+                
+                if (typeof guardResult === 'string')
+                {
+                    console.log(`Redirection by local path guard to ${guardResult}`);
+                    this.navigateTo(guardResult);
+                    return;
+                }
+            }
             
             const htmlContent = route.view(params);
             const app = document.getElementById('app');
@@ -167,6 +227,9 @@ export class Router {
                     this.currentCleanup = cleanup;
                 }
             }
+
+            this.currentRoute = route;
+
         } else {
             this.show404();
         }
@@ -213,5 +276,9 @@ export class Router {
     private show404(): void
     {
         document.getElementById('app')!.innerHTML = '<h1>Erm... This page does not exist.</h1>';
+    }
+
+    public setGlobalGuard(guard: NavigationGuard): void {
+        this.globalBeforeEach = guard;
     }
 }

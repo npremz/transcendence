@@ -12,6 +12,9 @@ export interface Room
 	players: Player[];
 	status: 'waiting' | 'playing' | 'finished';
 	createdAt: Date;
+	isTournament?: boolean;
+    tournamentId?: string;
+    matchId?: string;
 }
 
 export type RoomFinishedPayload =

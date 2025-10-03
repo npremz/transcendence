@@ -311,6 +311,7 @@ export class PongGame implements Component {
 }
 
 export function Pong(): string {
+	
 	return `
 		<div class="container ml-auto mr-auto flex flex-col items-center" data-component="pong-game">
 			<canvas id="pong-canvas"></canvas>

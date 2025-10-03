@@ -4,6 +4,7 @@ import { gsap } from "gsap";
 import { BackButton } from "../components/Button";
 
  export const GameView: ViewFunction = () => {
+
 	// Animation d'entrée
 	setTimeout(() => {
 		const tl = gsap.timeline();

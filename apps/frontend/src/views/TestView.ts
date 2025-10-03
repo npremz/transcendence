@@ -104,9 +104,9 @@ export const quickplayLogic = (): CleanupFunction => {
             
             if (data.status === 'ready') {
                 // Redirige vers le jeu
+                stopPolling();
                 sessionStorage.setItem('gameWsURL', data.gameServerURL);
                 window.router.navigate(`/game/${roomId}`);
-                stopPolling();
             }
         }, 2000); // Poll toutes les 2s
     };

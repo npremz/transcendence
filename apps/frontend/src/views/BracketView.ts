@@ -1,5 +1,6 @@
 import type { ViewFunction } from "../router/types"
 import { Header } from "../components/Header";
+import type { RouteParams } from "../router/types";
 
 interface Player
 {
@@ -58,8 +59,8 @@ export const BracketView: ViewFunction = () => {
 	`
 }
 
-export const bracketLogic = (params: { id: string }): (() => void) => {
-	const tournamentId = params.id;
+export const bracketLogic = (params: RouteParams | undefined): (() => void) => {
+	const tournamentId = params?.id;
 	const myPlayerId = window.simpleAuth.getPlayerId();
 
     const fetchTournamentData = async (): Promise<void> => {

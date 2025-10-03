@@ -8,6 +8,8 @@ import { safeParse } from "../ws/messageTypes";
 type Role = 'left' | 'right' | 'spectator';
 type Player = {id: string; username: string};
 
+const rooms = new Map<string, GameSession>();
+
 class GameSession {
 	private log?: FastifyBaseLogger;
 	private world = new GameWorld();
@@ -81,6 +83,10 @@ class GameSession {
 	}
 
 	private assignRole(ws: WebSocket, playerId?: string): Role {
+		if (!this.expected.left?.id && !this.expected.right?.id)
+		{
+			throw new Error("Invalid room: no players expected")
+		}
 		if (this.expected.left?.id || this.expected.right?.id) 
         {
             if (playerId && this.expected.left?.id === playerId && !this.leftCtrl)
@@ -176,33 +182,40 @@ class GameSession {
 				break;
 			}
 			case 'logIn':
-				const assRole = this.assignRole(ws, msg.id);
-				this.clients.add(ws);
-				this.roles.set(ws, assRole);
-
-				this.send(ws, {
-					type: 'welcome', 
-					side: assRole,
-					isTournament: this.isTournament,
-					tournamentId: this.tournamentId
-				});
-
-				this.log?.info({ roomId: this.roomId, assRole, clients: this.clients.size, playerId: msg.id }, 'client connected');
-				
-				const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
-				if (haveBoth && !this.hadBothCtrl)
+				try
 				{
-					if (this.world.state.isGameOver)
+					const assRole = this.assignRole(ws, msg.id);
+					this.clients.add(ws);
+					this.roles.set(ws, assRole);
+	
+					this.send(ws, {
+						type: 'welcome', 
+						side: assRole,
+						isTournament: this.isTournament,
+						tournamentId: this.tournamentId
+					});
+	
+					this.log?.info({ roomId: this.roomId, assRole, clients: this.clients.size, playerId: msg.id }, 'client connected');
+					
+					const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
+					if (haveBoth && !this.hadBothCtrl)
 					{
-						this.world.restart();
-						this.lastGameOver = false;
+						if (this.world.state.isGameOver)
+						{
+							this.world.restart();
+							this.lastGameOver = false;
+						}
+						else
+						{
+							this.world.startCountdown();
+						}
 					}
-					else
-					{
-						this.world.startCountdown();
-					}
+					this.hadBothCtrl = haveBoth;
 				}
-				this.hadBothCtrl = haveBoth;
+				catch (err)
+				{
+					this.send(ws, {type : 'error', message: 'no player expected for this room.'})
+				}
 				break;
 			case 'ping':
 				this.send(ws, {type: 'pong', t: msg.t});
@@ -443,12 +456,11 @@ class GameSession {
     }
 }
 
-const rooms = new Map<string, GameSession>();
-
 export const getSessionForRoom = (roomId: string, log?: FastifyBaseLogger) => {
     if (!rooms.has(roomId))
     {
-        rooms.set(roomId, new GameSession(roomId, log));
+        log?.warn(`Attempt to access non-existent room: ${roomId}`);
+        return null;
     }
     return (rooms.get(roomId)!);
 }
@@ -463,7 +475,10 @@ export const setMatchForRoom = (
 	},
 	log?: FastifyBaseLogger
 ) => {
-    const session = getSessionForRoom(roomId, log);
+    const session = new GameSession(roomId, log);
+	if (!session)
+		return null;
+	rooms.set(roomId, session);
     session.setPlayers(players, metadata);
     return session;
 }
