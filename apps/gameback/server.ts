@@ -34,6 +34,9 @@ type CreateBody = {
     roomId: string;
     player1: {id: string; username: string};
     player2: {id: string; username: string};
+	isTournament?: boolean;
+    tournamentId?: string;
+    matchId?: string;
 }
 
 fastify.post('/create', async (request, reply) => {
@@ -45,10 +48,19 @@ fastify.post('/create', async (request, reply) => {
         reply.code(400).send({success: false, error: 'Invalid payload'});
         return;
     }
-    setMatchForRoom(body.roomId, {
-        left: {id: body.player1.id, username: body.player1.username || 'p1'},
-        right: {id: body.player2.id, username: body.player2.username || 'p2'}
-    }, fastify.log);
+    setMatchForRoom(
+		body.roomId,
+		{
+			left: {id: body.player1.id, username: body.player1.username || 'p1'},
+			right: {id: body.player2.id, username: body.player2.username || 'p2'}
+		},
+		{
+			isTournament: body.isTournament,
+			tournamentId: body.tournamentId,
+			matchId: body.matchId
+		},
+		fastify.log
+	);
 
     reply.send({success: true});
 })

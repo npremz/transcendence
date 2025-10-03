@@ -5,12 +5,10 @@ import type { RoomFinishedPayload } from './types'
 import { v4 as uuidv4 } from 'uuid'
 import https from 'https'
 
-export const roomManager = new RoomManager()
-
 const isDevelopment = process.env.NODE_ENV === 'development'
 const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
 
-export function handleQuickPlay(fastify: FastifyInstance)
+export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManager)
 {
 	fastify.post('/join', async (request, reply) => {
 		const { username, playerId } = request.body as { username: string; playerId: string };

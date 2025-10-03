@@ -1,10 +1,13 @@
-import type { ClientMessage, ServerMessage, Match, Player, PlayerConnection, registration, Tournament } from "./types";
+import type { Match, Player, registration, Tournament } from "./types";
 import { v4 as uuidv4 } from 'uuid'
+import https from 'https'
+
+const isDevelopment = process.env.NODE_ENV === 'development'
+const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
 
 export class TournamentManager
 {
 	private tournaments = new Map<string, Tournament>()
-	private playerConnections = new Map<string, PlayerConnection>();
 
 	initTournaments(): void
 	{
@@ -49,51 +52,29 @@ export class TournamentManager
 		return tournament;
 	}
 
-    registerPlayer(tournamentId: string, newPlayer: Player): boolean
+	registerPlayer(tournamentId: string, newPlayer: Player): boolean
 	{
-        const tournament = this.tournaments.get(tournamentId);
-        if (!tournament || tournament.status !== 'registration') return false;
-        if (tournament.currentPlayers.length >= tournament.maxPlayers) return false;
+		const tournament = this.tournaments.get(tournamentId);
+		if (!tournament || tournament.status !== 'registration') return false;
+		if (tournament.currentPlayers.length >= tournament.maxPlayers) return false;
 
-        this.removePlayerFromOtherRegistrations(newPlayer.id, tournamentId);
+		this.removePlayerFromOtherRegistrations(newPlayer.id, tournamentId);
 
-        const isPlayerInTournament = tournament.currentPlayers.some(
-            player => player.id === newPlayer.id
-        );
-        
-        if (!isPlayerInTournament)
+		const isPlayerInTournament = tournament.currentPlayers.some(
+			player => player.id === newPlayer.id
+		);
+		
+		if (!isPlayerInTournament)
 		{
-            tournament.currentPlayers.push(newPlayer);
-        }
-
-        if (tournament.currentPlayers.length === tournament.maxPlayers)
-		{
-            this.startTournament(tournamentId);
-            this.notifyTournamentStart(tournamentId);
-        }
-
-        this.updateAllRegistrations();
-        return true;
-    }
-
-	removePlayerFromRegistration(playerId: string): boolean
-	{
-		for (const [_, tournament] of this.tournaments)
-		{
-			if (tournament.status === 'registration')
-			{
-				const playerIndex = tournament.currentPlayers.findIndex(p => p.id === playerId);
-				if (playerIndex !== -1)
-				{
-					tournament.currentPlayers.splice(playerIndex, 1);
-
-					console.log(`Player ${playerId} removed from tournament ${tournament.name}`);
-					this.updateAllRegistrations();
-					return true;
-				}
-			}
+			tournament.currentPlayers.push(newPlayer);
 		}
-		return false;
+
+		if (tournament.currentPlayers.length === tournament.maxPlayers)
+		{
+			this.startTournament(tournamentId);
+		}
+
+		return true;
 	}
 
 	removePlayerFromOtherRegistrations(playerId: string, excludeTournamentId: string): void
@@ -128,10 +109,6 @@ export class TournamentManager
 				}
 			}
 		}
-		if (removed)
-		{
-			this.updateAllRegistrations();
-		}
 		return removed;
 	}
 
@@ -163,77 +140,124 @@ export class TournamentManager
 		tournament.StartedAt = new Date();
 
 		this.createTournament(tournament.name, tournament.maxPlayers)
+		console.log(`Tournament ${tournament.name} started with ${tournament.currentPlayers.length} players`);
 
-		//this.startNextMatch(tournamentId);
+		this.startNextMatch(tournamentId);
 	}
 
 	async startNextMatch(tournamentId: string): Promise<void>
 	{
-		const tournament = this.tournaments.get(tournamentId)
+		const tournament = this.tournaments.get(tournamentId);
 		if (!tournament) return;
 
-		const nextMatch = tournament.bracket.find(m => {
+		const nextMatch = tournament.bracket.find(m => 
 			m.status === 'ready' &&
 			m.round === tournament.currentRound &&
 			m.player1 && m.player2
-		})
+		);
 
 		if (!nextMatch)
 		{
+			console.log(`No more matches ready in round ${tournament.currentRound}`);
 			this.checkRoundCompletion(tournamentId);
 			return;
 		}
 
 		try
 		{
-			const response = await fetch('https://localhost:8443/quickplay/tournament-match', {
+			const host = process.env.VITE_HOST || 'localhost:8443';
+			const endpoint = '/quickplay/tournament-match';
+			const url = `https://${host}${endpoint}`;
+
+			console.log(`Creating tournament match: ${nextMatch.player1?.username} vs ${nextMatch.player2?.username}`);
+
+			const response = await fetch(url, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json'},
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					matchId: nextMatch.id,
-					player1: nextMatch.player1,
-					player2: nextMatch.player2,
-					tournamentId: tournament.id
-				})
-			})
+					tournamentId: tournament.id,
+					player1: {
+						id: nextMatch.player1!.id,
+						username: nextMatch.player1!.username
+					},
+					player2: {
+						id: nextMatch.player2!.id,
+						username: nextMatch.player2!.username
+					}
+				}),
+				// @ts-ignore
+				agent
+			});
 
-			const { roomId } = await response.json();
-			nextMatch.roomId = roomId;
-			nextMatch.status = 'in_progress'
+			if (!response.ok)
+			{
+				throw new Error(`Failed to create match: ${response.statusText}`);
+			}
 
-			console.log(`Match started: ${nextMatch.player1?.username} vs ${nextMatch.player2?.username}`)
-			this.notifyPlayers(nextMatch, {type: 'match_ready'});
+			const data = await response.json();
+			
+			nextMatch.roomId = data.roomId;
+			nextMatch.status = 'in_progress';
+			nextMatch.scheduledAt = new Date();
+
+			console.log(`Match started successfully: roomId=${data.roomId}`);
 		}
 		catch (err)
 		{
-			console.error('Failed to create  tournament match:', err);
+			console.error('Failed to create tournament match:', err);
+			setTimeout(() => this.startNextMatch(tournamentId), 5000);
 		}
 	}
 
 	onMatchFinished(matchId: string, winnerId: string): void
 	{
 		const match = this.findMatchById(matchId);
-		if (match === null) return;
+		if (!match)
+		{
+			console.error(`Match ${matchId} not found`);
+			return;
+		}
 
-		const tournament = this.tournaments.get(match.tournamentId)
-		if (!tournament) return;
+		const tournament = this.tournaments.get(match.tournamentId);
+		if (!tournament)
+		{
+			console.error(`Tournament ${match.tournamentId} not found`);
+			return;
+		}
 
-		match.winner = match.player1?.id === winnerId ? match.player1 : match.player2
-		match.status = 'finished'
+		match.winner = match.player1?.id === winnerId ? match.player1 : match.player2;
+		match.status = 'finished';
 		match.finishedAt = new Date();
 
-		console.log(`Match finished: ${match.winner?.username} wins!`)
+		console.log(`Match finished: ${match.winner?.username} wins!`);
+
+		const loser = match.player1?.id === winnerId ? match.player2 : match.player1;
+		if (loser) {
+			const loserInTournament = tournament.currentPlayers.find(p => p.id === loser.id);
+			if (loserInTournament) {
+				loserInTournament.isEleminated = true;
+			}
+		}
 
 		this.checkRoundCompletion(match.tournamentId);
 	}
 
-	checkRoundCompletion(tournamentId: string): void
-	{
-		const tournament = this.tournaments.get(tournamentId)
+	checkRoundCompletion(tournamentId: string): void {
+		const tournament = this.tournaments.get(tournamentId);
 		if (!tournament) return;
 
 		const currentRoundMatches = tournament.bracket.filter(m => m.round === tournament.currentRound);
 		const finishedMatches = currentRoundMatches.filter(m => m.status === 'finished');
+		const inProgressMatches = currentRoundMatches.filter(m => m.status === 'in_progress');
+
+		console.log(`Round ${tournament.currentRound} status: ${finishedMatches.length}/${currentRoundMatches.length} finished, ${inProgressMatches.length} in progress`);
+
+		if (inProgressMatches.length > 0)
+		{
+			console.log('Waiting for matches to finish...');
+			return;
+		}
 
 		if (finishedMatches.length === currentRoundMatches.length)
 		{
@@ -244,197 +268,55 @@ export class TournamentManager
 				tournament.finishedAt = new Date();
 
 				console.log(`Tournament finished! Winner: ${tournament.winner?.username}`);
-				this.notifyTournamentEnd(tournament);
-				return
+				return;
 			}
 
+			console.log(`Creating round ${tournament.currentRound + 1}`);
 			this.createNextRound(tournament, finishedMatches);
+			
+			this.startNextMatch(tournamentId);
 		}
-
-		this.startNextMatch(tournamentId);
-	}
-
-	createNextRound(tournament: Tournament, previousMatches: Match[]): void
-	{
-		const nextRound = tournament.currentRound + 1;
-		const winners = previousMatches.map(m => m.winner!).filter(Boolean)
-
-		const nextRoundMatches: Match[] = [];
-		for (let i = 0; i < winners.length; i += 2)
+		else
 		{
-			if (winners[i + 1])
-			{
-				const match: Match = {
-					id: uuidv4(),
-					tournamentId: tournament.id,
-					round: nextRound,
-					position: Math.floor(i / 2),
-					player1: winners[i],
-					player2: winners[i + 1],
-					status: 'ready'
-				};
-				nextRoundMatches.push(match)
-			}
+			this.startNextMatch(tournamentId);
 		}
-
-		tournament.bracket.push(...nextRoundMatches);
-		tournament.currentRound = nextRound;
-
-		console.log(`Round ${nextRound} created with ${nextRoundMatches.length} matches`);
 	}
 
-    notifyTournamentEnd(tournament: Tournament): void
-	{
-        const message = { type: 'tournamentEnd', winner: `${tournament.winner?.username}` };
-        
-        tournament.currentPlayers.forEach(player => {
-            const connection = this.getPlayerConnection(player.id);
-            if (connection && connection.ws.readyState === connection.ws.OPEN)
-			{
-                try
-				{
-                    connection.ws.send(JSON.stringify(message));
-                }
-				catch (err)
-				{
-                    console.error("Error notifying player:", err);
-                }
-            }
-        });
-    }
+	createNextRound(tournament: Tournament, previousMatches: Match[]): void {
+        const nextRound = tournament.currentRound + 1;
+        const winners = previousMatches.map(m => m.winner!).filter(Boolean);
 
-    notifyPlayers(match: Match, message: object): void
-	{
-        if (match.player1)
+        const nextRoundMatches: Match[] = [];
+        for (let i = 0; i < winners.length; i += 2)
 		{
-            const connection1 = this.getPlayerConnection(match.player1.id);
-            if (connection1 && connection1.ws.readyState === connection1.ws.OPEN)
+            if (winners[i + 1])
 			{
-                try
-				{
-                    connection1.ws.send(JSON.stringify(message));
-                }
-				catch (err)
-				{
-                    console.error("Error notifying player1:", err);
-                }
+                const match: Match = {
+                    id: uuidv4(),
+                    tournamentId: tournament.id,
+                    round: nextRound,
+                    position: Math.floor(i / 2),
+                    player1: winners[i],
+                    player2: winners[i + 1],
+                    status: 'ready'
+                };
+                nextRoundMatches.push(match);
             }
         }
 
-        if (match.player2)
-		{
-            const connection2 = this.getPlayerConnection(match.player2.id);
-            if (connection2 && connection2.ws.readyState === connection2.ws.OPEN)
-			{
-                try
-				{
-                    connection2.ws.send(JSON.stringify(message));
-                }
-				catch (err)
-				{
-                    console.error("Error notifying player2:", err);
-                }
-            }
+        tournament.bracket.push(...nextRoundMatches);
+        tournament.currentRound = nextRound;
+
+        console.log(`Round ${nextRound} created with ${nextRoundMatches.length} matches`);
+    }
+
+	findMatchById(id: string): Match | null
+	{
+        for (const tournament of this.tournaments.values()) {
+            const match = tournament.bracket.find(m => m.id === id);
+            if (match) return match;
         }
-    }
-
-	notifyTournamentStart(tournamentId: string): void
-	{
-        const tournament = this.tournaments.get(tournamentId);
-        if (!tournament) return;
-
-        const message = {
-            type: 'tournament_started',
-            tournamentId: tournamentId
-        };
-
-        console.log(`Notifying ${tournament.currentPlayers.length} players that tournament ${tournament.name} has started`);
-
-        tournament.currentPlayers.forEach(player => {
-            const connection = this.getPlayerConnection(player.id);
-            if (connection && connection.ws.readyState === connection.ws.OPEN)
-			{
-                try
-				{
-                    connection.ws.send(JSON.stringify(message));
-                }
-				catch (err)
-				{
-                    console.error(`Error notifying player ${player.username}:`, err);
-                }
-            }
-        });
-	}
-
-    updateAllRegistrations(): void
-	{
-        const registrations = this.getCurrentRegistrations();
-        const updateMsg: ServerMessage = { type: 'update', registrations };
-
-        this.tournaments.forEach(tournament => {
-            if (tournament.status === 'registration')
-			{
-                tournament.currentPlayers.forEach(player => {
-                    const connection = this.getPlayerConnection(player.id);
-                    if (connection && connection.ws.readyState === connection.ws.OPEN)
-					{
-                        try
-						{
-                            connection.ws.send(JSON.stringify(updateMsg));
-                        }
-						catch (err)
-						{
-                            console.error("Error updating player:", err);
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-	findMatchById(id: string) : Match | null
-	{
-		let match: Match | undefined;
-		this.tournaments.forEach(tournament => {
-			match = tournament.bracket.find(m => {
-				m.id === id;
-			})
-		})
-
-		if (match != undefined)
-			return match
-		return null;
-	}
-
-	cleanupClosedConnections(): void
-	{
-        for (const [playerId, connection] of this.playerConnections)
-		{
-            if (connection.ws.readyState === connection.ws.CLOSED)
-			{
-                this.playerConnections.delete(playerId);
-                console.log(`Cleaned up closed connection for player ${playerId}`);
-            }
-        }
-    }
-
-	setPlayerConnection(playerId: string, ws: WebSocket): void
-	{
-		this.playerConnections.set(playerId, {
-			playerId,
-			ws,
-			connectedAt: new Date()
-		});
-    }
-
-    removePlayerConnection(playerId: string): void
-	{
-        this.playerConnections.delete(playerId);
-    }
-
-    getPlayerConnection(playerId: string): PlayerConnection | undefined
-	{
-        return this.playerConnections.get(playerId);
+        return null;
     }
 
 	getTournamentBrackets(tournamentId: string): Match[] | null

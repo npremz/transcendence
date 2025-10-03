@@ -21,14 +21,3 @@ export type RoomFinishedPayload =
 	winner?: Player | null;
 	score?: { left: number; right: number };
 };
-
-export type ClientMessage = 
-	| { type : 'join_quickplay'; username: string }
-	| { type : 'player_ready' }
-	| { type : 'player_input' ; input: any};
-
-export type ServerMessage = 
-	| { type: 'waiting_for_opponent' }
-	| { type: 'game_start'; roomId: string; playerNumber: 1 | 2 }
-	| { type: 'opponent_disconnected' }
-	| { type: 'error'; message: string }

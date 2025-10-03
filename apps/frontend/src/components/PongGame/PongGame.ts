@@ -66,7 +66,7 @@ export class PongGame implements Component {
 		this.canvas = canvas;
 		this.startBtn = startBtn;
 
-		this.renderer = new PongRenderer(this.canvas);
+		this.renderer = new PongRenderer(this.canvas, this.net);
 		this.input = new PongInputHandler(this.net);
 		this.particles = new PongParticleSystem();
 		this.assets = new PongAssets();
@@ -148,13 +148,21 @@ export class PongGame implements Component {
 			this.state.countdownValue = v;
 		};
 
-		this.net.onGameOver = () => {
-			this.startBtn.textContent = 'Replay';
+		this.net.onGameOver = (winner, isTournament, tournamentId) => {
+			console.log('Game Over!', {winner, isTournament, tournamentId});
 			this.particles.createExplosion(
 				this.canvas.width / 2,
 				this.canvas.height / 2,
 				30
 			);
+			if (isTournament && tournamentId)
+			{
+                this.handleTournamentGameOver(winner, tournamentId);
+            }
+			else
+			{
+                this.startBtn.textContent = 'Replay';
+            }
 		};
 	}
 
@@ -185,6 +193,24 @@ export class PongGame implements Component {
 		
 		shake();
 	}
+	private handleTournamentGameOver(winner: 'left' | 'right', tournamentId: string) {
+        const amILeft = this.net.side === 'left';
+        const didIWin = (amILeft && winner === 'left') || (!amILeft && winner === 'right');
+
+        this.state.isGameOver = true;
+        this.state.winner = winner;
+
+        const message = didIWin 
+            ? 'Victoire ! Redirection vers les brackets...' 
+            : 'Défaite... Redirection vers les brackets...';
+        
+        console.log(message);
+
+        setTimeout(() => {
+			sessionStorage.removeItem('gameWsURL');
+            window.location.href = `/tournament/${tournamentId}`;
+        }, 3000);
+    }
 
 	private setupEventHandlers(): void {
 		this.startBtn.addEventListener('click', this.handleStartClick);

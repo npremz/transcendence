@@ -1,27 +1,44 @@
 import type { ViewFunction } from "../router/types"
 import { Header } from "../components/Header";
 
-interface Match {
-    id: string;
-    tournamentId: string;
-    round: number;
-    position: number;
-    player1?: { id: string; username: string; };
-    player2?: { id: string; username: string; };
-    winner?: { id: string; username: string; };
-    status: 'pending' | 'ready' | 'in_progress' | 'finished';
+interface Player
+{
+	id: string;
+	username: string;
+	currentTournament?: string;
+	isEleminated: boolean;
 }
 
-interface Tournament {
+interface Match
+{
     id: string;
-    name: string;
-    status: 'registration' | 'in_progress' | 'finished';
-    maxPlayers: number;
-    currentPlayers: any[];
-    bracket: Match[];
-    currentRound: number;
-    winner?: { id: string; username: string; };
+	tournamentId: string;
+	round: number;
+	position: number;
+	player1?: Player;
+	player2?: Player;
+	winner?: Player;
+	roomId?: string;
+	status: 'pending' | 'ready' | 'in_progress' | 'finished';
+	scheduledAt?: Date;
+	finishedAt?: Date;
 }
+
+interface Tournament
+{
+	id: string;
+	name: string;
+	status: 'registration' | 'in_progress' | 'finished';
+	maxPlayers: number;
+	currentPlayers: Player[];
+	bracket: Match[];
+	currentRound: number;
+	winner?: Player;
+	createdAt: Date;
+	StartedAt?: Date;
+	finishedAt?: Date;
+}
+
 
 export const BracketView: ViewFunction = () => {
 	return `
@@ -43,28 +60,54 @@ export const BracketView: ViewFunction = () => {
 
 export const bracketLogic = (params: { id: string }): (() => void) => {
 	const tournamentId = params.id;
+	const myPlayerId = window.simpleAuth.getPlayerId();
 
     const fetchTournamentData = async (): Promise<void> => {
-        try {
+        try
+		{
             const host = import.meta.env.VITE_HOST || 'localhost:8443';
-            const response = await fetch(`https://${host}/tournamentback/tournament/${tournamentId}`, {
+            const response = await fetch(`https://${host}/tournamentback/tournaments/${tournamentId}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
                 }
             });
 
-            if (!response.ok) {
+            if (!response.ok)
+			{
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const tournament: Tournament = await response.json();
-			console.log(tournament)
+            const data = await response.json();
+            const tournament = data.tournament;
+            
             displayTournament(tournament);
             
-        } catch (error) {
+            checkIfMyTurn(tournament);
+        }
+		catch (error)
+		{
             console.error('Erreur lors de la récupération du tournoi:', error);
             showError();
+        }
+    };
+
+	const checkIfMyTurn = (tournament: Tournament): void => {
+        const myMatch = tournament.bracket.find(match => 
+            match.status === 'in_progress' &&
+            (match.player1?.id === myPlayerId || match.player2?.id === myPlayerId)
+        );
+
+        if (myMatch && myMatch.roomId)
+		{
+            console.log('Mon match est prêt ! Redirection...');
+            
+            const host = import.meta.env.VITE_HOST;
+            const endpoint = import.meta.env.VITE_GAME_ENDPOINT;
+            const wsUrl = `wss://${host}${endpoint}/${myMatch.roomId}`;
+            sessionStorage.setItem('gameWsURL', wsUrl);
+            
+            window.location.href = `/game/${myMatch.roomId}`;
         }
     };
 
@@ -191,7 +234,7 @@ export const bracketLogic = (params: { id: string }): (() => void) => {
 
     fetchTournamentData();
 
-    const pollInterval = setInterval(fetchTournamentData, 5000);
+    const pollInterval = setInterval(fetchTournamentData, 2000);
 
 	// === FONCTION DE CLEANUP ===
 	return (): void => {
