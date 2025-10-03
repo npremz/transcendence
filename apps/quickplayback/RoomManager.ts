@@ -38,6 +38,28 @@ export class RoomManager
 		return newRoom
 	}
 
+	public createTournamentRoom(
+        roomId: string, 
+        player1: Player, 
+        player2: Player,
+        tournamentId: string,
+        matchId: string
+    ): Room {
+        const room: Room = {
+            id: roomId,
+            players: [player1, player2],
+            status: 'playing',
+            createdAt: new Date(),
+            isTournament: true,
+            tournamentId,
+            matchId
+        };
+
+        this.rooms.set(room.id, room);
+        console.log(`Tournament room ${roomId} created for match ${matchId}`);
+        return room;
+    }
+
 	public deleteRoom(roomId: string): boolean
 	{
 		const room = this.rooms.get(roomId);

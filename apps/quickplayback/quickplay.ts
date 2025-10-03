@@ -71,13 +71,23 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 			const baseGameWs = `wss://${host || 'localhost:8443'}${game_endpoint || '/gameback/game'}/${roomId}`;
 			
 			return {
+				success: true,
 				status: 'ready',
 				roomId,
-				gameServerURL: `${baseGameWs}`
+				gameServerURL: baseGameWs,
+				players: room.players.length,
+				isTournament: room.isTournament || false,
+				tournamentId: room.tournamentId,
+				matchId: room.matchId
 			};
 		}
 
-		return { status: room.status, players: room.players.length };
+		return { 
+			success: true,
+			status: room.status, 
+			players: room.players.length,
+			maxPlayers: 2
+		};
 	});
 
 	fastify.post('/room-finished', (request, reply) => {

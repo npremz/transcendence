@@ -27,6 +27,14 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
 
 		try
 		{
+			const room = roomManager.createTournamentRoom(
+                roomId,
+                { id: player1.id, username: player1.username, isReady: true },
+                { id: player2.id, username: player2.username, isReady: true },
+                tournamentId,
+                matchId
+            );
+
 			const host = process.env.VITE_HOST || 'localhost:8443';
 			const create_endpoint = process.env.VITE_CREATEGAME_ENDPOINT || '/gameback/create';
 			const fetchURL = `https://${host}${create_endpoint}`;

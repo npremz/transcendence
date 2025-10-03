@@ -7,5 +7,11 @@ export const handleGame = (conn: WebSocket, _req: FastifyRequest, fastify: Fasti
     const {roomId} = (_req.params ?? {}) as {roomId?: string};
 
     const room = getSessionForRoom(roomId || '', fastify.log);
+    if (!room)
+    {
+        fastify.log.warn(`Closing connection to invalid room: ${roomId}`);
+        conn.close(1008, 'Room does not exist');
+        return;
+    }
     room.addClient(conn);
 }
