@@ -37,7 +37,6 @@ export class GameWorld {
 			isGameOver: false,
             isTimeoutLeft: false,
             isTimeoutRight: false,
-            isTimeoutBoth: false,
 			winner: '',
 			clock: 0,
 			countdownValue: 0,
@@ -97,11 +96,6 @@ export class GameWorld {
 		{
 			this.startCountdown();
 		}
-	}
-
-	restart() {
-		this.state = this._freshState();
-		this.startCountdown();
 	}
 
 	update(dt: number) {
@@ -281,7 +275,6 @@ export class GameWorld {
 			isGameOver: s.isGameOver,
             isTimeoutLeft: s.isTimeoutLeft,
             isTimeoutRight: s.isTimeoutRight,
-            isTimeoutBoth: s.isTimeoutBoth,
 			winner: s.winner,
 			countdownValue: s.countdownValue,
 			powerUps: s.powerUps.map(({x, y, radius, type}) => ({x, y, radius, type})),

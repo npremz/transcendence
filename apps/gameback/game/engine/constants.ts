@@ -34,7 +34,6 @@ export const BLACKOUT_FADE_DURATION_SEC = 0.5;
 export const BLACKHOLE_DURATION_SEC = 8;
 export const BLACKHOLE_PULL = 1000;
 export const BLACKHOLE_SWIRL = 0;
-export const BLACKHOLE_DRAG = 0;
 
 export const SMASH_COOLDOWN = 3;
 export const SMASH_TIMING_WINDOW = 0.2;

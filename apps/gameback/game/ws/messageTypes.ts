@@ -27,7 +27,6 @@ export type PublicState = {
 	isGameOver: boolean;
     isTimeoutLeft: boolean;
     isTimeoutRight: boolean;
-    isTimeoutBoth: boolean;
 	winner: '' | 'left' | 'right' | 'nobody';
 	countdownValue: number;
 	powerUps: {x: number; y: number; radius: number; type: 'split' | 'blackout' | 'blackhole'}[];

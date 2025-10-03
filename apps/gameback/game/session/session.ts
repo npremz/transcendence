@@ -162,23 +162,6 @@ class GameSession {
 					this.send(ws, {type: 'error', message: 'Spectators can\'t resume the game'});
 					break;
 				}
-				if (this.world.state.isGameOver)
-				{
-					if (this.leftCtrl && this.rightCtrl)
-					{
-						this.world.restart();
-						this.lastGameOver = false;
-						this.broadcast({type: 'resumed'});
-					}
-					else
-					{
-						this.send(ws, {type: 'error', message: 'Two players required'});
-					}
-				}
-				else
-				{
-					this.world.resume();
-				}
 				break;
 			}
 			case 'logIn':
@@ -200,15 +183,7 @@ class GameSession {
 					const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
 					if (haveBoth && !this.hadBothCtrl)
 					{
-						if (this.world.state.isGameOver)
-						{
-							this.world.restart();
-							this.lastGameOver = false;
-						}
-						else
-						{
-							this.world.startCountdown();
-						}
+						this.world.startCountdown();
 					}
 					this.hadBothCtrl = haveBoth;
 				}
@@ -415,10 +390,10 @@ class GameSession {
 					this.destroy();
 					return;
 				}
+			}
 			else
 			{
 				this.emptySince = null;
-			}
 			}
 		}, Math.round(1000 / BROADCAST_HZ));
 	}
