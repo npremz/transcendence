@@ -25,6 +25,117 @@ export class PongParticleSystem {
 		}
 	}
 
+	createGoalExplosion(x: number, y: number, ballVx: number, ballVy: number): void {
+		const speed = Math.hypot(ballVx, ballVy);
+		const dirX = speed > 0 ? ballVx / speed : 1;
+		const dirY = speed > 0 ? ballVy / speed : 0;
+
+		const mainAngle = Math.atan2(dirY, dirX);
+		
+		for (let i = 0; i < 80; i++) 
+		{
+			const angleVariation = (Math.random() - 0.5) * Math.PI * 0.15;
+			const angle = mainAngle + angleVariation;
+			
+			const particleSpeed = 12 + Math.random() * 15;
+			const size = 4 + Math.random() * 6;
+			
+			this.particles.push({
+				x,
+				y,
+				vx: Math.cos(angle) * particleSpeed,
+				vy: Math.sin(angle) * particleSpeed,
+				life: 1.0,
+				size: size,
+				color: '#FFFFFF'
+			});
+		}
+
+		for (let i = 0; i < 60; i++) 
+		{
+			const angleVariation = (Math.random() - 0.5) * Math.PI * 0.25;
+			const angle = mainAngle + angleVariation;
+			const particleSpeed = 8 + Math.random() * 12;
+			
+			this.particles.push({
+				x,
+				y,
+				vx: Math.cos(angle) * particleSpeed,
+				vy: Math.sin(angle) * particleSpeed,
+				life: 1.0,
+				size: 3 + Math.random() * 5,
+				color: '#FFFFFF'
+			});
+		}
+
+		for (let i = 0; i < 40; i++) 
+		{
+			const angleVariation = (Math.random() - 0.5) * Math.PI * 0.4;
+			const angle = mainAngle + angleVariation;
+			const particleSpeed = 5 + Math.random() * 8;
+			
+			this.particles.push({
+				x,
+				y,
+				vx: Math.cos(angle) * particleSpeed,
+				vy: Math.sin(angle) * particleSpeed,
+				life: 0.9,
+				size: 2 + Math.random() * 4,
+				color: '#FFFFFF'
+			});
+		}
+
+		for (let i = 0; i < 15; i++) 
+		{
+			const angleVariation = (Math.random() - 0.5) * Math.PI * 0.2;
+			const angle = mainAngle + angleVariation;
+			const particleSpeed = 10 + Math.random() * 12;
+			
+			this.particles.push({
+				x,
+				y,
+				vx: Math.cos(angle) * particleSpeed,
+				vy: Math.sin(angle) * particleSpeed,
+				life: 1.0,
+				size: 8 + Math.random() * 10,
+				color: '#FFFFFF'
+			});
+		}
+
+		const starCount = 12;
+		for (let i = 0; i < starCount; i++) 
+		{
+			const angle = (Math.PI * 2 * i) / starCount;
+			const particleSpeed = 8 + Math.random() * 6;
+			
+			this.particles.push({
+				x,
+				y,
+				vx: Math.cos(angle) * particleSpeed,
+				vy: Math.sin(angle) * particleSpeed,
+				life: 0.6,
+				size: 5 + Math.random() * 5,
+				color: '#FFFFFF'
+			});
+		}
+
+		for (let i = 0; i < 30; i++) 
+		{
+			const angle = Math.random() * Math.PI * 2;
+			const particleSpeed = Math.random() * 3;
+			
+			this.particles.push({
+				x,
+				y,
+				vx: Math.cos(angle) * particleSpeed,
+				vy: Math.sin(angle) * particleSpeed,
+				life: 1.2,
+				size: 1 + Math.random() * 3,
+				color: '#FFFFFF'
+			});
+		}
+	}
+
 	createTrail(x: number, y: number, vx: number, vy: number): void {
 		const speed = Math.hypot(vx, vy);
 		if (speed < TRAIL_THRESHOLD)

@@ -15,6 +15,7 @@ export type PowerUp = {
 	y: number;
 	radius: number;
 	expiresAt: number;
+	type: 'split' | 'blackout';
 };
 
 export type SmashSideState = {
@@ -41,6 +42,13 @@ export type GameState = {
 	nextPowerUpAt: number;
 	splitActive: boolean;
 	splitEndsAt: number;
+
+	blackoutLeft: boolean;
+	blackoutRight: boolean;
+	blackoutLeftEndsAt: number;
+	blackoutRightEndsAt: number;
+	blackoutLeftIntensity: number;
+	blackoutRightIntensity: number;
 
 	smash: {
 		left: SmashSideState;

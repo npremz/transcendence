@@ -7,7 +7,8 @@ import {
 import type { Ball, GameState, Side } from "./types";
 import { clamp } from "./helpers";
 import { bounceOnWalls, checkPaddleCollision, resolveBallBallCollision } from "./physics";
-import { activateSplit, endSplit, pruneExpiredPowerUps, scheduleNextPowerUp, spawnPowerUp } from "./powerups";
+import { activateSplit, endSplit, pruneExpiredPowerUps, scheduleNextPowerUp, spawnPowerUp,
+	activateBlackout, updateBlackout } from "./powerups";
 import type { PublicState } from "../ws/messageTypes";
 
 const newBall = (vx: number, vy: number): Ball => ({
@@ -45,6 +46,12 @@ export class GameWorld {
 			nextPowerUpAt: 5 + Math.random() * 10,
 			splitActive: false,
 			splitEndsAt: 0,
+			blackoutLeft: false,
+			blackoutRight: false,
+			blackoutLeftEndsAt: 0,
+			blackoutRightEndsAt: 0,
+			blackoutLeftIntensity: 0,
+			blackoutRightIntensity: 0,
 			smash : {
 				left: {availableAt: 0, lastPressAt: -1e9, lastSmashAt: -1e9},
 				right: {availableAt: 0, lastPressAt: -1e9, lastSmashAt: -1e9}
@@ -114,7 +121,7 @@ export class GameWorld {
 			return;
 		}
 		s.clock += dt;
-
+		updateBlackout(s, dt);
 		s.leftPaddle.y = clamp(s.leftPaddle.y + s.leftPaddle.intention * s.leftPaddle.speed * dt,
 			PADDLE_HEIGHT / 2, WORLD_HEIGHT - PADDLE_HEIGHT / 2);
 		s.rightPaddle.y = clamp(s.rightPaddle.y + s.rightPaddle.intention * s.rightPaddle.speed * dt,
@@ -142,7 +149,14 @@ export class GameWorld {
 				if (Math.hypot(dx, dy) <= b.radius + pu.radius)
 				{
 					s.powerUps.splice(i, 1);
-					activateSplit(s, b);
+					if (pu.type === 'split')
+					{
+						activateSplit(s, b);
+					}
+					else if (pu.type === 'blackout')
+					{
+						activateBlackout(s, b);
+					}
 					picked = true;
 					break;
 				}
@@ -257,9 +271,13 @@ export class GameWorld {
             isTimeoutBoth: s.isTimeoutBoth,
 			winner: s.winner,
 			countdownValue: s.countdownValue,
-			powerUps: s.powerUps.map(({x, y, radius}) => ({x, y, radius})),
+			powerUps: s.powerUps.map(({x, y, radius, type}) => ({x, y, radius, type})),
 			splitActive: s.splitActive,
 			clock: s.clock,
+			blackoutLeft: s.blackoutLeft,
+			blackoutRight: s.blackoutRight,
+			blackoutLeftIntensity: s.blackoutLeftIntensity,
+			blackoutRightIntensity: s.blackoutRightIntensity,
 			smash: {
 				cooldown: SMASH_COOLDOWN,
 				animDuration: SMASH_ANIM_DURATION,

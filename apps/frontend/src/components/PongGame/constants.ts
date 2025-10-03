@@ -9,10 +9,11 @@ export const COLORS = {
 	paddle: '#FFFFFF',
 	ball: '#FFFFFF',
 	ballTrail: 'rgba(255, 255, 255, 0.5)',
-	powerUp: '#FFD700',
+	powerUpSplit: '#FFD700',
+	powerUpBlackout: '#9B59B6',
 	net: '#FFFFFF',
 	text: '#FFFFFF'
 };
 
 export const BALL_MAX_SPEED = 1500;
-export const TRAIL_THRESHOLD = 1400;
+export const TRAIL_THRESHOLD = 800;

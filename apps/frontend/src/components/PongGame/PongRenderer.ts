@@ -54,11 +54,13 @@ export class PongRenderer {
 		const ctx = this.ctx;
 		const W = WORLD_WIDTH;
 		const H = WORLD_HEIGHT;
+		const shouldBlackout = (side === 'left' && state.blackoutLeft) || (side === 'right' && state.blackoutRight);
+		const blackoutIntensity = side === 'left' ? state.blackoutLeftIntensity : side === 'right' ? state.blackoutRightIntensity : 0;
 
 		ctx.fillStyle = COLORS.background;
 		ctx.fillRect(0, 0, W, H);
 
-		ctx.strokeStyle = COLORS.net;
+		ctx.strokeStyle = shouldBlackout ? `rgba(255, 255, 255, ${0.1 * (1 - blackoutIntensity)})` : COLORS.net;
 		ctx.setLineDash([10, 10]);
 		ctx.lineWidth = 2;
 		ctx.beginPath();
@@ -70,23 +72,33 @@ export class PongRenderer {
 		const leftX = PADDLE_MARGIN + smashOffsetX('left');
 		const rightX = W - PADDLE_MARGIN - PADDLE_WIDTH + smashOffsetX('right');
 
-		ctx.fillStyle = COLORS.paddle;
-		ctx.fillRect(
-			leftX,
-			state.leftPaddle.y - PADDLE_HEIGHT / 2,
-			PADDLE_WIDTH,
-			PADDLE_HEIGHT
-		);
-		ctx.fillRect(
-			rightX,
-			state.rightPaddle.y - PADDLE_HEIGHT / 2,
-			PADDLE_WIDTH,
-			PADDLE_HEIGHT
-		);
-
-		for (const powerUp of state.powerUps) 
+		if (!shouldBlackout || side === 'left')
 		{
-			this.drawPowerUp(ctx, powerUp.x, powerUp.y, powerUp.radius, state.clock);
+			ctx.fillStyle = COLORS.paddle;
+			ctx.fillRect(
+				leftX,
+				state.leftPaddle.y - PADDLE_HEIGHT / 2,
+				PADDLE_WIDTH,
+				PADDLE_HEIGHT
+			);
+		}
+		if (!shouldBlackout || side === 'right')
+		{
+			ctx.fillStyle = COLORS.paddle;
+			ctx.fillRect(
+				rightX,
+				state.rightPaddle.y - PADDLE_HEIGHT / 2,
+				PADDLE_WIDTH,
+				PADDLE_HEIGHT
+			);
+		}
+
+		if (!shouldBlackout)
+		{
+			for (const powerUp of state.powerUps) 
+			{
+				this.drawPowerUp(ctx, powerUp.x, powerUp.y, powerUp.radius, state.clock, powerUp.type);
+			}
 		}
 
 		particles.render(ctx);
@@ -116,13 +128,13 @@ export class PongRenderer {
 			}
 		}
 
-		ctx.fillStyle = COLORS.text;
+		ctx.fillStyle = shouldBlackout ? `rgba(255, 255, 255, ${0.3 * (1 - blackoutIntensity)})` : COLORS.text;
 		ctx.font = '48px monospace';
 		ctx.textAlign = 'center';
 		ctx.fillText(String(state.score.left), W / 2 - 100, 60);
 		ctx.fillText(String(state.score.right), W / 2 + 100, 60);
 
-		if ((side === 'left' || side === 'right') && state.smash) 
+		if ((side === 'left' || side === 'right') && state.smash && !shouldBlackout) 
 		{
 			const smash = state.smash;
 			const mine = side === 'left' ? smash.left : smash.right;
@@ -141,6 +153,13 @@ export class PongRenderer {
 				ctx.fillText(mine.cooldownRemaining.toFixed(1) + 's', 95, 66);
 			}
 			ctx.textAlign = 'center';
+		}
+
+		if (shouldBlackout && blackoutIntensity > 0)
+		{
+			ctx.fillStyle = `rgba(0, 0, 0, ${blackoutIntensity * 0.95})`;
+			ctx.fillRect(0, 0, W, H);
+			this.drawNeonUnderBlackout(ctx, state, side, smashOffsetX);
 		}
 
 		this.renderOverlays(ctx, state, timeoutStatus, side, W, H);
@@ -167,35 +186,52 @@ export class PongRenderer {
 		ctx.globalAlpha = 1;
 	}
 
-	private drawPowerUp(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, time: number): void {
+	private drawPowerUp(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, time: number, type: string): void {
 		const pulse = Math.sin(time * 4) * 2;
+		const color = type === 'blackout' ? COLORS.powerUpBlackout : COLORS.powerUpSplit;
+
 		ctx.beginPath();
-		ctx.fillStyle = COLORS.powerUp;
+		ctx.fillStyle = color;
 		ctx.arc(x, y, radius + pulse, 0, Math.PI * 2);
 		ctx.fill();
 		ctx.strokeStyle = '#333';
 		ctx.lineWidth = 3;
 		ctx.stroke();
 
-		const oscillation = Math.sin(time * 3) * 3;
-		const iconRadius = radius * 0.25;
-		const baseOffset = radius * 0.3;
-
-		ctx.beginPath();
-		ctx.fillStyle = '#FFF';
-		ctx.arc(x - baseOffset - oscillation, y, iconRadius, 0, Math.PI * 2);
-		ctx.fill();
-		ctx.strokeStyle = '#333';
-		ctx.lineWidth = 2;
-		ctx.stroke();
-
-		ctx.beginPath();
-		ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-		ctx.arc(x + baseOffset + oscillation, y, iconRadius, 0, Math.PI * 2);
-		ctx.fill();
-		ctx.strokeStyle = 'rgba(51, 51, 51, 0.8)';
-		ctx.lineWidth = 2;
-		ctx.stroke();
+		if (type === 'split')
+		{
+			const oscillation = Math.sin(time * 3) * 3;
+			const iconRadius = radius * 0.25;
+			const baseOffset = radius * 0.3;
+	
+			ctx.beginPath();
+			ctx.fillStyle = '#FFF';
+			ctx.arc(x - baseOffset - oscillation, y, iconRadius, 0, Math.PI * 2);
+			ctx.fill();
+			ctx.strokeStyle = '#333';
+			ctx.lineWidth = 2;
+			ctx.stroke();
+	
+			ctx.beginPath();
+			ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+			ctx.arc(x + baseOffset + oscillation, y, iconRadius, 0, Math.PI * 2);
+			ctx.fill();
+			ctx.strokeStyle = 'rgba(51, 51, 51, 0.8)';
+			ctx.lineWidth = 2;
+			ctx.stroke();
+		}
+		else if (type === 'blackout') 
+		{
+			ctx.fillStyle = '#000';
+			ctx.beginPath();
+			ctx.arc(x, y, radius * 0.5, 0, Math.PI * 2);
+			ctx.fill();
+			
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			ctx.arc(x + radius * 0.15, y, radius * 0.4, 0, Math.PI * 2);
+			ctx.fill();
+		}
 	}
 
 	private drawCooldownDonut(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, thickness: number, progress: number): void {
@@ -216,6 +252,47 @@ export class PongRenderer {
 			ctx.arc(x, y, r, start, end);
 			ctx.stroke();
 		}
+	}
+
+	private drawNeonUnderBlackout(ctx: CanvasRenderingContext2D, state: PongGameState, side: 'left' | 'right' | 'spectator', smashOffsetX: (side: 'left' | 'right') => number): void {
+		const W = WORLD_WIDTH;
+		const leftX = PADDLE_MARGIN + smashOffsetX('left');
+		const rightX = W - PADDLE_MARGIN - PADDLE_WIDTH + smashOffsetX('right');
+
+		ctx.save();
+		ctx.globalCompositeOperation = 'lighter';
+		ctx.shadowColor = '#ffffff';
+		ctx.shadowBlur = 28;
+		ctx.fillStyle = '#ffffff';
+
+		if (side === 'left') {
+			ctx.fillRect(
+				leftX,
+				state.leftPaddle.y - PADDLE_HEIGHT / 2,
+				PADDLE_WIDTH,
+				PADDLE_HEIGHT
+			);
+		} else if (side === 'right') {
+			ctx.fillRect(
+				rightX,
+				state.rightPaddle.y - PADDLE_HEIGHT / 2,
+				PADDLE_WIDTH,
+				PADDLE_HEIGHT
+			);
+		}
+
+		for (const b of state.balls) {
+			ctx.beginPath();
+			ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+			ctx.fill();
+
+			ctx.shadowBlur = 40;
+			ctx.beginPath();
+			ctx.arc(b.x, b.y, Math.max(2, b.radius * 0.85), 0, Math.PI * 2);
+			ctx.fill();
+		}
+
+		ctx.restore();
 	}
 
 	private renderOverlays(ctx: CanvasRenderingContext2D, state: PongGameState, timeoutStatus: TimeoutStatus, side: 'left' | 'right' | 'spectator', W: number, H: number): void {
