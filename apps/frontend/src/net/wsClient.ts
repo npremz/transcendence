@@ -52,6 +52,7 @@ export class WSClient {
         left: {active: boolean; remainingMs: number};
         right: {active: boolean; remainingMs: number}
     }) => void;
+    onWelcome?: (side: 'left' | 'right' | 'spectator', username?: string) => void;
 	connect(url?: string) {
 		const host = import.meta.env.VITE_HOST
 		const endpoint = import.meta.env.VITE_GAME_ENDPOINT
@@ -74,12 +75,13 @@ export class WSClient {
 			}));
 		};
 		this.ws.onmessage = (ev) => {
-			console.log(ev.data)
 			const msg = JSON.parse(ev.data) as ServerMsg;
 			switch (msg.type) {
 				case 'welcome':
 					console.log('Welcome from server');
 					this.side = msg.side;
+                    const username = window.simpleAuth?.getUsername?.();
+                    this.onWelcome?.(msg.side, username);
 					break;
 				case 'state':
 					this.onState?.(msg.state);
@@ -114,4 +116,50 @@ export class WSClient {
 	smash() {
 		this.ws?.send(JSON.stringify({ type: 'smash' }));
 	}
+
+    debugActivatePowerUp(kind: 'split' | 'blackout' | 'blackhole') {
+        this.ws?.send(JSON.stringify({ 
+        type: 'debug', 
+        action: 'activate_powerup', 
+        payload: { kind } 
+        }));
+    }
+
+    debugClearPowerUps() {
+        this.ws?.send(JSON.stringify({ type: 'debug', action: 'clear_powerups' }));
+    }
+
+    debugScoreChange(side: 'left' | 'right', amount: number) {
+        this.ws?.send(JSON.stringify({
+            type: 'debug', action: 'score_change', payload: { side, amount }
+        }));
+    }
+
+    debugResetScore() {
+        this.ws?.send(JSON.stringify({ type: 'debug', action: 'reset_score' }));
+    }
+
+    debugSetScore(left: number, right: number) {
+        this.ws?.send(JSON.stringify({
+            type: 'debug', action: 'set_score', payload: { left, right }
+        }));
+    }
+
+    debugBallControl(mode: 'add' | 'remove' | 'reset') {
+        this.ws?.send(JSON.stringify({
+            type: 'debug', action: 'ball_control', payload: { mode }
+        }));
+    }
+
+    debugBallSpeed(mode: 'multiply' | 'divide' | 'freeze') {
+        this.ws?.send(JSON.stringify({
+            type: 'debug', action: 'ball_speed', payload: { mode }
+        }));
+    }
+
+    debugTimeScale(scale: number) {
+        this.ws?.send(JSON.stringify({
+            type: 'debug', action: 'time_scale', payload: { scale }
+        }));
+    }
 }

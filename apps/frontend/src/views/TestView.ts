@@ -73,6 +73,7 @@ export const quickplayLogic = (): CleanupFunction => {
 
     const handleJoin = async () => {
         const username = (document.getElementById('username') as HTMLInputElement).value;
+        window.simpleAuth.setUsername(username);
         const playerId = window.simpleAuth.getPlayerId();
 
 		console.log(`Attempting to join quickplay...`)

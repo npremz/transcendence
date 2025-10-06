@@ -9,7 +9,7 @@ export const PADDLE_SPEED_INCREASE = 1.05;
 export const PADDLE_MAX_SPEED = 1600;
 
 
-export const BALL_RADIUS = 20;
+export const BALL_RADIUS = 15;
 export const BALL_INITIAL_SPEED = 600;
 export const BALL_SPEED_INCREASE = 1.05;
 export const BALL_MAX_SPEED = 1500;

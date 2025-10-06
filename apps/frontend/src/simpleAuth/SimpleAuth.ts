@@ -30,11 +30,19 @@ class CookieManager {
 export class SimpleAuth
 {
     private static readonly COOKIE_NAME = 'player_session';
+    private static readonly USERNAME_KEY = 'player_username';
     private playerId: string | null;
+    private username: string = 'Anon';
 
     constructor()
 	{
         this.playerId = this.getOrCreatePlayerId();
+        this.username = localStorage.getItem(SimpleAuth.USERNAME_KEY) || 'Anon';
+    }
+
+    setUsername(username: string): void {
+        this.username = username;
+        localStorage.setItem(SimpleAuth.USERNAME_KEY, username);
     }
 
     private getOrCreatePlayerId(): string | null
@@ -58,6 +66,10 @@ export class SimpleAuth
     getPlayerId(): string | null
 	{
         return this.playerId;
+    }
+
+    getUsername(): string {
+        return (this.username);
     }
 
     renewSession(): void

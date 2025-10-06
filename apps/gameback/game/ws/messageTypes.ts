@@ -4,7 +4,15 @@ export type ClientMessage =
 	| {type: 'resume'}
 	| {type: 'ping'; t: number}
 	| {type: 'smash'}
-	| {type: 'logIn'; id: string};
+	| {type: 'logIn'; id: string}
+    | {type: 'debug'; action: 'activate_powerup'; payload: {kind: 'split' | 'blackout' | 'blackhole'}}
+    | {type: 'debug'; action: 'clear_powerups'}
+    | {type: 'debug'; action: 'score_change'; payload: {side: 'left' | 'right'; amount: number}}
+    | {type: 'debug'; action: 'reset_score'}
+    | {type: 'debug'; action: 'set_score'; payload: {left: number; right: number}}
+    | {type: 'debug'; action: 'ball_control'; payload: {mode: 'add' | 'remove' | 'reset'}}
+    | {type: 'debug'; action: 'ball_speed'; payload: {mode: 'multiply' | 'divide' | 'freeze'}}
+    | {type: 'debug'; action: 'time_scale'; payload: {scale: number}};
 
 export type ServerMessage = 
 	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'; isTournament?: boolean; tournamentId?: string}

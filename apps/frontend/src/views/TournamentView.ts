@@ -60,6 +60,7 @@ export const tournamentLogic = (): (() => void) => {
     // Fonction pour rejoindre un tournoi
     const handleJoinTournament = async (e: Event) => {
         const username = usernameInput.value;
+        window.simpleAuth.setUsername(username);
         const target = e.target as HTMLElement;
         const tournamentId = target?.getAttribute('data-tournament-id');
 

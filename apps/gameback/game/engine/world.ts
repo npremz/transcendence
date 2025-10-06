@@ -3,12 +3,12 @@ import {
 	PADDLE_SPEED_INCREASE, BALL_INITIAL_SPEED, BALL_SPEED_INCREASE, BALL_MAX_SPEED,
 	BALL_RADIUS, SCORE_TO_WIN, PADDLE_MAX_SPEED, SMASH_ANIM_DURATION, SMASH_COOLDOWN,
 	SMASH_SPEED_MULTIPLIER, SMASH_TIMING_WINDOW,
-	PADDLE_WIDTH} from "./constants";
+	PADDLE_WIDTH, MAX_BALLS_ON_FIELD} from "./constants";
 import type { Ball, GameState, Side } from "./types";
 import { clamp } from "./helpers";
 import { bounceOnWalls, checkPaddleCollision, resolveBallBallCollision } from "./physics";
 import { activateSplit, endSplit, pruneExpiredPowerUps, scheduleNextPowerUp, spawnPowerUp,
-	activateBlackout, updateBlackout, activateBlackhole, updateBlackhole } from "./powerups";
+	activateBlackout, updateBlackout, activateBlackhole, updateBlackhole, endBlackhole } from "./powerups";
 import type { PublicState } from "../ws/messageTypes";
 
 const newBall = (vx: number, vy: number): Ball => ({
@@ -260,6 +260,126 @@ export class GameWorld {
 			scheduleNextPowerUp(s);
 		}
 	}
+
+    public debugActivatePowerUp(kind: 'split' | 'blackout' | 'blackhole'): void {
+        switch (kind) {
+            case 'split':
+                activateSplit(this.state);
+                break;
+            case 'blackout': {
+                const b = this.state.balls[0];
+                if (!b) return;
+                if (!b.lastPaddleHit) 
+                {
+                    b.lastPaddleHit = 'left';
+                }
+                activateBlackout(this.state, b);
+                break;
+            }
+            case 'blackhole':
+                activateBlackhole(this.state);
+                break;
+        }
+    }
+
+    public debugClearPowerUps(): void {
+        const s = this.state;
+        s.powerUps = [];
+        s.splitActive = false;
+        s.splitEndsAt = 0;
+        s.blackoutLeft = false;
+        s.blackoutRight = false;
+        s.blackoutLeftEndsAt = 0;
+        s.blackoutRightEndsAt = 0;
+        s.blackoutLeftIntensity = 0;
+        s.blackoutRightIntensity = 0;
+        if (s.blackholeActive) {
+        endBlackhole(s);
+        }
+    }
+
+    public debugChangeScore(side: 'left' | 'right', amount: number): void {
+        const s = this.state;
+        s.score[side] = Math.max(0, s.score[side] + amount);
+        if (s.score.left >= SCORE_TO_WIN || s.score.right >= SCORE_TO_WIN) {
+        s.isGameOver = true;
+        s.isPaused = true;
+        s.winner = s.score.left >= SCORE_TO_WIN ? 'left' : 'right';
+        }
+    }
+
+    public debugResetScore(): void {
+        const s = this.state;
+        s.score.left = 0;
+        s.score.right = 0;
+        s.isGameOver = false;
+        s.winner = '';
+        s.isPaused = false;
+    }
+
+     public debugSetScore(left: number, right: number): void {
+        const s = this.state;
+        s.score.left = Math.max(0, left);
+        s.score.right = Math.max(0, right);
+        if (s.score.left >= SCORE_TO_WIN || s.score.right >= SCORE_TO_WIN) {
+        s.isGameOver = true;
+        s.isPaused = true;
+        s.winner = s.score.left >= SCORE_TO_WIN ? 'left' : 'right';
+        }
+    }
+
+    public debugBallControl(mode: 'add' | 'remove' | 'reset'): void {
+        const s = this.state;
+        switch (mode) {
+        case 'add':
+            if (s.balls.length < MAX_BALLS_ON_FIELD) {
+            s.balls.push({
+                x: WORLD_WIDTH / 2,
+                y: WORLD_HEIGHT / 2,
+                vx: (Math.random() < 0.5 ? -1 : 1) * BALL_INITIAL_SPEED,
+                vy: (Math.random() - 0.5) * 200,
+                radius: BALL_RADIUS,
+                lastPaddleHit: ''
+            });
+            }
+            break;
+        case 'remove':
+            if (s.balls.length > 1) {
+            s.balls.pop();
+            }
+            break;
+        case 'reset':
+            s.balls = [{
+            x: WORLD_WIDTH / 2,
+            y: WORLD_HEIGHT / 2,
+            vx: BALL_INITIAL_SPEED,
+            vy: 0,
+            radius: BALL_RADIUS,
+            lastPaddleHit: ''
+            }];
+            break;
+        }
+    }
+
+    public debugBallSpeed(mode: 'multiply' | 'divide' | 'freeze'): void {
+        const s = this.state;
+        for (const b of s.balls) {
+            if (mode === 'freeze') {
+                b.vx = 0;
+                b.vy = 0;
+                continue;
+            }
+            const factor = mode === 'multiply' ? 2 : 0.5;
+            b.vx *= factor;
+            b.vy *= factor;
+            const sp = Math.max(1e-6, Math.hypot(b.vx, b.vy));
+            if (sp > BALL_MAX_SPEED) {
+                const k = BALL_MAX_SPEED / sp;
+                b.vx *= k;
+                b.vy *= k;
+            }
+        }
+    }
 
 	publicState(): PublicState {
 		const s = this.state;

@@ -5,7 +5,8 @@ import { PongRenderer } from "./PongRenderer";
 import { PongInputHandler } from "./PongInput";
 import { PongParticleSystem } from "./PongParticles";
 import { PongAssets } from "./PongAssets";
-import { WORLD_HEIGHT } from "./constants";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
+import { DebugPanel, type DebugPanelCallbacks } from "../DebugPanel";
 
 export class PongGame implements Component {
 	private el: HTMLElement;
@@ -16,6 +17,8 @@ export class PongGame implements Component {
 	private input: PongInputHandler;
 	private particles: PongParticleSystem;
 	private assets: PongAssets;
+    private debugPanel?: DebugPanel;
+    private debugContainer?: HTMLDivElement;
 
 	private state: PublicState = {
 		leftPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
@@ -55,6 +58,8 @@ export class PongGame implements Component {
 	private animationFrameId: number | null = null;
 	private lastScore = { left: 0, right: 0 };
 	private lastBallPositions: Array<{x: number; y: number; vx: number; vy: number}> = [];
+    private isDebugMode: boolean = false;
+
 
 	constructor(element: HTMLElement) {
 		this.el = element;
@@ -89,7 +94,7 @@ export class PongGame implements Component {
 			}))
 			if (s.score.left > this.lastScore.left)
 			{
-				const lastBall = this.lastBallPositions.find(b => b.x > this.canvas.width - 100);
+				const lastBall = this.lastBallPositions.find(b => b.x > WORLD_WIDTH - 100);
 				if (lastBall)
 				{
 					this.particles.createGoalExplosion(
@@ -123,6 +128,10 @@ export class PongGame implements Component {
 			}
 
 			Object.assign(this.state, s);
+            if (this.debugPanel && this.isDebugMode) 
+            {
+				this.debugPanel.updateStats(s, this.particles.getParticles().length);
+			}
 		};
 
 		this.net.onPaused = () => {
@@ -160,7 +169,75 @@ export class PongGame implements Component {
                 this.handleTournamentGameOver(winner, tournamentId);
             }
 		};
+        this.net.onWelcome = (side, username) => {
+            if (username === 'admindebug')
+            {
+                this.enableDebugMode();
+            }
+        }
 	}
+
+    private enableDebugMode(): void {
+		this.isDebugMode = true;
+		console.log('Debug Mode Enabled!');
+
+        const container = document.createElement('div');
+        container.id = 'debug-panel-container';
+        container.style.marginTop = '16px';
+
+		 this.canvas.insertAdjacentElement('afterend', container);
+         this.debugContainer = container;
+        
+
+		const callbacks: DebugPanelCallbacks = {
+			onActivatePowerUp: (type) => this.debugActivatePowerUp(type),
+			onClearPowerUps: () => this.debugClearPowerUps(),
+			onScoreChange: (side, amount) => this.debugChangeScore(side, amount),
+			onResetScore: () => this.debugResetScore(),
+			onSetScore: (left, right) => this.debugSetScore(left, right),
+			onBallControl: (action) => this.debugBallControl(action),
+			onBallSpeedControl: (action) => this.debugBallSpeedControl(action),
+			onTimeControl: (action) => this.debugTimeControl(action),
+			onToggleOverlay: () => {}
+		};
+
+		this.debugPanel = new DebugPanel(container, callbacks);
+	}
+
+    private debugActivatePowerUp(type: 'split' | 'blackout' | 'blackhole' | 'random'): void {
+        const types = ['split', 'blackout', 'blackhole'] as const;
+        const finalType = type === 'random' ? types[Math.floor(Math.random() * types.length)] : type;
+        this.net.debugActivatePowerUp(finalType);
+    }
+
+    private debugClearPowerUps(): void {
+        this.net.debugClearPowerUps();
+    }
+
+    private debugChangeScore(side: 'left' | 'right', amount: number): void {
+        this.net.debugScoreChange(side, amount);
+    }
+
+    private debugResetScore(): void {
+        this.net.debugResetScore();
+    }
+
+    private debugSetScore(left: number, right: number): void {
+        this.net.debugSetScore(left, right);
+    }
+
+    private debugBallControl(action: 'add' | 'remove' | 'reset'): void {
+        this.net.debugBallControl(action);
+    }
+
+    private debugBallSpeedControl(action: 'multiply' | 'divide' | 'freeze'): void {
+        this.net.debugBallSpeed(action);
+    }
+
+    private debugTimeControl(action: 'slow' | 'fast' | 'normal'): void {
+        const scale = action === 'slow' ? 0.5 : action === 'fast' ? 2 : 1;
+        this.net.debugTimeScale(scale);
+    }
 
 	private triggerScreenShake(): void 
 	{
@@ -232,10 +309,6 @@ export class PongGame implements Component {
 		}
 	}
 
-	private handleStartClick = (): void => {
-		this.net.resume();
-	};
-
 	private handleResize = (): void => {
 		this.renderer.setupCanvas();
 	};
@@ -296,12 +369,20 @@ export class PongGame implements Component {
 			this.animationFrameId = null;
 		}
 
-		window.removeEventListener('resize', this.handleResize);
-		window.removeEventListener('pong:togglePause', this.handleTogglePause);
+        window.removeEventListener('resize', this.handleResize);
+        window.removeEventListener('pong:togglePause', this.handleTogglePause);
 
-		this.input.detach();
-		this.particles.clear();
-	}
+        this.input.detach();
+        this.particles.clear();
+        if (this.debugPanel) {
+            this.debugPanel.cleanup();
+            this.debugPanel = undefined;
+        }
+        if (this.debugContainer && this.debugContainer.parentNode) {
+            this.debugContainer.parentNode.removeChild(this.debugContainer);
+            this.debugContainer = undefined;
+        }
+    }
 }
 
 export function Pong(): string {

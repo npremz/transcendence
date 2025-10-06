@@ -33,6 +33,8 @@ class GameSession {
 	private lastPaused = false;
 	private lastGameOver = false;
 
+    private timeScale = 1;
+
 	private emptySince: number | null = null;
 
 	private isTournament: boolean = false;
@@ -103,100 +105,119 @@ class GameSession {
             }
             return ('spectator');
         }
-        // if (!this.leftCtrl)
-        // {
-        //     this.leftCtrl = ws;
-        //     this.leftCtrlDisconnectedAt = null;
-        //     return ('left');
-        // }
-        // if (!this.rightCtrl)
-        // {
-        //     this.rightCtrl = ws;
-        //     this.rightCtrlDisconnectedAt = null;
-        //     return ('right');
-        // }
         return ('spectator');
 	}
 
-	private onMessage(ws: WebSocket, raw: Buffer) {
-		const msg = safeParse<ClientMessage>(raw.toString());
-		if (!msg)
-		{
-			return;
-		}
+    private onMessage(ws: WebSocket, raw: Buffer) {
+        const msg = safeParse<ClientMessage>(raw.toString());
+        if (!msg) {
+            return;
+        }
         const role = this.roles.get(ws);
-		const canCtrl = (role === 'left' && ws === this.leftCtrl) ||
-						(role === 'right' && ws === this.rightCtrl);
-		switch (msg.type) {
-			case 'input': {
-				if (role === 'left' && ws === this.leftCtrl)
-				{
-					const intention = msg.up && !msg.down ? -1 : msg.down && !msg.up ? 1 : 0;
+        const canCtrl = (role === 'left' && ws === this.leftCtrl) ||
+            (role === 'right' && ws === this.rightCtrl);
+        switch (msg.type) {
+            case 'input': {
+                if (role === 'left' && ws === this.leftCtrl) {
+                    const intention = msg.up && !msg.down ? -1 : msg.down && !msg.up ? 1 : 0;
                     this.world.applyInput('left', intention);
-				}
-				else if (role === 'right' && ws === this.rightCtrl)
-                {
+                }
+                else if (role === 'right' && ws === this.rightCtrl) {
                     const intention = msg.up && !msg.down ? -1 : msg.down && !msg.up ? 1 : 0;
                     this.world.applyInput('right', intention)
                 }
                 break;
-			}
-			case 'smash': {
-				if (role === 'left' || role === 'right')
-				{
-					this.world.pressSmash(role);
-				}
-				break;
-			}
-			case 'pause':
-				if (!canCtrl)
-				{
-					this.send(ws, {type: 'error', message: 'Spectators can\'t pause the game'});
-					break;
-				}
-				this.world.pause();
-				break;
-			case 'resume': {
-				if (!canCtrl)
-				{
-					this.send(ws, {type: 'error', message: 'Spectators can\'t resume the game'});
-					break;
-				}
-				break;
-			}
-			case 'logIn':
-				try
-				{
-					const assRole = this.assignRole(ws, msg.id);
-					this.clients.add(ws);
-					this.roles.set(ws, assRole);
-	
-					this.send(ws, {
-						type: 'welcome', 
-						side: assRole,
-						isTournament: this.isTournament,
-						tournamentId: this.tournamentId
-					});
-	
-					this.log?.info({ roomId: this.roomId, assRole, clients: this.clients.size, playerId: msg.id }, 'client connected');
-					
-					const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
-					if (haveBoth && !this.hadBothCtrl)
-					{
-						this.world.startCountdown();
-					}
-					this.hadBothCtrl = haveBoth;
-				}
-				catch (err)
-				{
-					this.send(ws, {type : 'error', message: 'no player expected for this room.'})
-				}
-				break;
-			case 'ping':
-				this.send(ws, {type: 'pong', t: msg.t});
-				break;
-		}
-	}
+            }
+            case 'smash': {
+                if (role === 'left' || role === 'right') {
+                    this.world.pressSmash(role);
+                }
+                break;
+            }
+            case 'pause':
+                if (!canCtrl) {
+                    this.send(ws, { type: 'error', message: 'Spectators can\'t pause the game' });
+                    break;
+                }
+                this.world.pause();
+                break;
+            case 'resume': {
+                if (!canCtrl) {
+                    this.send(ws, { type: 'error', message: 'Spectators can\'t resume the game' });
+                    break;
+                }
+                this.world.resume();
+                break;
+            }
+            case 'logIn':
+                try {
+                    const assRole = this.assignRole(ws, msg.id);
+                    this.clients.add(ws);
+                    this.roles.set(ws, assRole);
+
+                    this.send(ws, {
+                        type: 'welcome',
+                        side: assRole,
+                        isTournament: this.isTournament,
+                        tournamentId: this.tournamentId
+                    });
+
+                    this.log?.info({ roomId: this.roomId, assRole, clients: this.clients.size, playerId: msg.id }, 'client connected');
+
+                    const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
+                    if (haveBoth && !this.hadBothCtrl) {
+                        this.world.startCountdown();
+                    }
+                    this.hadBothCtrl = haveBoth;
+                }
+                catch (err) {
+                    this.send(ws, { type: 'error', message: 'no player expected for this room.' })
+                }
+                break;
+            case 'ping':
+                this.send(ws, { type: 'pong', t: msg.t });
+                break;
+            case 'debug': {
+                const allowDebug = (process.env.ALLOW_DEBUG === '1');
+                if (!allowDebug) {
+                    this.send(ws, { type: 'error', message: 'Debug disabled on server' });
+                    break;
+                }
+
+                try {
+                    switch (msg.action) {
+                        case 'activate_powerup':
+                            this.world.debugActivatePowerUp(msg.payload.kind);
+                            break;
+                        case 'clear_powerups':
+                            this.world.debugClearPowerUps();
+                            break;
+                        case 'score_change':
+                            this.world.debugChangeScore(msg.payload.side, msg.payload.amount);
+                            break;
+                        case 'reset_score':
+                            this.world.debugResetScore();
+                            break;
+                        case 'set_score':
+                            this.world.debugSetScore(msg.payload.left, msg.payload.right);
+                            break;
+                        case 'ball_control':
+                            this.world.debugBallControl(msg.payload.mode);
+                            break;
+                        case 'ball_speed':
+                            this.world.debugBallSpeed(msg.payload.mode);
+                            break;
+                        case 'time_scale':
+                            this.timeScale = Math.max(0.1, Math.min(4, msg.payload.scale));
+                            break;
+                    }
+                } catch (e) {
+                    this.send(ws, { type: 'error', message: 'Debug action failed' });
+                }
+                break;
+            }
+        }
+    }
 
 	private onClose(ws: WebSocket) {
 		this.clients.delete(ws);
@@ -303,7 +324,7 @@ class GameSession {
 
 	private startLoops() {
 		this.tickTimer = setInterval(() => {
-			this.world.update(SERVER_DT);
+			this.world.update(SERVER_DT * this.timeScale);
 		}, Math.round(1000 / SERVER_TICK_HZ));
 
 		this.broadcastTimer = setInterval(() => {

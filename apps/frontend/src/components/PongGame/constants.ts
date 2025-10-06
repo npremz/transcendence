@@ -3,6 +3,7 @@ export const WORLD_HEIGHT = 1080;
 export const PADDLE_WIDTH = 15;
 export const PADDLE_HEIGHT = 100;
 export const PADDLE_MARGIN = 30;
+export const BALL_INITIAL_SPEED = 600;
 
 export const COLORS = {
 	background: '#000000',
