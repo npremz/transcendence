@@ -13,6 +13,12 @@ services:
     restart: unless-stopped
     expose:
       - "5173"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   database:
     container_name: database
@@ -30,10 +36,10 @@ services:
     expose:
       - "3020"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3020/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3020/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
       start_period: 40s
 
   chatback:
@@ -53,6 +59,12 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   gameback:
     container_name: gameback
@@ -71,6 +83,12 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3010"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   quickplayback:
     container_name: quickplayback
@@ -89,6 +107,12 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3030"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   tournamentback:
     container_name: tournamentback
@@ -107,6 +131,12 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3040/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
   
   authback:
     container_name: authback
@@ -125,6 +155,12 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3050/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   nginx:
     container_name: nginx
@@ -136,12 +172,27 @@ services:
     ports:
       - "8443:443"
     depends_on:
-      - front
-      - database
-      - chatback
-      - gameback
-      - authback
+      front:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+      chatback:
+        condition: service_healthy
+      gameback:
+        condition: service_healthy
+      quickplayback:
+        condition: service_healthy
+      tournamentback:
+        condition: service_healthy
+      authback:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://localhost:443", "--no-check-certificate"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 networks:
   transcendence:

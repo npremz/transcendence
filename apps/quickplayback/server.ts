@@ -24,6 +24,10 @@ fastify.get('/', function (request, reply)
 	}
 )
 
+fastify.get('/health', async (request, reply) => {
+    return { status: 'ok', service: 'quickplay-backend' };
+});
+
 handleQuickPlay(fastify, roomManager);
 handleTournamentQuickPlay(fastify, roomManager)
 

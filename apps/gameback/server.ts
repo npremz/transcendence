@@ -71,6 +71,10 @@ fastify.get('/', function (request, reply)
 	}
 )
 
+fastify.get('/health', async (request, reply) => {
+    return { status: 'ok', service: 'game-backend' };
+});
+
 fastify.listen({ port: 3010, host: '0.0.0.0'}, function (err, address)
 	{
 		if (err)

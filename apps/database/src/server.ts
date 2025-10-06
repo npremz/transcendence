@@ -19,9 +19,6 @@ declare module 'fastify'
 	}
 }
 
-fastify.register(require('./routes/games'), { prefix: '/api/games' })
-fastify.register(require('./routes/messages'), { prefix: '/api/messages' })
-
 fastify.get('/health', async (request, reply) => {
 	return {
 		status: 'ok',
