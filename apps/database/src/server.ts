@@ -1,6 +1,12 @@
 import Fastify, { FastifyInstance } from 'fastify'
 import cors from '@fastify/cors'
 import database from './database/connection'
+import { registerUserRoutes } from './routes/users'
+import { registerTournamentRoutes } from './routes/tournaments'
+import { registerTournamentRegistrationRoutes } from './routes/tournament-registrations'
+import { registerGameRoutes } from './routes/games'
+import { registerGameStatsRoutes } from './routes/game-stats'
+import { registerPowerUpRoutes } from './routes/power-ups'
 
 const fastify: FastifyInstance = Fastify({
 	logger: true
@@ -19,14 +25,6 @@ declare module 'fastify'
 	}
 }
 
-fastify.get('/health', async (request, reply) => {
-	return {
-		status: 'ok',
-		timestamp: new Date().toISOString(),
-		service: 'database'
-	}
-})
-
 fastify.setErrorHandler((error, request, reply) => {
 	fastify.log.error(error)
 	reply.status(500).send({
@@ -43,6 +41,13 @@ const start = async (): Promise<void> => {
 
 		// Adding db to fastify instance
 		fastify.decorate('db', database.getDb())
+
+		registerUserRoutes(fastify)
+		registerTournamentRoutes(fastify)
+		registerTournamentRegistrationRoutes(fastify)
+		registerGameRoutes(fastify)
+		registerGameStatsRoutes(fastify)
+		registerPowerUpRoutes(fastify)
 
 		await fastify.listen({
 			port: 3020,
@@ -64,3 +69,11 @@ process.on('SIGINT', async () => {
 })
 
 start()
+
+fastify.get('/health', async (request, reply) => {
+	return {
+		status: 'ok',
+		timestamp: new Date().toISOString(),
+		service: 'database'
+	}
+})

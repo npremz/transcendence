@@ -1,238 +1,1076 @@
-# API de Base de Données pour le Jeu
+# Database Service API Documentation
 
-Ce service est une API backend construite avec **Fastify** et **SQLite** pour gérer les données d'un jeu, incluant les parties, les scores et les messages de chat.
+## Vue d'ensemble
 
-## Table des Matières
+Service de base de données centralisé pour Transcendence, exposant une API REST pour gérer les utilisateurs, tournois, parties et statistiques.
 
-1.  [Technologies Utilisées](#technologies-utilisées)
-2.  [Installation et Lancement](#installation-et-lancement)
-3.  [Structure de la Base de Données](#structure-de-la-base-de-données)
-    -   [Table `games`](#table-games)
-    -   [Table `global_messages`](#table-global_messages)
-    -   [Table `game_messages`](#table-game_messages)
-    -   [Les Index](#les-index)
-4.  [Documentation de l'API (Endpoints)](#documentation-de-lapi-endpoints)
-    -   [Health Check](#health-check)
-    -   [Messages Globaux](#messages-globaux)
-    -   [Messages de Partie](#messages-de-partie)
-    -   [Gestion des Parties (Games)](#gestion-des-parties-games)
-5.  [Comment Contribuer ?](#comment-contribuer-)
-    -   [Ajouter des Données (via les Endpoints)](#ajouter-des-données-via-les-endpoints)
-    -   [Ajouter un Nouvel Endpoint](#ajouter-un-nouvel-endpoint)
-6.  [Gestion des Erreurs](#gestion-des-erreurs)
+**Port:** `3020`  
+**Base de données:** SQLite  
+**Localisation DB:** `./apps/database/data/transcendence.db`
 
-## Technologies Utilisées
+---
 
-*   **Framework Backend :** [Fastify](https://www.fastify.io/) - Un framework web pour Node.js, très performant et avec une faible surcharge.
-*   **Base de Données :** [SQLite3](https://www.sqlite.org/index.html) - Une base de données SQL légère, basée sur des fichiers, parfaite pour le développement et les applications de petite à moyenne envergure.
-*   **Langage :** [TypeScript](https://www.typescriptlang.org/) - Un sur-ensemble de JavaScript qui ajoute un typage statique pour un code plus robuste.
+## Table des matières
 
-## Installation et Lancement
+1. [Installation & Démarrage](#installation--démarrage)
+2. [Architecture](#architecture)
+3. [Routes API](#routes-api)
+   - [Users](#users)
+   - [Tournaments](#tournaments)
+   - [Tournament Registrations](#tournament-registrations)
+   - [Games](#games)
+   - [Game Stats](#game-stats)
+   - [Power-ups](#power-ups)
+4. [Exemples d'utilisation](#exemples-dutilisation)
+5. [Gestion des erreurs](#gestion-des-erreurs)
+6. [Tests](#tests)
 
-Pour faire tourner ce service sur ta machine, suis ces étapes :
+---
 
-1.  **Cloner le dépôt** (si ce n'est pas déjà fait).
+## Installation & Démarrage
 
-2.  **Installer les dépendances**
-    Assure-toi d'avoir Node.js et npm installés. Ensuite, à la racine du projet, lance :
-    ```bash
-    npm install
-    ```
+### Prérequis
+```bash
+Node.js >= 18
+npm ou pnpm
+```
 
-3.  **Lancer le serveur**
-    La commande suivante démarrera l'API, qui sera accessible sur `http://localhost:3020`.
-    ```bash
-    npm run start 
-    ```
-    *(Vérifie le script `start` dans ton fichier `package.json` si cette commande ne fonctionne pas).*
+### Installation
+```bash
+cd apps/database
+npm install
+```
 
-## Structure de la Base de Données
+### Démarrage
+```bash
+# Mode développement
+npm run dev
 
-La base de données est conçue pour stocker les informations essentielles sur les parties et les communications.
+# Mode production
+npm run build
+npm start
+```
 
-### Table `games`
+### Vérification
+```bash
+curl http://localhost:3020/health
+# Réponse attendue:
+# {"status":"ok","timestamp":"2025-01-XX...","service":"database"}
+```
 
-Cette table contient les informations persistantes sur chaque partie jouée.
+---
 
-| Colonne | Type | Description |
-| :--- | :--- | :--- |
-| `id` | `INTEGER` | Identifiant unique de la partie (clé primaire). |
-| `player1_name` | `TEXT` | Nom du joueur 1. |
-| `player2_name` | `TEXT` | Nom du joueur 2. |
-| `player1_score` | `INTEGER` | Score du joueur 1 (défaut : 0). |
-| `player2_score` | `INTEGER` | Score du joueur 2 (défaut : 0). |
-| `duration` | `INTEGER` | Durée de la partie en secondes (défaut : 0). |
-| `status` | `TEXT` | Statut de la partie (`active`, `finished`, etc.). |
-| `started_at` | `DATETIME` | Horodatage du début de la partie. |
-| `finished_at`| `DATETIME` | Horodatage de la fin de la partie (peut être `NULL`). |
+## Architecture
 
-### Table `global_messages`
+```
+apps/database/
+├── src/
+│   ├── database/
+│   │   ├── connection.ts    # Gestion connexion SQLite
+│   │   └── schema.sql       # Schéma de la base
+│   ├── routes/
+│   │   ├── users.ts
+│   │   ├── tournaments.ts
+│   │   ├── tournament-registrations.ts
+│   │   ├── games.ts
+│   │   ├── game-stats.ts
+│   │   └── power-ups.ts
+│   └── server.ts            # Point d'entrée
+├── data/
+│   └── transcendence.db     # Base SQLite (générée auto)
+└── package.json
+```
 
-Utilisée pour le chat global, accessible à tous les utilisateurs connectés, indépendamment des parties.
+---
 
-| Colonne | Type | Description |
-| :--- | :--- | :--- |
-| `id` | `INTEGER` | Identifiant unique du message. |
-| `username` | `TEXT` | Nom de l'utilisateur qui a envoyé le message. |
-| `content` | `TEXT` | Contenu du message. |
-| `timestamp` | `DATETIME` | Horodatage de l'envoi du message. |
-
-### Table `game_messages`
-
-Utilisée pour le chat spécifique à une partie. Les messages sont liés à une `game_id`. La `FOREIGN KEY` avec `ON DELETE CASCADE` assure que si une partie est supprimée, tous les messages associés le sont aussi.
-
-| Colonne | Type | Description |
-| :--- | :--- | :--- |
-| `id` | `INTEGER` | Identifiant unique du message. |
-| `game_id` | `INTEGER` | Clé étrangère liant le message à une partie dans la table `games`. |
-| `username` | `TEXT` | Nom de l'utilisateur qui a envoyé le message. |
-| `content` | `TEXT` | Contenu du message. |
-| `timestamp` | `DATETIME` | Horodatage de l'envoi du message. |
-
-### Les Index
-
-Les index (`idx_...`) sont des optimisations pour accélérer les recherches fréquentes sur les colonnes `status`, `game_id` et `timestamp`.
-
-## Documentation de l'API (Endpoints)
-
-Tous les endpoints sont préfixés par `/api`.
+## Routes API
 
 ### Health Check
 
-*   **`GET /health`**
-    *   **Description :** Vérifie que le service est en ligne et fonctionnel.
-    *   **Réponse :**
-        ```json
-        {
-          "status": "ok",
-          "timestamp": "2025-09-11T10:00:00.000Z",
-          "service": "database"
-        }
-        ```
+**GET** `/health`
 
-### Messages Globaux
+Vérifie que le service est opérationnel.
 
-Endpoints préfixés par `/api/messages`.
-
-*   **`GET /global`**
-    *   **Description :** Récupère les derniers messages du chat global.
-    *   **Query Params (optionnel) :** `limit` (nombre, défaut : 50).
-    *   **Réponse (Succès 200) :**
-        ```json
-        {
-          "success": true,
-          "data": [
-            {
-              "id": 1,
-              "username": "player_one",
-              "content": "Hello world!",
-              "timestamp": "2025-09-11T09:59:00.000Z"
-            }
-          ]
-        }
-        ```
-
-*   **`POST /global`**
-    *   **Description :** Poste un nouveau message dans le chat global.
-    *   **Body (JSON) :**
-        ```json
-        {
-          "username": "player_two",
-          "content": "Hi there!"
-        }
-        ```
-    *   **Réponse (Succès 201) :**
-        ```json
-        {
-          "success": true,
-          "data": {
-            "id": 2,
-            "username": "player_two",
-            "content": "Hi there!",
-            "timestamp": "2025-09-11T10:01:00.000Z"
-          }
-        }
-        ```
-
-### Messages de Partie
-
-Endpoints préfixés par `/api/messages`.
-
-*   **`GET /game/:gameId`**
-    *   **Description :** Récupère les messages d'une partie. Si la partie est terminée depuis plus de 10 minutes, retourne un tableau vide.
-    *   **Params URL :** `gameId` (ID de la partie).
-    *   **Réponse (Succès 200) :**
-        ```json
-        {
-          "success": true,
-          "data": [
-            {
-              "id": 1,
-              "game_id": 123,
-              "username": "player1_name",
-              "content": "Good luck!",
-              "timestamp": "2025-09-11T10:02:00.000Z"
-            }
-          ]
-        }
-        ```
-
-*   **`POST /game/:gameId`**
-    *   **Description :** Poste un nouveau message dans le chat d'une partie.
-    *   **Params URL :** `gameId` (ID de la partie).
-    *   **Body (JSON) :**
-        ```json
-        {
-          "username": "player2_name",
-          "content": "You too!"
-        }
-        ```
-    *   **Réponse (Succès 201) :**
-        ```json
-        {
-          "success": true,
-          "data": {
-            "id": 2,
-            "game_id": 123,
-            "username": "player2_name",
-            "content": "You too!",
-            "timestamp": "2025-09-11T10:03:00.000Z"
-          }
-        }
-        ```
-
-### Gestion des Parties (Games)
-
-*(Note : ces endpoints sont définis dans `routes/games.ts` et doivent être documentés ici de la même manière)*
-
-*   **`GET /api/games`**
-*   **`POST /api/games`**
-*   **`GET /api/games/:id`**
-*   **`PUT /api/games/:id`**
-
-## Comment Contribuer ?
-
-### Ajouter des Données (via les Endpoints)
-
-Pour interagir avec la base de données, utilisez un client HTTP (comme `curl`, Postman, etc.) pour envoyer des requêtes aux endpoints de l'API.
-
-**Exemple : Ajouter un message global avec `curl`**
-
-```bash
-curl -X POST http://localhost:3020/api/messages/global \
--H "Content-Type: application/json" \
--d '{"username": "new_user", "content": "Testing the API"}'
+**Réponse:**
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-01-07T10:30:00.000Z",
+  "service": "database"
+}
 ```
 
-## Gestion des Erreurs
+---
 
-Le serveur est configuré pour intercepter les erreurs non gérées et renvoyer une réponse JSON standardisée avec un statut 500.
+## Users
 
-*	Réponse d'erreur générique :
+### Créer un utilisateur
+
+**POST** `/users`
+
+**Body:**
+```json
+{
+  "id": "uuid-v4",
+  "username": "player1"
+}
+```
+
+**Réponses:**
+- `200` - Succès
+  ```json
+  {
+    "success": true,
+    "user": {
+      "id": "uuid-v4",
+      "username": "player1"
+    }
+  }
+  ```
+- `400` - Champs manquants
+- `409` - Username déjà pris
+- `500` - Erreur serveur
+
+---
+
+### Récupérer un utilisateur par ID
+
+**GET** `/users/:id`
+
+**Paramètres:**
+- `id` (path) - UUID de l'utilisateur
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "user": {
+    "id": "uuid-v4",
+    "username": "player1",
+    "created_at": "2025-01-07T10:00:00.000Z",
+    "last_seen": "2025-01-07T12:00:00.000Z",
+    "total_games": 42,
+    "total_wins": 25,
+    "total_losses": 17
+  }
+}
+```
+
+**Erreurs:**
+- `404` - Utilisateur introuvable
+- `500` - Erreur serveur
+
+---
+
+### Rechercher par username ou lister tous
+
+**GET** `/users?username=player1`
+
+**Query params (optionnel):**
+- `username` - Recherche exacte
+
+**Sans paramètre:** Retourne les 100 derniers utilisateurs
+
+**Réponse (avec username):**
+```json
+{
+  "success": true,
+  "user": { /* ... */ }
+}
+```
+
+**Réponse (sans paramètre):**
+```json
+{
+  "success": true,
+  "users": [
+    { /* user 1 */ },
+    { /* user 2 */ }
+  ]
+}
+```
+
+---
+
+### Mettre à jour last_seen
+
+**PATCH** `/users/:id/last-seen`
+
+Met à jour automatiquement le timestamp `last_seen` à `CURRENT_TIMESTAMP`.
+
+**Réponse:**
+```json
+{
+  "success": true
+}
+```
+
+**Erreurs:**
+- `404` - Utilisateur introuvable
+
+---
+
+### Incrémenter les statistiques
+
+**PATCH** `/users/:id/stats`
+
+**Body:**
+```json
+{
+  "won": true
+}
+```
+
+Incrémente automatiquement:
+- `total_games` (+1)
+- `total_wins` (+1 si `won: true`)
+- `total_losses` (+1 si `won: false`)
+- Met à jour `last_seen`
+
+**Réponse:**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+### Leaderboard
+
+**GET** `/users/leaderboard`
+
+Retourne le top 50 des joueurs classés par victoires et win rate.
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "leaderboard": [
+    {
+      "id": "uuid-1",
+      "username": "champion",
+      "total_games": 100,
+      "total_wins": 80,
+      "total_losses": 20,
+      "win_rate": 80.00
+    }
+  ]
+}
+```
+
+---
+
+## Tournaments
+
+### Créer un tournoi
+
+**POST** `/tournaments`
+
+**Body:**
+```json
+{
+  "id": "uuid-v4",
+  "name": "4p",
+  "max_players": 4
+}
+```
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "tournament": {
+    "id": "uuid-v4",
+    "name": "4p",
+    "max_players": 4,
+    "status": "registration"
+  }
+}
+```
+
+---
+
+### Récupérer un tournoi
+
+**GET** `/tournaments/:id`
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "tournament": {
+    "id": "uuid-v4",
+    "name": "4p",
+    "max_players": 4,
+    "status": "in_progress",
+    "current_round": 2,
+    "winner_id": null,
+    "created_at": "2025-01-07T10:00:00.000Z",
+    "started_at": "2025-01-07T10:15:00.000Z",
+    "finished_at": null
+  }
+}
+```
+
+---
+
+### Lister les tournois actifs
+
+**GET** `/tournaments`
+
+Retourne les tournois en `registration` ou `in_progress`.
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "tournaments": [
+    { /* tournament 1 */ },
+    { /* tournament 2 */ }
+  ]
+}
+```
+
+---
+
+### Démarrer un tournoi
+
+**PATCH** `/tournaments/:id/start`
+
+Change le statut à `in_progress`, définit `started_at` et `current_round = 1`.
+
+**Conditions:**
+- Le tournoi doit être en statut `registration`
+
+**Réponse:**
+```json
+{
+  "success": true
+}
+```
+
+**Erreurs:**
+- `400` - Tournoi déjà démarré ou introuvable
+
+---
+
+### Terminer un tournoi
+
+**PATCH** `/tournaments/:id/finish`
+
+**Body:**
+```json
+{
+  "winner_id": "uuid-player"
+}
+```
+
+Change le statut à `finished`, définit `finished_at` et `winner_id`.
+
+**Réponse:**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+### Avancer au round suivant
+
+**PATCH** `/tournaments/:id/next-round`
+
+Incrémente `current_round` de 1.
+
+**Conditions:**
+- Le tournoi doit être `in_progress`
+
+**Réponse:**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+## Tournament Registrations
+
+### Inscrire un joueur
+
+**POST** `/tournament-registrations`
+
+**Body:**
+```json
+{
+  "tournament_id": "uuid-tournament",
+  "player_id": "uuid-player"
+}
+```
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "registration_id": 123
+}
+```
+
+**Erreurs:**
+- `409` - Joueur déjà inscrit (contrainte UNIQUE)
+
+---
+
+### Lister les joueurs d'un tournoi
+
+**GET** `/tournament-registrations/tournament/:tournamentId`
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "registrations": [
+    {
+      "id": 1,
+      "tournament_id": "uuid-tournament",
+      "player_id": "uuid-player",
+      "username": "player1",
+      "registered_at": "2025-01-07T10:00:00.000Z",
+      "is_eliminated": false,
+      "final_position": null
+    }
+  ]
+}
+```
+
+---
+
+### Éliminer un joueur
+
+**PATCH** `/tournament-registrations/tournament/:tournamentId/player/:playerId/eliminate`
+
+**Body (optionnel):**
+```json
+{
+  "final_position": 3
+}
+```
+
+Définit `is_eliminated = 1` et optionnellement `final_position`.
+
+**Réponse:**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+### Désinscrire un joueur
+
+**DELETE** `/tournament-registrations/tournament/:tournamentId/player/:playerId`
+
+**Conditions:**
+- Le tournoi doit être en statut `registration`
+
+**Réponse:**
+```json
+{
+  "success": true
+}
+```
+
+**Erreurs:**
+- `400` - Tournoi déjà démarré
+
+---
+
+## Games
+
+### Créer une partie
+
+**POST** `/games`
+
+**Body:**
+```json
+{
+  "id": "uuid-game",
+  "room_id": "uuid-room",
+  "game_type": "quickplay",
+  "player_left_id": "uuid-player1",
+  "player_right_id": "uuid-player2",
+  "tournament_id": null,
+  "tournament_round": null,
+  "match_position": null
+}
+```
+
+**Pour un match de tournoi:**
+```json
+{
+  "id": "uuid-game",
+  "room_id": "uuid-room",
+  "game_type": "tournament",
+  "player_left_id": "uuid-player1",
+  "player_right_id": "uuid-player2",
+  "tournament_id": "uuid-tournament",
+  "tournament_round": 1,
+  "match_position": 0
+}
+```
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "game": {
+    "id": "uuid-game",
+    "room_id": "uuid-room",
+    "status": "waiting"
+  }
+}
+```
+
+---
+
+### Récupérer une partie par room_id
+
+**GET** `/games/room/:roomId`
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "game": {
+    "id": "uuid-game",
+    "room_id": "uuid-room",
+    "game_type": "quickplay",
+    "player_left_id": "uuid-player1",
+    "player_right_id": "uuid-player2",
+    "player_left_username": "player1",
+    "player_right_username": "player2",
+    "score_left": 11,
+    "score_right": 9,
+    "winner_id": "uuid-player1",
+    "winner_username": "player1",
+    "status": "finished",
+    "end_reason": "score",
+    "created_at": "2025-01-07T10:00:00.000Z",
+    "started_at": "2025-01-07T10:05:00.000Z",
+    "finished_at": "2025-01-07T10:15:00.000Z",
+    "duration_seconds": 600
+  }
+}
+```
+
+---
+
+### Démarrer une partie
+
+**PATCH** `/games/room/:roomId/start`
+
+Change le statut à `in_progress` et définit `started_at`.
+
+**Conditions:**
+- La partie doit être en statut `waiting`
+
+**Réponse:**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+### Terminer une partie
+
+**PATCH** `/games/room/:roomId/finish`
+
+**Body:**
+```json
+{
+  "score_left": 11,
+  "score_right": 9,
+  "winner_id": "uuid-player1",
+  "end_reason": "score"
+}
+```
+
+**end_reason:** `"score"`, `"timeout"`, ou `"forfeit"`
+
+Change le statut à `finished`, enregistre les scores, définit `finished_at` et calcule automatiquement `duration_seconds`.
+
+**Réponse:**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+### Historique d'un joueur
+
+**GET** `/games/player/:playerId/history`
+
+Retourne les 50 dernières parties du joueur.
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "games": [
+    {
+      "id": "uuid-game",
+      "room_id": "uuid-room",
+      "player_left_username": "player1",
+      "player_right_username": "player2",
+      "score_left": 11,
+      "score_right": 9,
+      "result": "won",
+      "created_at": "2025-01-07T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Champ `result`:** `"won"`, `"lost"`, ou `"ongoing"`
+
+---
+
+## Game Stats
+
+### Enregistrer les stats d'une partie
+
+**POST** `/game-stats`
+
+**Body:**
+```json
+{
+  "game_id": "uuid-game",
+  "player_id": "uuid-player",
+  "side": "left",
+  "paddle_hits": 42,
+  "smashes_used": 3,
+  "max_ball_speed": 1450.5,
+  "power_ups_collected": 2,
+  "time_disconnected_ms": 0
+}
+```
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "stat_id": 123
+}
+```
+
+---
+
+### Stats d'une partie
+
+**GET** `/game-stats/game/:gameId`
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "stats": [
+    {
+      "id": 1,
+      "game_id": "uuid-game",
+      "player_id": "uuid-player",
+      "username": "player1",
+      "side": "left",
+      "paddle_hits": 42,
+      "smashes_used": 3,
+      "max_ball_speed": 1450.5,
+      "power_ups_collected": 2,
+      "time_disconnected_ms": 0
+    }
+  ]
+}
+```
+
+---
+
+### Stats agrégées d'un joueur
+
+**GET** `/game-stats/player/:playerId/aggregate`
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "aggregate_stats": {
+    "total_games": 42,
+    "total_paddle_hits": 1764,
+    "total_smashes": 126,
+    "highest_ball_speed": 1500.0,
+    "total_power_ups": 84,
+    "avg_paddle_hits": 42.0,
+    "avg_smashes": 3.0
+  }
+}
+```
+
+---
+
+## Power-ups
+
+### Enregistrer l'utilisation d'un power-up
+
+**POST** `/power-ups`
+
+**Body:**
+```json
+{
+  "game_id": "uuid-game",
+  "player_id": "uuid-player",
+  "power_up_type": "split",
+  "activated_at_game_time": 45.3
+}
+```
+
+**power_up_type:** `"split"`, `"blackout"`, ou `"blackhole"`
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "powerup_id": 123
+}
+```
+
+---
+
+### Power-ups d'une partie
+
+**GET** `/power-ups/game/:gameId`
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "power_ups": [
+    {
+      "id": 1,
+      "game_id": "uuid-game",
+      "player_id": "uuid-player",
+      "username": "player1",
+      "power_up_type": "split",
+      "activated_at_game_time": 45.3,
+      "activated_at": "2025-01-07T10:10:45.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### Stats power-ups d'un joueur
+
+**GET** `/power-ups/player/:playerId/stats`
+
+**Réponse:**
+```json
+{
+  "success": true,
+  "powerup_stats": [
+    {
+      "power_up_type": "split",
+      "times_used": 42
+    },
+    {
+      "power_up_type": "blackout",
+      "times_used": 28
+    },
+    {
+      "power_up_type": "blackhole",
+      "times_used": 14
+    }
+  ]
+}
+```
+
+---
+
+## Exemples d'utilisation
+
+### Scénario complet: Partie QuickPlay
+
+```bash
+# 1. Créer deux utilisateurs
+curl -X POST http://localhost:3020/users \
+  -H "Content-Type: application/json" \
+  -d '{"id":"player1-uuid","username":"Alice"}'
+
+curl -X POST http://localhost:3020/users \
+  -H "Content-Type: application/json" \
+  -d '{"id":"player2-uuid","username":"Bob"}'
+
+# 2. Créer une partie
+curl -X POST http://localhost:3020/games \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id":"game1-uuid",
+    "room_id":"room1-uuid",
+    "game_type":"quickplay",
+    "player_left_id":"player1-uuid",
+    "player_right_id":"player2-uuid"
+  }'
+
+# 3. Démarrer la partie
+curl -X PATCH http://localhost:3020/games/room/room1-uuid/start
+
+# 4. Enregistrer des power-ups
+curl -X POST http://localhost:3020/power-ups \
+  -H "Content-Type: application/json" \
+  -d '{
+    "game_id":"game1-uuid",
+    "player_id":"player1-uuid",
+    "power_up_type":"split",
+    "activated_at_game_time":23.5
+  }'
+
+# 5. Terminer la partie
+curl -X PATCH http://localhost:3020/games/room/room1-uuid/finish \
+  -H "Content-Type: application/json" \
+  -d '{
+    "score_left":11,
+    "score_right":9,
+    "winner_id":"player1-uuid",
+    "end_reason":"score"
+  }'
+
+# 6. Enregistrer les stats
+curl -X POST http://localhost:3020/game-stats \
+  -H "Content-Type: application/json" \
+  -d '{
+    "game_id":"game1-uuid",
+    "player_id":"player1-uuid",
+    "side":"left",
+    "paddle_hits":52,
+    "smashes_used":4,
+    "max_ball_speed":1420.3,
+    "power_ups_collected":3
+  }'
+
+# 7. Mettre à jour les stats utilisateur
+curl -X PATCH http://localhost:3020/users/player1-uuid/stats \
+  -H "Content-Type: application/json" \
+  -d '{"won":true}'
+
+curl -X PATCH http://localhost:3020/users/player2-uuid/stats \
+  -H "Content-Type: application/json" \
+  -d '{"won":false}'
+
+# 8. Consulter le leaderboard
+curl http://localhost:3020/users/leaderboard
+```
+
+---
+
+### Scénario: Tournoi
+
+```bash
+# 1. Créer un tournoi
+curl -X POST http://localhost:3020/tournaments \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id":"tournament1-uuid",
+    "name":"4p",
+    "max_players":4
+  }'
+
+# 2. Inscrire des joueurs
+curl -X POST http://localhost:3020/tournament-registrations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tournament_id":"tournament1-uuid",
+    "player_id":"player1-uuid"
+  }'
+
+# (répéter pour 3 autres joueurs)
+
+# 3. Démarrer le tournoi
+curl -X PATCH http://localhost:3020/tournaments/tournament1-uuid/start
+
+# 4. Créer un match de tournoi
+curl -X POST http://localhost:3020/games \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id":"match1-uuid",
+    "room_id":"room-match1-uuid",
+    "game_type":"tournament",
+    "player_left_id":"player1-uuid",
+    "player_right_id":"player2-uuid",
+    "tournament_id":"tournament1-uuid",
+    "tournament_round":1,
+    "match_position":0
+  }'
+
+# 5. Après le match, éliminer le perdant
+curl -X PATCH http://localhost:3020/tournament-registrations/tournament/tournament1-uuid/player/player2-uuid/eliminate \
+  -H "Content-Type: application/json" \
+  -d '{"final_position":3}'
+
+# 6. Avancer au round suivant
+curl -X PATCH http://localhost:3020/tournaments/tournament1-uuid/next-round
+
+# 7. Terminer le tournoi
+curl -X PATCH http://localhost:3020/tournaments/tournament1-uuid/finish \
+  -H "Content-Type: application/json" \
+  -d '{"winner_id":"player1-uuid"}'
+```
+
+---
+
+## Gestion des erreurs
+
+### Format des réponses d'erreur
 
 ```json
 {
   "success": false,
-  "error": "Internal server error"
+  "error": "Description de l'erreur"
 }
 ```
+
+### Codes HTTP
+
+| Code | Signification |
+|------|---------------|
+| `200` | Succès |
+| `400` | Requête invalide (champs manquants, conditions non remplies) |
+| `404` | Ressource introuvable |
+| `409` | Conflit (contrainte UNIQUE violée) |
+| `500` | Erreur serveur interne |
+
+### Erreurs courantes
+
+**Champs manquants:**
+```json
+{
+  "success": false,
+  "error": "id and username are required"
+}
+```
+
+**Contrainte UNIQUE:**
+```json
+{
+  "success": false,
+  "error": "Username already exists"
+}
+```
+
+**Ressource introuvable:**
+```json
+{
+  "success": false,
+  "error": "User not found"
+}
+```
+
+**Condition non remplie:**
+```json
+{
+  "success": false,
+  "error": "Game not found or already started"
+}
+```
+
+---
+
+## Tests
+
+Voir le fichier `test-database-api.sh` pour une suite de tests complète.
+
+### Lancer les tests
+
+```bash
+cd apps/database
+chmod +x test-database-api.sh
+./test-database-api.sh
+```
+
+Le script teste:
+- ✅ Création et récupération d'utilisateurs
+- ✅ Mise à jour des stats
+- ✅ Leaderboard
+- ✅ Création et gestion de tournois
+- ✅ Inscriptions et éliminaisons
+- ✅ Création et suivi de parties
+- ✅ Enregistrement de stats détaillées
+- ✅ Tracking des power-ups
+- ✅ Gestion des erreurs (409, 404, 400)
+
+---
+
+## Notes importantes
+
+### Contraintes de base de données
+
+**Users:**
+- `username` doit être unique
+- `id` est la clé primaire (UUID recommandé)
+
+**Tournaments:**
+- `status` doit être: `registration`, `in_progress`, ou `finished`
+
+**Games:**
+- `room_id` doit être unique
+- `game_type` doit être: `quickplay` ou `tournament`
+- `end_reason` doit être: `score`, `timeout`, ou `forfeit`
+
+**Tournament Registrations:**
+- Combinaison `(tournament_id, player_id)` doit être unique
+- Suppression en cascade si le tournoi est supprimé
+
+**Game Stats:**
+- Combinaison `(game_id, player_id)` doit être unique
+- `side` doit être: `left` ou `right`
+
+**Power-ups:**
+- `power_up_type` doit être: `split`, `blackout`, ou `blackhole`
+
+### Performance
+
+- Index créés sur les colonnes fréquemment recherchées
+- Limite de 100 résultats pour les listes sans filtres
+- Limite de 50 pour les leaderboards et historiques
+
+### Calculs automatiques
+
+**Games:**
+- `duration_seconds` calculé automatiquement lors du finish (différence entre `started_at` et `finished_at`)
+
+**Users leaderboard:**
+- `win_rate` calculé dynamiquement: `(total_wins / total_games) * 100`
+
+---
+
+## Utilisation du script de test
+
+```bash
+# Rendre le script exécutable
+chmod +x apps/database/test-database-api.sh
+
+# Lancer les tests
+cd apps/database
+./test-database-api.sh
+```
+
+**Le script teste:**
+- ✅ Toutes les routes CRUD
+- ✅ Les contraintes UNIQUE (409 Conflict)
+- ✅ Les ressources inexistantes (404 Not Found)
+- ✅ Les champs manquants (400 Bad Request)
+- ✅ Les calculs automatiques (duration_seconds, win_rate)
+- ✅ Les jointures SQL (usernames dans les réponses)
+- ✅ Les limites de résultats

@@ -1,35 +1,113 @@
--- Partie persistante
-CREATE TABLE IF NOT EXISTS games (
-	if INTEGER PRIMARY KEY AUTOINCREMENT,
-	player1_name TEXT NOT NULL,
-	player2_name TEXT NOT NULL,
-	player1_score INTEGER NOT NULL DEFAULT 0,
-	player2_score INTEGER NOT NULL DEFAULT 0,
-	duration INTEGER NOT NULL DEFAULT 0,
-	status TEXT NOT NULL DEFAULT 'active',
-	started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-	finished_at DATETIME NULL
+-- Table des utilisateurs
+CREATE TABLE users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_seen DATETIME,
+    total_games INTEGER DEFAULT 0,
+    total_wins INTEGER DEFAULT 0,
+    total_losses INTEGER DEFAULT 0
 );
 
--- Chat global
-CREATE TABLE IF NOT EXISTS global_messages (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	username TEXT NOT NULL,
-	content TEXT NOT NULL,
-	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+-- Index pour les recherches fréquentes
+CREATE INDEX idx_users_username ON users(username);
+
+-- Table des tournois
+CREATE TABLE tournaments (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    max_players INTEGER NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('registration', 'in_progress', 'finished')),
+    winner_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    started_at DATETIME,
+    finished_at DATETIME,
+    current_round INTEGER DEFAULT 0,
+    FOREIGN KEY (winner_id) REFERENCES users(id)
 );
 
--- Room chat (supp 10min apres la fin de game)
-CREATE TABLE IF NOT EXISTS game_messages (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	game_id INTEGER NOT NULL,
-	username TEXT NOT NULL,
-	content TEXT NOT NULL,
-	timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-	FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+CREATE INDEX idx_tournaments_status ON tournaments(status);
+CREATE INDEX idx_tournaments_created_at ON tournaments(created_at);
+
+-- Table des inscriptions aux tournois
+CREATE TABLE tournament_registrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    registered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_eliminated BOOLEAN DEFAULT 0,
+    final_position INTEGER,
+    FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES users(id),
+    UNIQUE(tournament_id, player_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_games_status ON games(status);
-CREATE INDEX IF NOT EXISTS idx_game_messages_game_id ON game_messages(game_id);
-CREATE INDEX IF NOT EXISTS idx_game_messages_timestamp ON game_messages(timestamp);
-CREATE INDEX IF NOT EXISTS idx_global_messages_timestamp ON global_messages(timestamp);
+CREATE INDEX idx_registrations_tournament ON tournament_registrations(tournament_id);
+CREATE INDEX idx_registrations_player ON tournament_registrations(player_id);
+
+-- Table des parties (quickplay ET matches de tournoi)
+CREATE TABLE games (
+    id TEXT PRIMARY KEY,
+    room_id TEXT NOT NULL UNIQUE,
+    game_type TEXT NOT NULL CHECK(game_type IN ('quickplay', 'tournament')),
+    tournament_id TEXT,
+    tournament_round INTEGER,
+    match_position INTEGER,
+    player_left_id TEXT NOT NULL,
+    player_right_id TEXT NOT NULL,
+    score_left INTEGER DEFAULT 0,
+    score_right INTEGER DEFAULT 0,
+    winner_id TEXT,
+    status TEXT NOT NULL CHECK(status IN ('waiting', 'in_progress', 'finished', 'abandoned')),
+    end_reason TEXT CHECK(end_reason IN ('score', 'timeout', 'forfeit')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    started_at DATETIME,
+    finished_at DATETIME,
+    duration_seconds INTEGER,
+    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+    FOREIGN KEY (player_left_id) REFERENCES users(id),
+    FOREIGN KEY (player_right_id) REFERENCES users(id),
+    FOREIGN KEY (winner_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_games_room ON games(room_id);
+CREATE INDEX idx_games_tournament ON games(tournament_id);
+CREATE INDEX idx_games_player_left ON games(player_left_id);
+CREATE INDEX idx_games_player_right ON games(player_right_id);
+CREATE INDEX idx_games_created_at ON games(created_at);
+CREATE INDEX idx_games_status ON games(status);
+
+-- Table des statistiques détaillées de partie
+CREATE TABLE game_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    side TEXT NOT NULL CHECK(side IN ('left', 'right')),
+    paddle_hits INTEGER DEFAULT 0,
+    smashes_used INTEGER DEFAULT 0,
+    max_ball_speed REAL DEFAULT 0,
+    power_ups_collected INTEGER DEFAULT 0,
+    time_disconnected_ms INTEGER DEFAULT 0,
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES users(id),
+    UNIQUE(game_id, player_id)
+);
+
+CREATE INDEX idx_game_stats_game ON game_stats(game_id);
+CREATE INDEX idx_game_stats_player ON game_stats(player_id);
+
+-- Table des power-ups activés
+CREATE TABLE power_ups_used (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id TEXT NOT NULL,
+    player_id TEXT NOT NULL,
+    power_up_type TEXT NOT NULL CHECK(power_up_type IN ('split', 'blackout', 'blackhole')),
+    activated_at_game_time REAL NOT NULL,
+    activated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+    FOREIGN KEY (player_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_powerups_game ON power_ups_used(game_id);
+CREATE INDEX idx_powerups_player ON power_ups_used(player_id);
+CREATE INDEX idx_powerups_type ON power_ups_used(power_up_type);
