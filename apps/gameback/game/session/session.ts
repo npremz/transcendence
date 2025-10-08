@@ -167,6 +167,7 @@ class GameSession {
                     const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
                     if (haveBoth && !this.hadBothCtrl) {
                         this.world.startCountdown();
+                        this.notifyGameStarted();
                     }
                     this.hadBothCtrl = haveBoth;
                 }
@@ -246,6 +247,27 @@ class GameSession {
 		}
 		this.hadBothCtrl = !!this.leftCtrl && !!this.rightCtrl;
 	}
+
+    private async notifyGameStarted(): Promise<void> {
+        if (!this.roomId) return;
+        
+        try
+        {
+            const host = process.env.VITE_HOST || 'localhost:8443';
+            const url = `https://${host}/database/games/room/${this.roomId}/start`;
+            
+            await fetch(url, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            this.log?.info({ roomId: this.roomId }, 'Game start notified to database');
+        }
+        catch (err)
+        {
+            this.log?.error({ roomId: this.roomId, error: err }, 'Failed to notify game start');
+        }
+    }
 
 	private async notifyGameEnd(reason: 'score' | 'timeout', winner?: 'left' | 'right'): Promise<void> {
         if (this.reportedGameOver)

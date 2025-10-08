@@ -5,6 +5,31 @@ import https from 'https'
 const isDevelopment = process.env.NODE_ENV === 'development'
 const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
 
+async function callDatabase(endpoint: string, method: string = 'GET', body?: any)
+{
+	const host = process.env.VITE_HOST || 'localhost:8443';
+	const url = `https://${host}/gamedb${endpoint}`;
+	
+	const options: RequestInit = {
+		method,
+		// @ts-ignore
+		agent
+	};
+
+	if (body && method !== 'GET') {
+		options.headers = { 'Content-Type': 'application/json' };
+		options.body = JSON.stringify(body);
+	}
+	
+	if (body && method !== 'GET')
+	{
+		options.body = JSON.stringify(body);
+	}
+	
+	const response = await fetch(url, options);
+	return response.json();
+}
+
 export class TournamentManager
 {
 	private tournaments = new Map<string, Tournament>()
@@ -35,7 +60,7 @@ export class TournamentManager
 		return currentRegistrations;
 	}
 
-	createTournament(name: string, maxPlayers: number): Tournament
+	async createTournament(name: string, maxPlayers: number): Promise<Tournament>
 	{
 		const tournament: Tournament = {
 			id: uuidv4(),
@@ -48,15 +73,49 @@ export class TournamentManager
 			createdAt: new Date()
 		}
 
+		try
+		{
+			await callDatabase('/tournaments', 'POST', {
+				id: tournament.id,
+				name: tournament.name,
+				max_players: tournament.maxPlayers
+			});
+		}
+		catch (err)
+		{
+			console.error('Failed to create tournament in DB:', err);
+		}
+
 		this.tournaments.set(tournament.id, tournament);
 		return tournament;
 	}
 
-	registerPlayer(tournamentId: string, newPlayer: Player): boolean
+	async registerPlayer(tournamentId: string, newPlayer: Player): Promise<boolean>
 	{
 		const tournament = this.tournaments.get(tournamentId);
 		if (!tournament || tournament.status !== 'registration') return false;
 		if (tournament.currentPlayers.length >= tournament.maxPlayers) return false;
+
+		try
+		{
+			await callDatabase('/users', 'POST', {
+				id: newPlayer.id,
+				username: newPlayer.username
+			});
+		}
+		catch (err)
+		{
+			console.log('User already exists or DB error:', err);
+		}
+
+		try
+		{
+			await callDatabase(`/users/${newPlayer.id}/last-seen`, 'PATCH');
+		}
+		catch (err)
+		{
+			console.log('Failed to update last_seen:', err);
+		}
 
 		this.removePlayerFromOtherRegistrations(newPlayer.id, tournamentId);
 
@@ -67,11 +126,23 @@ export class TournamentManager
 		if (!isPlayerInTournament)
 		{
 			tournament.currentPlayers.push(newPlayer);
+
+			try
+			{
+				await callDatabase('/tournament-registrations', 'POST', {
+					tournament_id: tournamentId,
+					player_id: newPlayer.id
+				});
+			}
+			catch (err)
+			{
+				console.error('Failed to register player in DB:', err);
+			}
 		}
 
 		if (tournament.currentPlayers.length === tournament.maxPlayers)
 		{
-			this.startTournament(tournamentId);
+			await this.startTournament(tournamentId);
 		}
 
 		return true;
@@ -88,6 +159,9 @@ export class TournamentManager
 				{
 					tournament.currentPlayers.splice(playerIndex, 1);
 					console.log(`Player ${playerId} removed from tournament ${tournament.name} (switching tournaments)`);
+
+					callDatabase(`/tournament-registrations/tournament/${tournamentId}/player/${playerId}`, 'DELETE')
+						.catch(err => console.error('Failed to remove registration from DB:', err));
 				}
 			}
 		}
@@ -106,13 +180,16 @@ export class TournamentManager
 					tournament.currentPlayers.splice(playerIndex, 1);
 					console.log(`Player ${playerId} removed from tournament ${tournament.name}`);
 					removed = true;
+
+					callDatabase(`/tournament-registrations/tournament/${tournamentId}/player/${playerId}`, 'DELETE')
+						.catch(err => console.error('Failed to remove registration from DB:', err));
 				}
 			}
 		}
 		return removed;
 	}
 
-	startTournament(tournamentId: string): void
+	async startTournament(tournamentId: string): Promise<void>
 	{
 		const tournament = this.tournaments.get(tournamentId);
 		if (!tournament) return;
@@ -139,10 +216,19 @@ export class TournamentManager
 		tournament.currentRound = 1;
 		tournament.StartedAt = new Date();
 
-		this.createTournament(tournament.name, tournament.maxPlayers)
+		try
+		{
+			await callDatabase(`/tournaments/${tournamentId}/start`, 'PATCH');
+		}
+		catch (err)
+		{
+			console.error('Failed to start tournament in DB:', err);
+		}
+
+		await this.createTournament(tournament.name, tournament.maxPlayers)
 		console.log(`Tournament ${tournament.name} started with ${tournament.currentPlayers.length} players`);
 
-		this.startNextMatch(tournamentId);
+		await this.startNextMatch(tournamentId);
 	}
 
 	async startNextMatch(tournamentId: string): Promise<void>
@@ -170,6 +256,18 @@ export class TournamentManager
 			const url = `https://${host}${endpoint}`;
 
 			console.log(`Creating tournament match: ${nextMatch.player1?.username} vs ${nextMatch.player2?.username}`);
+
+			const gameId = uuidv4();
+			await callDatabase('/games', 'POST', {
+				id: gameId,
+				room_id: `tournament-${nextMatch.id}`,
+				game_type: 'tournament',
+				tournament_id: tournament.id,
+				tournament_round: tournament.currentRound,
+				match_position: nextMatch.position,
+				player_left_id: nextMatch.player1!.id,
+				player_right_id: nextMatch.player2!.id
+			});
 
 			const response = await fetch(url, {
 				method: 'POST',
@@ -201,6 +299,8 @@ export class TournamentManager
 			nextMatch.status = 'in_progress';
 			nextMatch.scheduledAt = new Date();
 
+			await callDatabase(`/games/room/${data.roomId}/start`, 'PATCH');
+
 			console.log(`Match started successfully: roomId=${data.roomId}`);
 		}
 		catch (err)
@@ -210,7 +310,7 @@ export class TournamentManager
 		}
 	}
 
-	onMatchFinished(matchId: string, winnerId: string): void
+	async onMatchFinished(matchId: string, winnerId: string): Promise<void>
 	{
 		const match = this.findMatchById(matchId);
 		if (!match)
@@ -237,13 +337,20 @@ export class TournamentManager
 			const loserInTournament = tournament.currentPlayers.find(p => p.id === loser.id);
 			if (loserInTournament) {
 				loserInTournament.isEleminated = true;
+
+				await callDatabase(
+					`/tournament-registrations/tournament/${tournament.id}/player/${loser.id}/eliminate`,
+					'PATCH'
+				);
 			}
 		}
 
-		this.checkRoundCompletion(match.tournamentId);
+		await callDatabase(`/users/${winnerId}/stats`, 'PATCH', { won: loser ? false : true});
+
+		await this.checkRoundCompletion(match.tournamentId);
 	}
 
-	checkRoundCompletion(tournamentId: string): void {
+	async checkRoundCompletion(tournamentId: string): Promise<void> {
 		const tournament = this.tournaments.get(tournamentId);
 		if (!tournament) return;
 
@@ -267,22 +374,28 @@ export class TournamentManager
 				tournament.status = 'finished';
 				tournament.finishedAt = new Date();
 
+				await callDatabase(`/tournaments/${tournamentId}/finish`, 'PATCH', {
+					winner_id: tournament.winner?.id
+				});
+
 				console.log(`Tournament finished! Winner: ${tournament.winner?.username}`);
 				return;
 			}
 
 			console.log(`Creating round ${tournament.currentRound + 1}`);
-			this.createNextRound(tournament, finishedMatches);
+			await this.createNextRound(tournament, finishedMatches);
+
+			await callDatabase(`/tournaments/${tournamentId}/next-round`, 'PATCH');
 			
-			this.startNextMatch(tournamentId);
+			await this.startNextMatch(tournamentId);
 		}
 		else
 		{
-			this.startNextMatch(tournamentId);
+			await this.startNextMatch(tournamentId);
 		}
 	}
 
-	createNextRound(tournament: Tournament, previousMatches: Match[]): void {
+	async createNextRound(tournament: Tournament, previousMatches: Match[]): Promise<void> {
         const nextRound = tournament.currentRound + 1;
         const winners = previousMatches.map(m => m.winner!).filter(Boolean);
 
