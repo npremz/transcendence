@@ -8,6 +8,29 @@ import https from 'https'
 const isDevelopment = process.env.NODE_ENV === 'development'
 const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
 
+async function callDatabase(endpoint: string, method: string = 'GET', body?: any) {
+	const host = process.env.VITE_HOST || 'localhost:8443';
+	const url = `https://${host}/gamedb${endpoint}`;
+	
+	const options: RequestInit = {
+		method,
+		// @ts-ignore
+		agent
+	};
+
+	if (body && method !== 'GET') {
+		options.headers = { 'Content-Type': 'application/json' };
+		options.body = JSON.stringify(body);
+	}
+	
+	if (body && method !== 'GET') {
+		options.body = JSON.stringify(body);
+	}
+	
+	const response = await fetch(url, options);
+	return response.json();
+}
+
 export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManager)
 {
 	fastify.post('/join', async (request, reply) => {
@@ -16,6 +39,20 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 		if (!username || !playerId) {
 			return reply.code(400).send({ error: 'Username and playerId required' });
 		}
+
+		try
+		{
+			await callDatabase('/users', 'POST', {
+				id: playerId,
+				username
+			});
+		}
+		catch (err)
+		{
+			console.log('User already exists or DB error:', err);
+		}
+
+		await callDatabase(`/users/${playerId}/last-seen`, 'PATCH');
 
 		const player: Player = {
 			id: playerId,
@@ -30,9 +67,19 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 			const host = process.env.VITE_HOST;
 			const create_endpoint = process.env.VITE_CREATEGAME_ENDPOINT;
 			const fetchURL = `https://${host || 'localhost:8443'}${create_endpoint || '/gameback/create'}`;
+
+			const gameId = uuidv4();
 			
 			try
 			{
+				await callDatabase('/games', 'POST', {
+					id: gameId,
+					room_id: room.id,
+					game_type: 'quickplay',
+					player_left_id: room.players[0].id,
+					player_right_id: room.players[1].id
+				});
+
 				await fetch(fetchURL, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -90,7 +137,7 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 		};
 	});
 
-	fastify.post('/room-finished', (request, reply) => {
+	fastify.post('/room-finished', async (request, reply) => {
 		try
 		{
 			const body = request.body as Partial<RoomFinishedPayload> | undefined;
@@ -103,6 +150,57 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 			route: '/room-finished',
 			body
 			}, 'room-finished received');
+
+			const room = roomManager.getRoom(body.roomId);
+			
+			if (room && body.winner && body.score) {
+				const gameData = await callDatabase(`/games/room/${body.roomId}`);
+				
+				if (gameData.success && gameData.game)
+				{
+					try
+					{
+						const gameData = await callDatabase(`/games/room/${body.roomId}`);
+						
+						if (gameData.success && gameData.game)
+						{
+							const gameId = gameData.game.id;
+							
+							if (gameData.game.status === 'waiting')
+							{
+								await callDatabase(`/games/room/${body.roomId}/start`, 'PATCH');
+								fastify.log.info('Game started before finishing');
+							}
+							
+							const finishResult = await callDatabase(`/games/room/${body.roomId}/finish`, 'PATCH', {
+								score_left: body.score.left,
+								score_right: body.score.right,
+								winner_id: body.winner.id,
+								end_reason: body.reason
+							});
+							
+							if (!finishResult.success)
+							{
+								fastify.log.error({ finishResult }, 'Failed to finish game in DB');
+							}
+
+							const isLeftWinner = body.winner.id === room.players[0].id;
+							
+							await callDatabase(`/users/${room.players[0].id}/stats`, 'PATCH', {
+								won: isLeftWinner
+							});
+							
+							await callDatabase(`/users/${room.players[1].id}/stats`, 'PATCH', {
+								won: !isLeftWinner
+							});
+						}
+					}
+					catch (err)
+					{
+						fastify.log.error({ err }, 'Error updating game in database');
+					}
+				}
+			}
 
 			const deleted = roomManager.deleteRoom(body.roomId);
 			return reply.send({ success: true, deleted });
