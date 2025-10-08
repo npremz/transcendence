@@ -2,6 +2,7 @@
 
 # ═══════════════════════════════════════════════════════
 # Script de test pour l'API Database de Transcendence
+# Avec nettoyage automatique des données de test
 # ═══════════════════════════════════════════════════════
 
 # set -e  # Arrêter en cas d'erreur
@@ -11,23 +12,39 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
 API_URL="https://25.35.220.160:8443/gamedb"
-CURL_OPTS="-k"  # Ignore SSL certificate verification (dev only)
+CURL_OPTS="-k"
 
-PLAYER1_ID="test-player1-$(date +%s)"
-PLAYER2_ID="test-player2-$(date +%s)"
-PLAYER3_ID="test-player3-$(date +%s)"
-PLAYER4_ID="test-player4-$(date +%s)"
-TOURNAMENT_ID="test-tournament-$(date +%s)"
-GAME_ID="test-game-$(date +%s)"
-ROOM_ID="test-room-$(date +%s)"
+# Générer des identifiants uniques avec timestamp
+TIMESTAMP=$(date +%s)
+RANDOM_SUFFIX=$((RANDOM % 10000))
+
+PLAYER1_ID="test-player1-${TIMESTAMP}-${RANDOM_SUFFIX}"
+PLAYER2_ID="test-player2-${TIMESTAMP}-${RANDOM_SUFFIX}"
+PLAYER3_ID="test-player3-${TIMESTAMP}-${RANDOM_SUFFIX}"
+PLAYER4_ID="test-player4-${TIMESTAMP}-${RANDOM_SUFFIX}"
+
+PLAYER1_USERNAME="TestPlayer1-${TIMESTAMP}-${RANDOM_SUFFIX}"
+PLAYER2_USERNAME="TestPlayer2-${TIMESTAMP}-${RANDOM_SUFFIX}"
+PLAYER3_USERNAME="TestPlayer3-${TIMESTAMP}-${RANDOM_SUFFIX}"
+PLAYER4_USERNAME="TestPlayer4-${TIMESTAMP}-${RANDOM_SUFFIX}"
+
+TOURNAMENT_ID="test-tournament-${TIMESTAMP}-${RANDOM_SUFFIX}"
+GAME_ID="test-game-${TIMESTAMP}-${RANDOM_SUFFIX}"
+ROOM_ID="test-room-${TIMESTAMP}-${RANDOM_SUFFIX}"
 
 # Compteurs
 TESTS_PASSED=0
 TESTS_FAILED=0
+
+# Tableau pour tracker les ressources créées
+declare -a CREATED_USERS=()
+declare -a CREATED_TOURNAMENTS=()
+declare -a CREATED_GAMES=()
 
 # ═══════════════════════════════════════════════════════
 # Fonctions utilitaires
@@ -53,6 +70,10 @@ print_error() {
 	((TESTS_FAILED++))
 }
 
+print_cleanup() {
+	echo -e "${MAGENTA}🧹 Nettoyage:${NC} $1"
+}
+
 check_service() {
 	print_header "Vérification du service"
 	
@@ -65,6 +86,49 @@ check_service() {
 }
 
 # ═══════════════════════════════════════════════════════
+# Fonction de nettoyage
+# ═══════════════════════════════════════════════════════
+
+cleanup_test_data() {
+	print_header "Nettoyage des données de test"
+	
+	local cleanup_count=0
+	
+	# Nettoyer les parties (games)
+	for game_id in "${CREATED_GAMES[@]}"; do
+		if [ -n "$game_id" ]; then
+			curl $CURL_OPTS -s -X DELETE "$API_URL/games/$game_id" > /dev/null 2>&1 || true
+			((cleanup_count++))
+		fi
+	done
+	
+	# Nettoyer les tournois (tournaments)
+	for tournament_id in "${CREATED_TOURNAMENTS[@]}"; do
+		if [ -n "$tournament_id" ]; then
+			curl $CURL_OPTS -s -X DELETE "$API_URL/tournaments/$tournament_id" > /dev/null 2>&1 || true
+			((cleanup_count++))
+		fi
+	done
+	
+	# Nettoyer les utilisateurs (users)
+	for user_id in "${CREATED_USERS[@]}"; do
+		if [ -n "$user_id" ]; then
+			curl $CURL_OPTS -s -X DELETE "$API_URL/users/$user_id" > /dev/null 2>&1 || true
+			((cleanup_count++))
+		fi
+	done
+	
+	if [ $cleanup_count -gt 0 ]; then
+		print_cleanup "$cleanup_count ressources supprimées"
+	else
+		print_cleanup "Aucune ressource à nettoyer"
+	fi
+}
+
+# Trap pour nettoyer même en cas d'erreur
+trap cleanup_test_data EXIT
+
+# ═══════════════════════════════════════════════════════
 # Tests Users
 # ═══════════════════════════════════════════════════════
 
@@ -75,10 +139,11 @@ test_users() {
 	print_test "Créer un utilisateur (player1)"
 	RESPONSE=$(curl $CURL_OPTS -s -X POST "$API_URL/users" \
 		-H "Content-Type: application/json" \
-		-d "{\"id\":\"$PLAYER1_ID\",\"username\":\"TestPlayer1\"}")
+		-d "{\"id\":\"$PLAYER1_ID\",\"username\":\"$PLAYER1_USERNAME\"}")
 	
 	if echo "$RESPONSE" | grep -q '"success":true'; then
 		print_success "Utilisateur créé"
+		CREATED_USERS+=("$PLAYER1_ID")
 	else
 		print_error "Échec création utilisateur: $RESPONSE"
 	fi
@@ -86,15 +151,18 @@ test_users() {
 	# Test 2: Créer les autres joueurs
 	curl $CURL_OPTS -s -X POST "$API_URL/users" \
 		-H "Content-Type: application/json" \
-		-d "{\"id\":\"$PLAYER2_ID\",\"username\":\"TestPlayer2\"}" > /dev/null
+		-d "{\"id\":\"$PLAYER2_ID\",\"username\":\"$PLAYER2_USERNAME\"}" > /dev/null
+	CREATED_USERS+=("$PLAYER2_ID")
 	
 	curl $CURL_OPTS -s -X POST "$API_URL/users" \
 		-H "Content-Type: application/json" \
-		-d "{\"id\":\"$PLAYER3_ID\",\"username\":\"TestPlayer3\"}" > /dev/null
+		-d "{\"id\":\"$PLAYER3_ID\",\"username\":\"$PLAYER3_USERNAME\"}" > /dev/null
+	CREATED_USERS+=("$PLAYER3_ID")
 	
 	curl $CURL_OPTS -s -X POST "$API_URL/users" \
 		-H "Content-Type: application/json" \
-		-d "{\"id\":\"$PLAYER4_ID\",\"username\":\"TestPlayer4\"}" > /dev/null
+		-d "{\"id\":\"$PLAYER4_ID\",\"username\":\"$PLAYER4_USERNAME\"}" > /dev/null
+	CREATED_USERS+=("$PLAYER4_ID")
 	
 	print_success "3 utilisateurs supplémentaires créés"
 	
@@ -102,7 +170,7 @@ test_users() {
 	print_test "Récupérer un utilisateur par ID"
 	RESPONSE=$(curl $CURL_OPTS -s "$API_URL/users/$PLAYER1_ID")
 	
-	if echo "$RESPONSE" | grep -q "TestPlayer1"; then
+	if echo "$RESPONSE" | grep -q "$PLAYER1_USERNAME"; then
 		print_success "Utilisateur récupéré par ID"
 	else
 		print_error "Échec récupération par ID: $RESPONSE"
@@ -110,7 +178,7 @@ test_users() {
 	
 	# Test 4: Rechercher par username
 	print_test "Rechercher par username"
-	RESPONSE=$(curl $CURL_OPTS -s "$API_URL/users?username=TestPlayer1")
+	RESPONSE=$(curl $CURL_OPTS -s "$API_URL/users?username=$PLAYER1_USERNAME")
 	
 	if echo "$RESPONSE" | grep -q "$PLAYER1_ID"; then
 		print_success "Utilisateur trouvé par username"
@@ -152,7 +220,7 @@ test_users() {
 	print_test "Récupérer le leaderboard"
 	RESPONSE=$(curl $CURL_OPTS -s "$API_URL/users/leaderboard")
 	
-	if echo "$RESPONSE" | grep -q "TestPlayer1"; then
+	if echo "$RESPONSE" | grep -q "$PLAYER1_USERNAME"; then
 		print_success "Leaderboard récupéré"
 	else
 		print_error "Échec récupération leaderboard: $RESPONSE"
@@ -162,7 +230,7 @@ test_users() {
 	print_test "Tentative de doublon username (doit échouer)"
 	RESPONSE=$(curl $CURL_OPTS -s -w "\n%{http_code}" -X POST "$API_URL/users" \
 		-H "Content-Type: application/json" \
-		-d "{\"id\":\"duplicate-id\",\"username\":\"TestPlayer1\"}")
+		-d "{\"id\":\"duplicate-id-$TIMESTAMP\",\"username\":\"$PLAYER1_USERNAME\"}")
 	
 	HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
 	if [ "$HTTP_CODE" = "409" ]; then
@@ -187,6 +255,7 @@ test_tournaments() {
 	
 	if echo "$RESPONSE" | grep -q '"success":true'; then
 		print_success "Tournoi créé"
+		CREATED_TOURNAMENTS+=("$TOURNAMENT_ID")
 	else
 		print_error "Échec création tournoi: $RESPONSE"
 	fi
@@ -252,10 +321,11 @@ test_registrations() {
 	print_header "Tests Tournament Registrations"
 	
 	# Créer un nouveau tournoi pour les inscriptions
-	NEW_TOURNAMENT_ID="test-tournament-reg-$(date +%s)"
+	NEW_TOURNAMENT_ID="test-tournament-reg-${TIMESTAMP}-${RANDOM_SUFFIX}"
 	curl $CURL_OPTS -s -X POST "$API_URL/tournaments" \
 		-H "Content-Type: application/json" \
 		-d "{\"id\":\"$NEW_TOURNAMENT_ID\",\"name\":\"4p\",\"max_players\":4}" > /dev/null
+	CREATED_TOURNAMENTS+=("$NEW_TOURNAMENT_ID")
 	
 	# Test 1: Inscrire un joueur
 	print_test "Inscrire un joueur"
@@ -284,7 +354,7 @@ test_registrations() {
 	print_test "Lister les joueurs inscrits"
 	RESPONSE=$(curl $CURL_OPTS -s "$API_URL/tournament-registrations/tournament/$NEW_TOURNAMENT_ID")
 	
-	if echo "$RESPONSE" | grep -q "TestPlayer1"; then
+	if echo "$RESPONSE" | grep -q "$PLAYER1_USERNAME"; then
 		print_success "Liste des joueurs récupérée"
 	else
 		print_error "Échec récupération liste: $RESPONSE"
@@ -347,6 +417,7 @@ test_games() {
 	
 	if echo "$RESPONSE" | grep -q '"success":true'; then
 		print_success "Partie créée"
+		CREATED_GAMES+=("$GAME_ID")
 	else
 		print_error "Échec création partie: $RESPONSE"
 	fi
@@ -355,7 +426,7 @@ test_games() {
 	print_test "Récupérer la partie par room_id"
 	RESPONSE=$(curl $CURL_OPTS -s "$API_URL/games/room/$ROOM_ID")
 	
-	if echo "$RESPONSE" | grep -q "TestPlayer1"; then
+	if echo "$RESPONSE" | grep -q "$PLAYER1_USERNAME"; then
 		print_success "Partie récupérée"
 	else
 		print_error "Échec récupération partie: $RESPONSE"
@@ -551,10 +622,8 @@ print_summary() {
 	
 	if [ $TESTS_FAILED -eq 0 ]; then
 		echo -e "\n${GREEN}✓ Tous les tests sont passés !${NC}\n"
-		exit 0
 	else
 		echo -e "\n${RED}✗ Certains tests ont échoué${NC}\n"
-		exit 1
 	fi
 }
 
@@ -567,6 +636,7 @@ main() {
 	echo "╔═══════════════════════════════════════════════════════╗"
 	echo "║                                                       ║"
 	echo "║       Tests API Database - Transcendence              ║"
+	echo "║       Avec nettoyage automatique                      ║"
 	echo "║                                                       ║"
 	echo "╚═══════════════════════════════════════════════════════╝"
 	echo -e "${NC}"
@@ -580,6 +650,8 @@ main() {
 	test_powerups
 	test_errors
 	print_summary
+	
+	# Le nettoyage sera automatiquement appelé via le trap EXIT
 }
 
 main

@@ -253,4 +253,41 @@ export function registerTournamentRoutes(fastify: FastifyInstance): void
 			});
 		}
 	);
+
+	// DELETE - Supprimer un tournoi (pour les tests uniquement)
+	fastify.delete<{ Params: { id: string } }>(
+		'/tournaments/:id',
+		async (request, reply) => {
+			const { id } = request.params;
+
+			return new Promise((resolve) => {
+				fastify.db.run(
+					`DELETE FROM tournaments WHERE id = ?`,
+					[id],
+					function(err)
+					{
+						if (err)
+						{
+							resolve(reply.status(500).send({
+								success: false,
+								error: err.message
+							}));
+						}
+						else if (this.changes === 0)
+						{
+							resolve(reply.status(404).send({
+								success: false,
+								error: 'Tournament not found'
+							}));
+						}
+						else
+						{
+							resolve(reply.send({ success: true }));
+						}
+					}
+				);
+			});
+		}
+	);
+
 }

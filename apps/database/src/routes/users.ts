@@ -280,4 +280,41 @@ export function registerUserRoutes(fastify: FastifyInstance): void
 			);
 		});
 	});
+
+	// DELETE - Supprimer un utilisateur (pour les tests uniquement)
+	fastify.delete<{ Params: { id: string } }>(
+		'/users/:id',
+		async (request, reply) => {
+			const { id } = request.params;
+
+			return new Promise((resolve) => {
+				fastify.db.run(
+					`DELETE FROM users WHERE id = ?`,
+					[id],
+					function(err)
+					{
+						if (err)
+						{
+							resolve(reply.status(500).send({
+								success: false,
+								error: err.message
+							}));
+						}
+						else if (this.changes === 0)
+						{
+							resolve(reply.status(404).send({
+								success: false,
+								error: 'User not found'
+							}));
+						}
+						else
+						{
+							resolve(reply.send({ success: true }));
+						}
+					}
+				);
+			});
+		}
+	);
+
 }
