@@ -361,14 +361,38 @@ export class GameWorld {
         }
     }
 
+    private frozenVelocities: Map<number, { vx: number; vy: number }> = new Map();
+    private isFrozen: boolean = false;
+
     public debugBallSpeed(mode: 'multiply' | 'divide' | 'freeze'): void {
         const s = this.state;
-        for (const b of s.balls) {
-            if (mode === 'freeze') {
-                b.vx = 0;
-                b.vy = 0;
-                continue;
+        
+        if (mode === 'freeze') {
+            if (!this.isFrozen) {
+                this.frozenVelocities.clear();
+                for (let i = 0; i < s.balls.length; i++) {
+                    const b = s.balls[i];
+                    this.frozenVelocities.set(i, { vx: b.vx, vy: b.vy });
+                    b.vx = 0;
+                    b.vy = 0;
+                }
+                this.isFrozen = true;
+            } else {
+                for (let i = 0; i < s.balls.length; i++) {
+                    const b = s.balls[i];
+                    const saved = this.frozenVelocities.get(i);
+                    if (saved) {
+                        b.vx = saved.vx;
+                        b.vy = saved.vy;
+                    }
+                }
+                this.frozenVelocities.clear();
+                this.isFrozen = false;
             }
+            return;
+        }
+        
+        for (const b of s.balls) {
             const factor = mode === 'multiply' ? 2 : 0.5;
             b.vx *= factor;
             b.vy *= factor;
