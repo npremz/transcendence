@@ -8,9 +8,9 @@ interface GameHistory {
     game_type: 'quickplay' | 'tournament';
     player_left_username: string;
     player_right_username: string;
+    winner_username?: string;
     score_left: number;
     score_right: number;
-    result: 'won' | 'lost' | 'ongoing';
     end_reason?: 'score' | 'timeout' | 'forfeit';
     created_at: string;
     duration_seconds?: number;
@@ -77,8 +77,8 @@ export const HistoryView: ViewFunction = () => {
             <div class="container mx-auto px-8 pb-8">
                 <!-- Titre -->
                 <div class="text-center mb-8">
-                    <h1 class="text-5xl font-bold text-white mb-2">Historique des Parties</h1>
-                    <p class="text-white/60 text-lg">Consultez vos performances passées</p>
+                    <h1 class="text-5xl font-bold text-white mb-2">Historique Global</h1>
+                    <p class="text-white/60 text-lg">Toutes les parties jouées</p>
                 </div>
 
                 <!-- Filtres -->
@@ -162,13 +162,11 @@ export const historyLogic = (): (() => void) => {
     let currentFilter: 'all' | 'quickplay' | 'tournament' = 'all';
     let currentSort: 'recent' | 'oldest' | 'duration' = 'recent';
 
-    const playerId = window.simpleAuth.getPlayerId();
-
-    // Fonction pour récupérer l'historique
+    // Fonction pour récupérer l'historique global
     const fetchHistory = async (): Promise<void> => {
         try {
             const host = import.meta.env.VITE_HOST || 'localhost:8443';
-            const response = await fetch(`https://${host}/gamedb/games/player/${playerId}/history`);
+            const response = await fetch(`https://${host}/gamedb/games/history`);
             
             if (!response.ok) {
                 throw new Error('Failed to fetch history');
@@ -238,10 +236,10 @@ export const historyLogic = (): (() => void) => {
         emptyElement.style.display = 'none';
 
         listElement.innerHTML = filteredGames.map(game => {
-            const isWinner = game.result === 'won';
-            const resultColor = isWinner ? 'green' : game.result === 'ongoing' ? 'yellow' : 'red';
-            const resultText = isWinner ? 'VICTOIRE' : game.result === 'ongoing' ? 'EN COURS' : 'DÉFAITE';
-            const resultIcon = isWinner ? '🏆' : game.result === 'ongoing' ? '⏳' : '💀';
+            const isWinner = game.score_left > game.score_right;
+            const isDraw = game.score_left === game.score_right;
+            const resultIcon = isWinner ? '🏆' : isDraw ? '🤝' : '💀';
+            const winnerName = game.winner_username || (isWinner ? game.player_left_username : game.player_right_username);
 
             const date = new Date(game.created_at);
             const formattedDate = date.toLocaleDateString('fr-FR', {
@@ -267,7 +265,9 @@ export const historyLogic = (): (() => void) => {
                         <div class="flex items-center gap-4">
                             <div class="text-4xl">${resultIcon}</div>
                             <div>
-                                <div class="text-2xl font-bold text-${resultColor}-400">${resultText}</div>
+                                <div class="text-2xl font-bold text-white">
+                                    ${isDraw ? 'ÉGALITÉ' : `Victoire de ${winnerName}`}
+                                </div>
                                 <div class="text-white/60 text-sm">${formattedDate} à ${formattedTime}</div>
                             </div>
                         </div>
@@ -347,14 +347,17 @@ export const historyLogic = (): (() => void) => {
         if (!statsElement) return;
 
         const totalGames = allGames.length;
-        const wins = allGames.filter(g => g.result === 'won').length;
-        const losses = allGames.filter(g => g.result === 'lost').length;
-        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+        const quickplayGames = allGames.filter(g => g.game_type === 'quickplay').length;
+        const tournamentGames = allGames.filter(g => g.game_type === 'tournament').length;
 
         const totalDuration = allGames.reduce((sum, game) => sum + (game.duration_seconds || 0), 0);
-        const avgDuration = totalGames > 0 
-            ? `${Math.floor(totalDuration / totalGames / 60)}:${((totalDuration / totalGames) % 60).toFixed(0).padStart(2, '0')}`
-            : '-';
+        let avgDuration = '0:00';
+        if (totalGames > 0) {
+            const avgSeconds = totalDuration / totalGames;
+            const minutes = Math.floor(avgSeconds / 60);
+            const seconds = Math.floor(avgSeconds % 60);
+            avgDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
 
         statsElement.innerHTML = `
             <div class="stat-card bg-[#0C154D]/30 backdrop-blur-md border border-white/20 rounded-lg p-6">
@@ -363,18 +366,18 @@ export const historyLogic = (): (() => void) => {
             </div>
             
             <div class="stat-card bg-[#0C154D]/30 backdrop-blur-md border border-white/20 rounded-lg p-6">
-                <div class="text-white/60 text-sm mb-2">Victoires</div>
-                <div class="text-4xl font-bold text-green-400">${wins}</div>
+                <div class="text-white/60 text-sm mb-2">QuickPlay</div>
+                <div class="text-4xl font-bold text-blue-400">${quickplayGames}</div>
             </div>
             
             <div class="stat-card bg-[#0C154D]/30 backdrop-blur-md border border-white/20 rounded-lg p-6">
-                <div class="text-white/60 text-sm mb-2">Défaites</div>
-                <div class="text-4xl font-bold text-red-400">${losses}</div>
+                <div class="text-white/60 text-sm mb-2">Tournois</div>
+                <div class="text-4xl font-bold text-purple-400">${tournamentGames}</div>
             </div>
             
             <div class="stat-card bg-[#0C154D]/30 backdrop-blur-md border border-white/20 rounded-lg p-6">
-                <div class="text-white/60 text-sm mb-2">Taux de Victoire</div>
-                <div class="text-4xl font-bold text-blue-400">${winRate}%</div>
+                <div class="text-white/60 text-sm mb-2">Durée Moyenne</div>
+                <div class="text-4xl font-bold text-green-400">${avgDuration}</div>
             </div>
         `;
 

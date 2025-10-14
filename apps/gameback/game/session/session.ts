@@ -254,7 +254,7 @@ class GameSession {
         try
         {
             const host = process.env.VITE_HOST || 'localhost:8443';
-            const url = `https://${host}/database/games/room/${this.roomId}/start`;
+            const url = `https://${host}/gamedb/games/room/${this.roomId}/start`;
             
             await fetch(url, {
                 method: 'PATCH',
