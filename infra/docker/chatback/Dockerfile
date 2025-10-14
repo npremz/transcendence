@@ -1,10 +1,10 @@
-FROM node:22
+FROM transcendence-base:latest
 
 WORKDIR /chatback
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 

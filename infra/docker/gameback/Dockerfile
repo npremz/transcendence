@@ -1,10 +1,10 @@
-FROM node:22
+FROM transcendence-base:latest
 
 WORKDIR /gameback
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 

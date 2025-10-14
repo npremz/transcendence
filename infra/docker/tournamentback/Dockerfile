@@ -1,10 +1,10 @@
-FROM node:22
+FROM transcendence-base:latest
 
 WORKDIR /tournament
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 

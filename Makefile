@@ -3,9 +3,11 @@ DC ?= docker compose
 .PHONY: up build down logs restart ps health clean re check-jwt
 
 up:
+	./infra/docker/base/build.sh
 	$(DC) up --build -d
 
 build:
+	./infra/docker/base/build.sh
 	$(DC) build
 
 down:

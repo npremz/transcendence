@@ -1,4 +1,4 @@
-FROM node:22
+FROM transcendence-base:latest
 
 WORKDIR /authback
 
