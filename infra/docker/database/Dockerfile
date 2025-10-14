@@ -4,15 +4,13 @@ RUN apk add --no-cache sqlite
 
 WORKDIR /database
 
-COPY package*.json ./
+COPY --chown=node:node package*.json ./
 
 RUN npm ci
 
-COPY . .
+COPY --chown=node:node . .
 
-RUN mkdir -p data
-
-RUN chown -R node:node /database
+RUN mkdir -p data && chown node:node data
 
 USER node
 
