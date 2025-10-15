@@ -4,6 +4,7 @@ export type ClientMessage =
 	| {type: 'resume'}
 	| {type: 'ping'; t: number}
 	| {type: 'skill'}
+	| {type: 'forfeit'}
 	| {type: 'logIn'; id: string}
     | {type: 'debug'; action: 'activate_powerup'; payload: {kind: 'split' | 'blackout' | 'blackhole'}}
     | {type: 'debug'; action: 'clear_powerups'}
@@ -16,7 +17,7 @@ export type ClientMessage =
     | {type: 'debug'; action: 'change_skill'; payload: {side: 'left' | 'right'; skill: 'smash' | 'dash'}};
 
 export type ServerMessage = 
-	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'; isTournament?: boolean; tournamentId?: string}
+	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'; isTournament?: boolean; tournamentId?: string; players?: {left?: string; right?: string}}
 	| {type: 'state'; state: PublicState; serverTime: number}
 	| {type: 'countdown'; value: number}
 	| {type: 'paused'}

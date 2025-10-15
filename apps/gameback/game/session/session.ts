@@ -246,6 +246,33 @@ class GameSession {
                 this.world.resume();
                 break;
             }
+            case 'forfeit': {
+                if (!canCtrl) {
+                    this.send(ws, { type: 'error', message: 'Spectators can\'t forfeit' });
+                    break;
+                }
+                // Determine who forfeited and who wins
+                const forfeitingSide = role as 'left' | 'right';
+                const winningSide = forfeitingSide === 'left' ? 'right' : 'left';
+                
+                // End the game immediately
+                this.world.state.isGameOver = true;
+                this.world.state.winner = winningSide;
+                
+                // Broadcast game over
+                this.broadcast({
+                    type: 'gameover',
+                    winner: winningSide,
+                    isTournament: this.isTournament,
+                    tournamentId: this.tournamentId
+                });
+                
+                // Save game end with forfeit reason
+                this.notifyGameEnd('forfeit', winningSide);
+                
+                this.log?.info({ roomId: this.roomId, forfeitingSide, winningSide }, 'Player forfeited');
+                break;
+            }
             case 'logIn':
                 try {
                     const assRole = this.assignRole(ws, msg.id);
@@ -256,7 +283,11 @@ class GameSession {
                         type: 'welcome',
                         side: assRole,
                         isTournament: this.isTournament,
-                        tournamentId: this.tournamentId
+                        tournamentId: this.tournamentId,
+                        players: {
+                            left: this.expected.left?.username,
+                            right: this.expected.right?.username
+                        }
                     });
 
                     this.log?.info({ roomId: this.roomId, assRole, clients: this.clients.size, playerId: msg.id }, 'client connected');

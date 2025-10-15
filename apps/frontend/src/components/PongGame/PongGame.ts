@@ -61,6 +61,7 @@ export class PongGame implements Component {
 	private lastScore = { left: 0, right: 0 };
 	private lastBallPositions: Array<{x: number; y: number; vx: number; vy: number}> = [];
     private isDebugMode: boolean = false;
+	private gameOverHandled: boolean = false;
 
 
 	constructor(element: HTMLElement) {
@@ -160,12 +161,24 @@ export class PongGame implements Component {
 		};
 
 		this.net.onGameOver = (winner, isTournament, tournamentId) => {
+			if (this.gameOverHandled) {
+				console.log('Game over already handled, skipping...');
+				return;
+			}
+			this.gameOverHandled = true;
+			
 			console.log('Game Over!', {winner, isTournament, tournamentId});
 			this.particles.createExplosion(
 				this.canvas.width / 2,
 				this.canvas.height / 2,
 				30
 			);
+			
+			const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement;
+			if (forfeitBtn) {
+				forfeitBtn.disabled = true;
+			}
+			
 			if (isTournament && tournamentId)
 			{
                 this.handleTournamentGameOver(winner, tournamentId);
@@ -175,7 +188,36 @@ export class PongGame implements Component {
 				this.handleQuickplayGameOver(winner);
 			}
 		};
-        this.net.onWelcome = (side, username) => {
+        this.net.onWelcome = (side, playerNames) => {
+			console.log('Welcome received:', { side, playerNames });
+			
+			// Update player names with retry in case DOM is not ready
+			const updateNames = () => {
+				const leftNameEl = document.getElementById('player-left-name');
+				const rightNameEl = document.getElementById('player-right-name');
+				
+				console.log('Updating names:', { leftNameEl, rightNameEl, playerNames });
+				
+				if (leftNameEl && playerNames?.left) {
+					leftNameEl.textContent = playerNames.left;
+					console.log('Set left name to:', playerNames.left);
+				}
+				if (rightNameEl && playerNames?.right) {
+					rightNameEl.textContent = playerNames.right;
+					console.log('Set right name to:', playerNames.right);
+				}
+				
+				// If elements not found, retry after a short delay
+				if ((!leftNameEl || !rightNameEl) && playerNames) {
+					console.log('Elements not found, retrying...');
+					setTimeout(updateNames, 100);
+				}
+			};
+			
+			updateNames();
+			
+			// Check for debug mode
+            const username = window.simpleAuth?.getUsername?.();
             if (username === 'admindebug')
             {
                 this.enableDebugMode();
@@ -316,7 +358,7 @@ export class PongGame implements Component {
 				</p>
 				<button 
 					id="return-to-lobby"
-					class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all pointer"
+					class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all cursor-pointer"
 				>
 					Retour au lobby
 				</button>
@@ -325,15 +367,26 @@ export class PongGame implements Component {
 		
 		document.body.appendChild(overlay);
 
-		document.getElementById('return-to-lobby')?.addEventListener('click', () => {
-			sessionStorage.removeItem('gameWsURL');
-			window.location.href = '/play';
+		overlay.addEventListener('click', (e) => {
+			const target = e.target as HTMLElement;
+			if (target.id === 'return-to-lobby' || target.closest('#return-to-lobby')) {
+				console.log('Return to lobby clicked');
+				e.stopPropagation();
+				sessionStorage.removeItem('gameWsURL');
+				document.body.removeChild(overlay);
+				window.router?.navigateTo('/play');
+			}
 		});
 	}
 
 	private setupEventHandlers(): void {
 		window.addEventListener('resize', this.handleResize);
 		window.addEventListener('pong:togglePause', this.handleTogglePause);
+
+		const forfeitBtn = document.getElementById('forfeit-btn');
+		if (forfeitBtn) {
+			forfeitBtn.addEventListener('click', this.handleForfeit);
+		}
 
 		this.input.attach();
 	}
@@ -367,6 +420,17 @@ export class PongGame implements Component {
 		else 
 		{
 			this.net.pause();
+		}
+	};
+
+	private handleForfeit = (): void => {
+		if (this.state.isGameOver) {
+			return;
+		}
+		
+		const confirmed = confirm('Are you sure you want to forfeit this game?');
+		if (confirmed) {
+			this.net.forfeit();
 		}
 	};
 
@@ -417,6 +481,11 @@ export class PongGame implements Component {
 
         window.removeEventListener('resize', this.handleResize);
         window.removeEventListener('pong:togglePause', this.handleTogglePause);
+		
+		const forfeitBtn = document.getElementById('forfeit-btn');
+		if (forfeitBtn) {
+			forfeitBtn.removeEventListener('click', this.handleForfeit);
+		}
 
         this.input.detach();
         this.particles.clear();
@@ -435,6 +504,13 @@ export function Pong(): string {
 	
 	return `
 		<div class="container ml-auto mr-auto flex flex-col items-center" data-component="pong-game">
+			<div class="w-full flex justify-between items-center px-8 mb-4">
+				<div id="player-left-name" class="text-xl font-bold">Player 1</div>
+				<button id="forfeit-btn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+					Surrender
+				</button>
+				<div id="player-right-name" class="text-xl font-bold">Player 2</div>
+			</div>
 			<canvas id="pong-canvas"></canvas>
 		</div>
 	`;

@@ -29,7 +29,7 @@ export type PublicState = {
 };
 
 type ServerMsg = 
-	| {type: 'welcome'; side: 'left' | 'right'; isTournament?: boolean; tournamentId?: string}
+	| {type: 'welcome'; side: 'left' | 'right'; isTournament?: boolean; tournamentId?: string; players?: {left?: string; right?: string}}
 	| {type: 'state'; state: PublicState; serverTime: number}
 	| {type: 'countdown'; value: number}
 	| {type: 'paused' | 'resumed'}
@@ -44,6 +44,7 @@ export class WSClient {
 
 	isTournament: boolean = false;
     tournamentId?: string;
+	playerNames: {left?: string; right?: string} = {};
 
 	onState?: (s: PublicState) => void;
 	onCountdown?: (v: number) => void;
@@ -54,7 +55,7 @@ export class WSClient {
         left: {active: boolean; remainingMs: number};
         right: {active: boolean; remainingMs: number}
     }) => void;
-    onWelcome?: (side: 'left' | 'right' | 'spectator', username?: string) => void;
+    onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => void;
 	connect(url?: string) {
 		const host = import.meta.env.VITE_HOST
 		const endpoint = import.meta.env.VITE_GAME_ENDPOINT
@@ -82,8 +83,8 @@ export class WSClient {
 				case 'welcome':
 					console.log('Welcome from server');
 					this.side = msg.side;
-                    const username = window.simpleAuth?.getUsername?.();
-                    this.onWelcome?.(msg.side, username);
+					this.playerNames = msg.players || {};
+                    this.onWelcome?.(msg.side, msg.players);
 					break;
 				case 'state':
 					this.onState?.(msg.state);
@@ -117,6 +118,9 @@ export class WSClient {
 	}
 	useSkill() {
 		this.ws?.send(JSON.stringify({ type: 'skill' }));
+	}
+	forfeit() {
+		this.ws?.send(JSON.stringify({ type: 'forfeit' }));
 	}
 
     debugActivatePowerUp(kind: 'split' | 'blackout' | 'blackhole') {
