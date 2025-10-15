@@ -106,10 +106,10 @@ export class GameWorld {
 
 	pressSmash(side: Side): boolean
 	{
-		const sm = this.state.smash[side];
+		const sm = this.state.skillStates[side];
         if (this.state.clock >= sm.availableAt)
         {
-            sm.lastSmashAt = this.state.clock;
+            sm.lastActivationAt = this.state.clock;
             sm.availableAt = this.state.clock + SMASH_COOLDOWN;
             sm.lastPressAt = this.state.clock;
 			return true;
