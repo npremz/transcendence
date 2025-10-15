@@ -6,9 +6,9 @@ interface GameStat {
 	player_id: string;
 	side: 'left' | 'right';
 	paddle_hits?: number;
-	smashes_used?: number;
 	max_ball_speed?: number;
 	power_ups_collected?: number;
+	skills_used?: number;
 	time_disconnected_ms?: number;
 }
 
@@ -23,7 +23,7 @@ export function registerGameStatsRoutes(fastify: FastifyInstance): void
 				player_id,
 				side,
 				paddle_hits = 0,
-				smashes_used = 0,
+				skills_used = 0,
 				max_ball_speed = 0,
 				power_ups_collected = 0,
 				time_disconnected_ms = 0
@@ -40,11 +40,11 @@ export function registerGameStatsRoutes(fastify: FastifyInstance): void
 			return new Promise((resolve) => {
 				fastify.db.run(
 					`INSERT INTO game_stats (
-						game_id, player_id, side, paddle_hits, smashes_used,
+						game_id, player_id, side, paddle_hits, skills_used,
 						max_ball_speed, power_ups_collected, time_disconnected_ms
 					) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 					[
-						game_id, player_id, side, paddle_hits, smashes_used,
+						game_id, player_id, side, paddle_hits, skills_used,
 						max_ball_speed, power_ups_collected, time_disconnected_ms
 					],
 					function(err)
@@ -114,11 +114,11 @@ export function registerGameStatsRoutes(fastify: FastifyInstance): void
 					`SELECT 
 						COUNT(*) as total_games,
 						SUM(paddle_hits) as total_paddle_hits,
-						SUM(smashes_used) as total_smashes,
+						SUM(skills_used) as total_skills,
 						MAX(max_ball_speed) as highest_ball_speed,
 						SUM(power_ups_collected) as total_power_ups,
 						AVG(paddle_hits) as avg_paddle_hits,
-						AVG(smashes_used) as avg_smashes
+						AVG(skills_used) as avg_skills
 					FROM game_stats
 					WHERE player_id = ?`,
 					[playerId],

@@ -8,6 +8,14 @@ import { safeParse } from "../ws/messageTypes";
 type Role = 'left' | 'right' | 'spectator';
 type Player = {id: string; username: string};
 
+interface GameStats {
+	paddle_hits: number;
+	max_ball_speed: number;
+	power_ups_collected: number;
+	skills_used: number;
+	smashes: Array<{time: number; successful: boolean; id?: number}>;
+}
+
 const rooms = new Map<string, GameSession>();
 
 class GameSession {
@@ -20,6 +28,21 @@ class GameSession {
 	private rightCtrl?: WebSocket;
     
     private expected: {left?: Player; right?: Player} = {};
+
+	private leftStats: GameStats = {
+		paddle_hits: 0,
+		max_ball_speed: 0,
+		power_ups_collected: 0,
+		skills_used: 0,
+		smashes: []
+	};
+	private rightStats: GameStats = {
+		paddle_hits: 0,
+		max_ball_speed: 0,
+		power_ups_collected: 0,
+		skills_used: 0,
+		smashes: []
+	};
 
 	private tickTimer?: NodeJS.Timeout;
 	private broadcastTimer?: NodeJS.Timeout;
@@ -44,6 +67,36 @@ class GameSession {
 	constructor(private readonly roomId?: string, log?: FastifyBaseLogger) {
 		this.startLoops();
 		this.log = log;
+		
+		this.world.setCallbacks({
+			onPaddleHit: (side) => {
+				const stats = side === 'left' ? this.leftStats : this.rightStats;
+				stats.paddle_hits++;
+			},
+			onPowerUpCollected: (side, type, gameTime) => {
+				const stats = side === 'left' ? this.leftStats : this.rightStats;
+				stats.power_ups_collected++;
+				
+				if (this.roomId && this.expected[side]) {
+					this.savePowerUpUsed(side, type, gameTime).catch(err => {
+						this.log?.error({ error: err }, 'Failed to save power-up usage');
+					});
+				}
+			},
+			onBallSpeedUpdate: (speed) => {
+				this.leftStats.max_ball_speed = Math.max(this.leftStats.max_ball_speed, speed);
+				this.rightStats.max_ball_speed = Math.max(this.rightStats.max_ball_speed, speed);
+			},
+			onSmashSuccess: (side, gameTime) => {
+				const stats = side === 'left' ? this.leftStats : this.rightStats;
+				for (let i = stats.smashes.length - 1; i >= 0; i--) {
+					if (!stats.smashes[i].successful && Math.abs(stats.smashes[i].time - gameTime) < 1) {
+						stats.smashes[i].successful = true;
+						break;
+					}
+				}
+			}
+		});
 	}
 
 	private destroy() {
@@ -131,6 +184,12 @@ class GameSession {
             case 'smash': {
                 if (role === 'left' || role === 'right') {
                     this.world.pressSmash(role);
+					const stats = role === 'left' ? this.leftStats : this.rightStats;
+					stats.skills_used++;
+					stats.smashes.push({
+						time: this.world.state.clock,
+						successful: false
+					});
                 }
                 break;
             }
@@ -269,6 +328,107 @@ class GameSession {
         }
     }
 
+	private async savePowerUpUsed(side: 'left' | 'right', type: 'split' | 'blackout' | 'blackhole', gameTime: number): Promise<void> {
+		if (!this.roomId) return;
+
+		const player = side === 'left' ? this.expected.left : this.expected.right;
+		if (!player) return;
+
+		try {
+			const host = process.env.VITE_HOST || 'localhost:8443';
+			const isDevelopment = process.env.NODE_ENV === 'development';
+			const agent = isDevelopment ? new (await import('https')).Agent({ rejectUnauthorized: false }) : undefined;
+
+			const gameResponse = await fetch(`https://${host}/gamedb/games/room/${this.roomId}`, {
+				// @ts-ignore
+				agent
+			});
+			const gameData = await gameResponse.json();
+			
+			if (!gameData.success || !gameData.game?.id) {
+				return;
+			}
+
+			await fetch(`https://${host}/gamedb/power-ups`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					game_id: gameData.game.id,
+					player_id: player.id,
+					power_up_type: type,
+					collected_at_game_time: gameTime,
+					activated_at_game_time: gameTime
+				}),
+				// @ts-ignore
+				agent
+			});
+
+			this.log?.info({ gameId: gameData.game.id, playerId: player.id, type, gameTime }, 'Power-up saved');
+		} catch (err) {
+			this.log?.error({ error: err }, 'Failed to save power-up');
+		}
+	}
+
+	private async saveGameStats(gameId: string): Promise<void> {
+		if (!this.expected.left || !this.expected.right || !this.roomId) {
+			return;
+		}
+
+		const host = process.env.VITE_HOST || 'localhost:8443';
+		const isDevelopment = process.env.NODE_ENV === 'development';
+		const agent = isDevelopment ? new (await import('https')).Agent({ rejectUnauthorized: false }) : undefined;
+
+		const savePlayerStats = async (side: 'left' | 'right') => {
+			const player = side === 'left' ? this.expected.left : this.expected.right;
+			const stats = side === 'left' ? this.leftStats : this.rightStats;
+
+			if (!player) return;
+
+			try {
+				await fetch(`https://${host}/gamedb/game-stats`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						game_id: gameId,
+						player_id: player.id,
+						side: side,
+						paddle_hits: stats.paddle_hits,
+						max_ball_speed: Math.round(stats.max_ball_speed),
+						power_ups_collected: stats.power_ups_collected,
+						skills_used: stats.skills_used
+					}),
+					// @ts-ignore
+					agent
+				});
+
+				for (const smash of stats.smashes) {
+					await fetch(`https://${host}/gamedb/skills`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							game_id: gameId,
+							player_id: player.id,
+							skill_type: 'smash',
+							activated_at_game_time: smash.time,
+							was_successful: smash.successful
+						}),
+						// @ts-ignore
+						agent
+					});
+				}
+
+				this.log?.info({ gameId, playerId: player.id, side }, 'Game stats saved');
+			} catch (err) {
+				this.log?.error({ gameId, playerId: player.id, error: err }, 'Failed to save game stats');
+			}
+		};
+
+		await Promise.all([
+			savePlayerStats('left'),
+			savePlayerStats('right')
+		]);
+	}
+
 	private async notifyGameEnd(reason: 'score' | 'timeout', winner?: 'left' | 'right'): Promise<void> {
         if (this.reportedGameOver)
 		{
@@ -306,6 +466,18 @@ class GameSession {
             });
 
             this.log?.info({ roomId: this.roomId, reason }, 'Game end notified to quickplay');
+
+			if (this.roomId) {
+				try {
+					const gameResponse = await fetch(`https://${host}/gamedb/games/room/${this.roomId}`);
+					const gameData = await gameResponse.json();
+					if (gameData.success && gameData.game?.id) {
+						await this.saveGameStats(gameData.game.id);
+					}
+				} catch (err) {
+					this.log?.error({ error: err }, 'Failed to retrieve game ID for stats');
+				}
+			}
         }
 		catch (err)
 		{
