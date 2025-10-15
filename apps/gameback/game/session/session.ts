@@ -95,6 +95,13 @@ class GameSession {
 						break;
 					}
 				}
+			},
+			onGoalScored: (scorerSide, ballYPosition, gameTime) => {
+				if (this.roomId) {
+					this.saveGoalScored(scorerSide, ballYPosition, gameTime).catch(err => {
+						this.log?.error({ error: err }, 'Failed to save goal');
+					});
+				}
 			}
 		});
 	}
@@ -183,13 +190,16 @@ class GameSession {
             }
             case 'smash': {
                 if (role === 'left' || role === 'right') {
-                    this.world.pressSmash(role);
-					const stats = role === 'left' ? this.leftStats : this.rightStats;
-					stats.skills_used++;
-					stats.smashes.push({
-						time: this.world.state.clock,
-						successful: false
-					});
+                    const smashActivated = this.world.pressSmash(role);
+					// Ne tracker que si le smash a été activé (pas en cooldown)
+					if (smashActivated) {
+						const stats = role === 'left' ? this.leftStats : this.rightStats;
+						stats.skills_used++;
+						stats.smashes.push({
+							time: this.world.state.clock,
+							successful: false
+						});
+					}
                 }
                 break;
             }
@@ -366,6 +376,46 @@ class GameSession {
 			this.log?.info({ gameId: gameData.game.id, playerId: player.id, type, gameTime }, 'Power-up saved');
 		} catch (err) {
 			this.log?.error({ error: err }, 'Failed to save power-up');
+		}
+	}
+
+	private async saveGoalScored(scorerSide: 'left' | 'right', ballYPosition: number, gameTime: number): Promise<void> {
+		if (!this.roomId) return;
+
+		try {
+			const host = process.env.VITE_HOST || 'localhost:8443';
+			const isDevelopment = process.env.NODE_ENV === 'development';
+			const agent = isDevelopment ? new (await import('https')).Agent({ rejectUnauthorized: false }) : undefined;
+
+			const gameResponse = await fetch(`https://${host}/gamedb/games/room/${this.roomId}`, {
+				// @ts-ignore
+				agent
+			});
+			const gameData = await gameResponse.json();
+			
+			if (!gameData.success || !gameData.game?.id) {
+				return;
+			}
+
+			const scoredAgainstSide = scorerSide === 'left' ? 'right' : 'left';
+
+			await fetch(`https://${host}/gamedb/goals`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					game_id: gameData.game.id,
+					scorer_side: scorerSide,
+					scored_against_side: scoredAgainstSide,
+					ball_y_position: ballYPosition,
+					scored_at_game_time: gameTime
+				}),
+				// @ts-ignore
+				agent
+			});
+
+			this.log?.info({ gameId: gameData.game.id, scorerSide, ballYPosition, gameTime }, 'Goal saved');
+		} catch (err) {
+			this.log?.error({ error: err }, 'Failed to save goal');
 		}
 	}
 

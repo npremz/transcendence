@@ -8,6 +8,7 @@ import { registerGameRoutes } from './routes/games'
 import { registerGameStatsRoutes } from './routes/game-stats'
 import { registerPowerUpRoutes } from './routes/power-ups'
 import { registerSkillRoutes } from './routes/skills'
+import { registerGoalRoutes } from './routes/goals'
 
 const fastify: FastifyInstance = Fastify({
 	logger: true
@@ -50,6 +51,7 @@ const start = async (): Promise<void> => {
 		registerGameStatsRoutes(fastify)
 		registerPowerUpRoutes(fastify)
 		registerSkillRoutes(fastify)
+		registerGoalRoutes(fastify)
 
 		await fastify.listen({
 			port: 3020,

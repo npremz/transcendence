@@ -25,6 +25,7 @@ export interface GameEventCallbacks {
 	onPowerUpCollected?: (side: 'left' | 'right', type: 'split' | 'blackout' | 'blackhole', gameTime: number) => void;
 	onBallSpeedUpdate?: (speed: number) => void;
 	onSmashSuccess?: (side: 'left' | 'right', gameTime: number) => void;
+	onGoalScored?: (scorerSide: 'left' | 'right', ballYPosition: number, gameTime: number) => void;
 }
 
 export class GameWorld {
@@ -79,7 +80,7 @@ export class GameWorld {
 		(side === 'left' ? this.state.leftPaddle : this.state.rightPaddle).intention = intention;
 	}
 
-	pressSmash(side: Side)
+	pressSmash(side: Side): boolean
 	{
 		const sm = this.state.smash[side];
         if (this.state.clock >= sm.availableAt)
@@ -87,7 +88,9 @@ export class GameWorld {
             sm.lastSmashAt = this.state.clock;
             sm.availableAt = this.state.clock + SMASH_COOLDOWN;
             sm.lastPressAt = this.state.clock;
+			return true; // Smash activé
         }
+		return false; // En cooldown
 	}
 
 	startCountdown() {
@@ -258,11 +261,15 @@ export class GameWorld {
 			{
 				s.score.right++;
 				removed.push(i);
+				// Notifier le goal marqué par le joueur de droite
+				this.callbacks.onGoalScored?.('right', b.y, s.clock);
 			}
 			else if (b.x - b.radius >= WORLD_WIDTH)
 			{
 				s.score.left++;
 				removed.push(i);
+				// Notifier le goal marqué par le joueur de gauche
+				this.callbacks.onGoalScored?.('left', b.y, s.clock);
 			}
 		}
 		for (let i = removed.length - 1; i >= 0; i--)
