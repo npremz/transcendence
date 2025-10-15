@@ -260,7 +260,7 @@ export const historyLogic = (): (() => void) => {
             const gameTypeBg = game.game_type === 'tournament' ? 'bg-purple-500/20' : 'bg-blue-500/20';
 
             return `
-                <div class="game-card bg-[#0C154D]/30 backdrop-blur-md border border-white/20 rounded-lg p-6 hover:border-white/40 transition-all">
+                <a href="/history/${game.id}" class="block game-card bg-[#0C154D]/30 backdrop-blur-md border border-white/20 rounded-lg p-6 hover:border-white/40 hover:bg-[#0C154D]/40 transition-all cursor-pointer">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-4">
                             <div class="text-4xl">${resultIcon}</div>
@@ -317,14 +317,12 @@ export const historyLogic = (): (() => void) => {
                         </div>
                     </div>
 
-                    ${game.tournament_id ? `
-                        <div class="mt-4 pt-4 border-t border-white/10">
-                            <a href="/tournament/${game.tournament_id}" class="text-purple-400 hover:text-purple-300 text-sm">
-                                → Voir le tournoi
-                            </a>
-                        </div>
-                    ` : ''}
-                </div>
+                    <div class="mt-4 pt-4 border-t border-white/10 text-center">
+                        <span class="text-blue-400 hover:text-blue-300 text-sm">
+                            → Voir les détails
+                        </span>
+                    </div>
+                </a>
             `;
         }).join('');
 

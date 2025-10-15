@@ -311,9 +311,111 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 		}
 	);
 
+	// READ - Récupérer les détails complets d'une partie par son ID
+	fastify.get<{ Params: { id: string } }>(
+		'/games/:id',
+		async (request, reply) => {
+			const { id } = request.params;
+
+			return new Promise((resolve) => {
+				// Récupérer les infos de base de la partie
+				fastify.db.get(
+					`SELECT g.*,
+						u1.username as player_left_username,
+						u2.username as player_right_username,
+						u3.username as winner_username
+					FROM games g
+					JOIN users u1 ON g.player_left_id = u1.id
+					JOIN users u2 ON g.player_right_id = u2.id
+					LEFT JOIN users u3 ON g.winner_id = u3.id
+					WHERE g.id = ?`,
+					[id],
+					(err, game: any) => {
+						if (err) {
+							return resolve(reply.status(500).send({
+								success: false,
+								error: err.message
+							}));
+						}
+						if (!game) {
+							return resolve(reply.status(404).send({
+								success: false,
+								error: 'Game not found'
+							}));
+						}
+
+						// Récupérer les stats des joueurs
+						fastify.db.all(
+							`SELECT gs.*, u.username
+							FROM game_stats gs
+							JOIN users u ON gs.player_id = u.id
+							WHERE gs.game_id = ?`,
+							[id],
+							(err, stats: any[]) => {
+								if (err) {
+									return resolve(reply.status(500).send({
+										success: false,
+										error: err.message
+									}));
+								}
+
+								// Récupérer les skills utilisés
+								fastify.db.all(
+									`SELECT su.*, u.username
+									FROM skills_used su
+									JOIN users u ON su.player_id = u.id
+									WHERE su.game_id = ?
+									ORDER BY su.activated_at_game_time`,
+									[id],
+									(err, skills: any[]) => {
+										if (err) {
+											return resolve(reply.status(500).send({
+												success: false,
+												error: err.message
+											}));
+										}
+
+										// Récupérer les power-ups utilisés
+										fastify.db.all(
+											`SELECT pu.*, u.username
+											FROM power_ups_used pu
+											JOIN users u ON pu.player_id = u.id
+											WHERE pu.game_id = ?
+											ORDER BY pu.activated_at_game_time`,
+											[id],
+											(err, powerUps: any[]) => {
+												if (err) {
+													return resolve(reply.status(500).send({
+														success: false,
+														error: err.message
+													}));
+												}
+
+												// Construire la réponse complète
+												resolve(reply.send({
+													success: true,
+													game: {
+														...game,
+														stats,
+														skills,
+														powerUps
+													}
+												}));
+											}
+										);
+									}
+								);
+							}
+						);
+					}
+				);
+			});
+		}
+	);
+
 	// DELETE - Supprimer une partie (pour les tests uniquement)
 	fastify.delete<{ Params: { id: string } }>(
-		'/games/:id',
+		'/games/:id/delete',
 		async (request, reply) => {
 			const { id } = request.params;
 
