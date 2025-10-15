@@ -192,7 +192,7 @@ services:
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck-wget
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://localhost:443", "--no-check-certificate"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://127.0.0.1:443", "--no-check-certificate"]
       start_period: 30s
 
 networks:
