@@ -9,7 +9,7 @@ export const HomeView: ViewFunction = () => {
             <h1 class="text-5xl font-bold text-center mb-8">Pong</h1>
 			
 			<div class="flex gap-4 justify-center mb-8">
-				<a href="/quickplay" class="px-6 py-3 bg-green-600 text-white rounded hover:bg-green-700">
+				<a href="/play" class="px-6 py-3 bg-green-600 text-white rounded hover:bg-green-700">
 					QuickPlay
 				</a>
 				<a href="/tournament" class="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700">

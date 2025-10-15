@@ -40,13 +40,13 @@ export const roomExistsGuard: NavigationGuard = async (to, from, params) => {
             return true;
         } else if (data.status === 'waiting') {
             console.log('Room is waiting for players, redirection');
-            return '/test';
+            return '/play';
         } else if (data.status === 'finished') {
             console.log('Room is finished, redirection');
-            return '/test';
+            return '/play';
         } else {
             console.log('Invalid room status:', data.status);
-            return '/test';
+            return '/play';
         }
     } catch (err) {
         console.error('Error while guard checking the room', err);
