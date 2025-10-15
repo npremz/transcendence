@@ -391,16 +391,33 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 													}));
 												}
 
-												// Construire la réponse complète
-												resolve(reply.send({
-													success: true,
-													game: {
-														...game,
-														stats,
-														skills,
-														powerUps
+												// Récupérer les goals marqués
+												fastify.db.all(
+													`SELECT * FROM goals_scored
+													WHERE game_id = ?
+													ORDER BY scored_at_game_time`,
+													[id],
+													(err, goals: any[]) => {
+														if (err) {
+															return resolve(reply.status(500).send({
+																success: false,
+																error: err.message
+															}));
+														}
+
+														// Construire la réponse complète
+														resolve(reply.send({
+															success: true,
+															game: {
+																...game,
+																stats,
+																skills,
+																powerUps,
+																goals
+															}
+														}));
 													}
-												}));
+												);
 											}
 										);
 									}
