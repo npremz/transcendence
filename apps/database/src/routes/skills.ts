@@ -1,42 +1,42 @@
 import type { FastifyInstance } from 'fastify';
 
-interface PowerUpUsed {
+interface SkillUsed {
 	id?: number;
 	game_id: string;
 	player_id: string;
-	power_up_type: 'split' | 'blackout' | 'blackhole';
-	collected_at_game_time?: number;
+	skill_type: 'smash';
 	activated_at_game_time: number;
 	activated_at?: string;
+	was_successful?: boolean;
 }
 
-export function registerPowerUpRoutes(fastify: FastifyInstance): void
+export function registerSkillRoutes(fastify: FastifyInstance): void
 {
-	// CREATE - Enregistrer l'utilisation d'un power-up
+	// CREATE - Enregistrer l'utilisation d'un skill
 	fastify.post<{ Body: {
 		game_id: string;
 		player_id: string;
-		power_up_type: 'split' | 'blackout' | 'blackhole';
-		collected_at_game_time?: number;
+		skill_type: 'smash';
 		activated_at_game_time: number;
+		was_successful?: boolean;
 	}}>(
-		'/power-ups',
+		'/skills',
 		async (request, reply) => {
-			const { game_id, player_id, power_up_type, collected_at_game_time, activated_at_game_time } = request.body;
+			const { game_id, player_id, skill_type, activated_at_game_time, was_successful = true } = request.body;
 
-			if (!game_id || !player_id || !power_up_type || activated_at_game_time === undefined) {
+			if (!game_id || !player_id || !skill_type || activated_at_game_time === undefined) {
 				return reply.status(400).send({
 					success: false,
-					error: 'All fields are required'
+					error: 'game_id, player_id, skill_type, and activated_at_game_time are required'
 				});
 			}
 
 			return new Promise((resolve) => {
 				fastify.db.run(
-					`INSERT INTO power_ups_used (
-						game_id, player_id, power_up_type, collected_at_game_time, activated_at_game_time
+					`INSERT INTO skills_used (
+						game_id, player_id, skill_type, activated_at_game_time, was_successful
 					) VALUES (?, ?, ?, ?, ?)`,
-					[game_id, player_id, power_up_type, collected_at_game_time || null, activated_at_game_time],
+					[game_id, player_id, skill_type, activated_at_game_time, was_successful ? 1 : 0],
 					function(err)
 					{
 						if (err)
@@ -50,7 +50,7 @@ export function registerPowerUpRoutes(fastify: FastifyInstance): void
 						{
 							resolve(reply.send({
 								success: true,
-								powerup_id: this.lastID
+								skill_id: this.lastID
 							}));
 						}
 					}
@@ -59,21 +59,21 @@ export function registerPowerUpRoutes(fastify: FastifyInstance): void
 		}
 	);
 
-	// READ - Power-ups d'une partie
+	// READ - Skills utilisés dans une partie
 	fastify.get<{ Params: { gameId: string } }>(
-		'/power-ups/game/:gameId',
+		'/skills/game/:gameId',
 		async (request, reply) => {
 			const { gameId } = request.params;
 
 			return new Promise((resolve) => {
 				fastify.db.all(
-					`SELECT pu.*, u.username
-					FROM power_ups_used pu
-					JOIN users u ON pu.player_id = u.id
-					WHERE pu.game_id = ?
-					ORDER BY pu.activated_at_game_time ASC`,
+					`SELECT s.*, u.username
+					FROM skills_used s
+					JOIN users u ON s.player_id = u.id
+					WHERE s.game_id = ?
+					ORDER BY s.activated_at_game_time ASC`,
 					[gameId],
-					(err, rows: PowerUpUsed[]) => {
+					(err, rows: SkillUsed[]) => {
 						if (err)
 						{
 							resolve(reply.status(500).send({
@@ -85,7 +85,7 @@ export function registerPowerUpRoutes(fastify: FastifyInstance): void
 						{
 							resolve(reply.send({
 								success: true,
-								power_ups: rows
+								skills: rows
 							}));
 						}
 					}
@@ -94,22 +94,22 @@ export function registerPowerUpRoutes(fastify: FastifyInstance): void
 		}
 	);
 
-	// READ - Stats power-ups d'un joueur
+	// READ - Stats skills d'un joueur
 	fastify.get<{ Params: { playerId: string } }>(
-		'/power-ups/player/:playerId/stats',
+		'/skills/player/:playerId/stats',
 		async (request, reply) => {
 			const { playerId } = request.params;
 
 			return new Promise((resolve) => {
-				fastify.db.all(
+				fastify.db.get(
 					`SELECT 
-						power_up_type,
-						COUNT(*) as times_used
-					FROM power_ups_used
-					WHERE player_id = ?
-					GROUP BY power_up_type`,
+						COUNT(*) as total_smashes,
+						SUM(CASE WHEN was_successful = 1 THEN 1 ELSE 0 END) as successful_smashes,
+						ROUND(AVG(CASE WHEN was_successful = 1 THEN 1.0 ELSE 0.0 END) * 100, 2) as smash_success_rate
+					FROM skills_used
+					WHERE player_id = ? AND skill_type = 'smash'`,
 					[playerId],
-					(err, rows) => {
+					(err, row) => {
 						if (err)
 						{
 							resolve(reply.status(500).send({
@@ -121,7 +121,7 @@ export function registerPowerUpRoutes(fastify: FastifyInstance): void
 						{
 							resolve(reply.send({
 								success: true,
-								powerup_stats: rows
+								skill_stats: row
 							}));
 						}
 					}

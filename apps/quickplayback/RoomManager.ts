@@ -8,6 +8,23 @@ export class RoomManager
 
 	public findOrCreateRoom(player: Player) : Room
 	{
+		// Vérifier si le joueur est déjà dans la waitingRoom
+		if (this.waitingRoom && this.waitingRoom.players.some(p => p.id === player.id))
+		{
+			console.log(`Player ${player.username} (${player.id}) is already in waiting room ${this.waitingRoom.id}`)
+			return this.waitingRoom
+		}
+
+		// Vérifier si le joueur est déjà dans une autre room active
+		for (const [roomId, room] of this.rooms)
+		{
+			if (room.players.some(p => p.id === player.id))
+			{
+				console.log(`Player ${player.username} (${player.id}) is already in room ${roomId}`)
+				return room
+			}
+		}
+
 		if (this.waitingRoom && this.waitingRoom.players.length === 1)
 		{
 			this.waitingRoom.players.push(player)

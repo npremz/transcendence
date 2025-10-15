@@ -20,11 +20,23 @@ const newBall = (vx: number, vy: number): Ball => ({
 	lastPaddleHit: ''
 });
 
+export interface GameEventCallbacks {
+	onPaddleHit?: (side: 'left' | 'right') => void;
+	onPowerUpCollected?: (side: 'left' | 'right', type: 'split' | 'blackout' | 'blackhole', gameTime: number) => void;
+	onBallSpeedUpdate?: (speed: number) => void;
+	onSmashSuccess?: (side: 'left' | 'right', gameTime: number) => void;
+}
+
 export class GameWorld {
 	state: GameState;
+	callbacks: GameEventCallbacks = {};
 
 	constructor() {
 		this.state = this._freshState();
+	}
+
+	setCallbacks(callbacks: GameEventCallbacks) {
+		this.callbacks = callbacks;
 	}
 
 	private _freshState(): GameState {
@@ -149,6 +161,13 @@ export class GameWorld {
 				if (Math.hypot(dx, dy) <= b.radius + pu.radius)
 				{
 					s.powerUps.splice(i, 1);
+					
+					const side: 'left' | 'right' = b.lastPaddleHit === 'left' ? 'left' : 
+												  b.lastPaddleHit === 'right' ? 'right' :
+												  b.x < WORLD_WIDTH / 2 ? 'left' : 'right';
+					
+					this.callbacks.onPowerUpCollected?.(side, pu.type, s.clock);
+					
 					if (pu.type === 'split')
 					{
 						activateSplit(s, b);
@@ -188,6 +207,9 @@ export class GameWorld {
 			const hitR = checkPaddleCollision(b, rightX, s.rightPaddle.y, false);
 			if (hitL || hitR)
 			{
+				if (hitL) this.callbacks.onPaddleHit?.('left');
+				if (hitR) this.callbacks.onPaddleHit?.('right');
+				
 				const curr = Math.max(1e-6, Math.hypot(b.vx, b.vy));
 				let target = Math.min(curr * BALL_SPEED_INCREASE, BALL_MAX_SPEED);
 
@@ -199,6 +221,7 @@ export class GameWorld {
 					if (smashRecent)
 					{
 						target = Math.min(target * SMASH_SPEED_MULTIPLIER, BALL_MAX_SPEED);
+						this.callbacks.onSmashSuccess?.(side, s.clock);
 					}
 				}
 
@@ -206,6 +229,9 @@ export class GameWorld {
 				const k = target / norm;
 				b.vx *= k;
 				b.vy *= k;
+				
+				this.callbacks.onBallSpeedUpdate?.(target);
+				
 				s.leftPaddle.speed = Math.min(s.leftPaddle.speed * PADDLE_SPEED_INCREASE, PADDLE_MAX_SPEED);
 				s.rightPaddle.speed = Math.min(s.rightPaddle.speed * PADDLE_SPEED_INCREASE, PADDLE_MAX_SPEED);
 			}

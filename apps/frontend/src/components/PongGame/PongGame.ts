@@ -168,6 +168,10 @@ export class PongGame implements Component {
 			{
                 this.handleTournamentGameOver(winner, tournamentId);
             }
+			else
+			{
+				this.handleQuickplayGameOver(winner);
+			}
 		};
         this.net.onWelcome = (side, username) => {
             if (username === 'admindebug')
@@ -284,6 +288,42 @@ export class PongGame implements Component {
             window.location.href = `/tournament/${tournamentId}`;
         }, 3000);
     }
+
+	private handleQuickplayGameOver(winner: 'left' | 'right') {
+		const amILeft = this.net.side === 'left';
+		const didIWin = (amILeft && winner === 'left') || (!amILeft && winner === 'right');
+
+		this.state.isGameOver = true;
+		this.state.winner = winner;
+
+		// Créer un overlay avec le résultat et un bouton
+		const overlay = document.createElement('div');
+		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
+		overlay.innerHTML = `
+			<div class="bg-[#0C154D]/90 border-2 border-white/20 rounded-lg p-8 text-center max-w-md">
+				<h2 class="text-4xl font-bold mb-4 ${didIWin ? 'text-green-400' : 'text-red-400'}">
+					${didIWin ? '🏆 VICTOIRE !' : '💀 DÉFAITE'}
+				</h2>
+				<p class="text-white/80 text-xl mb-6">
+					Score: ${this.state.score.left} - ${this.state.score.right}
+				</p>
+				<button 
+					id="return-to-lobby"
+					class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all pointer"
+				>
+					Retour au lobby
+				</button>
+			</div>
+		`;
+		
+		document.body.appendChild(overlay);
+
+		// Ajouter l'event listener pour le bouton
+		document.getElementById('return-to-lobby')?.addEventListener('click', () => {
+			sessionStorage.removeItem('gameWsURL');
+			window.location.href = '/test';
+		});
+	}
 
 	private setupEventHandlers(): void {
 		window.addEventListener('resize', this.handleResize);

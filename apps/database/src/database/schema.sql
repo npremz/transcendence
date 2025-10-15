@@ -84,9 +84,9 @@ CREATE TABLE IF NOT EXISTS game_stats (
 	player_id TEXT NOT NULL,
 	side TEXT NOT NULL CHECK(side IN ('left', 'right')),
 	paddle_hits INTEGER DEFAULT 0,
-	smashes_used INTEGER DEFAULT 0,
 	max_ball_speed REAL DEFAULT 0,
 	power_ups_collected INTEGER DEFAULT 0,
+	skills_used INTEGER DEFAULT 0,
 	time_disconnected_ms INTEGER DEFAULT 0,
 	FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
 	FOREIGN KEY (player_id) REFERENCES users(id),
@@ -96,12 +96,13 @@ CREATE TABLE IF NOT EXISTS game_stats (
 CREATE INDEX IF NOT EXISTS idx_game_stats_game ON game_stats(game_id);
 CREATE INDEX IF NOT EXISTS idx_game_stats_player ON game_stats(player_id);
 
--- Table des power-ups activés
+-- Table des power-ups collectés et activés
 CREATE TABLE IF NOT EXISTS power_ups_used (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	game_id TEXT NOT NULL,
 	player_id TEXT NOT NULL,
 	power_up_type TEXT NOT NULL CHECK(power_up_type IN ('split', 'blackout', 'blackhole')),
+	collected_at_game_time REAL,
 	activated_at_game_time REAL NOT NULL,
 	activated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
@@ -111,3 +112,20 @@ CREATE TABLE IF NOT EXISTS power_ups_used (
 CREATE INDEX IF NOT EXISTS idx_powerups_game ON power_ups_used(game_id);
 CREATE INDEX IF NOT EXISTS idx_powerups_player ON power_ups_used(player_id);
 CREATE INDEX IF NOT EXISTS idx_powerups_type ON power_ups_used(power_up_type);
+
+-- Table des skills utilisés
+CREATE TABLE IF NOT EXISTS skills_used (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	game_id TEXT NOT NULL,
+	player_id TEXT NOT NULL,
+	skill_type TEXT NOT NULL CHECK(skill_type IN ('smash')),
+	activated_at_game_time REAL NOT NULL,
+	activated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	was_successful BOOLEAN DEFAULT 1,
+	FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+	FOREIGN KEY (player_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_skills_game ON skills_used(game_id);
+CREATE INDEX IF NOT EXISTS idx_skills_player ON skills_used(player_id);
+CREATE INDEX IF NOT EXISTS idx_skills_type ON skills_used(skill_type);

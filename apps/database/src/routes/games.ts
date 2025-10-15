@@ -204,9 +204,9 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 						end_reason = ?,
 						finished_at = CURRENT_TIMESTAMP,
 						duration_seconds = (
-							CAST((julianday(CURRENT_TIMESTAMP) - julianday(started_at)) * 86400 AS INTEGER)
+							CAST((julianday(CURRENT_TIMESTAMP) - julianday(created_at)) * 86400 AS INTEGER)
 						)
-					WHERE room_id = ? AND status = 'in_progress'`,
+					WHERE room_id = ? AND (status = 'in_progress' OR status = 'waiting')`,
 					[score_left, score_right, winner_id, end_reason, roomId],
 					function(err)
 					{
@@ -227,6 +227,42 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 						else
 						{
 							resolve(reply.send({ success: true }));
+						}
+					}
+				);
+			});
+		}
+	);
+
+	// READ - Historique global de tous les joueurs
+	fastify.get(
+		'/games/history',
+		async (request, reply) => {
+			return new Promise((resolve) => {
+				fastify.db.all(
+					`SELECT g.*,
+						u1.username as player_left_username,
+						u2.username as player_right_username,
+						u3.username as winner_username
+					FROM games g
+					JOIN users u1 ON g.player_left_id = u1.id
+					JOIN users u2 ON g.player_right_id = u2.id
+					LEFT JOIN users u3 ON g.winner_id = u3.id
+					WHERE g.status = 'finished'
+					ORDER BY g.created_at DESC
+					LIMIT 100`,
+					[],
+					(err, rows: Game[]) => {
+						if (err) {
+							resolve(reply.status(500).send({
+								success: false,
+								error: err.message
+							}));
+						} else {
+							resolve(reply.send({
+								success: true,
+								games: rows
+							}));
 						}
 					}
 				);
