@@ -9,6 +9,7 @@ import { CreateAccountView } from '../views/CreateAccountView';
 import { tournamentLogic, TournamentView } from '../views/TournamentView';
 import { BracketView, bracketLogic } from '../views/BracketView';
 import { HistoryView, historyLogic } from '../views/HistoryView';
+import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
 import type { NavigationGuard } from './types';
 import {
     logGuard,
@@ -86,6 +87,13 @@ export class Router {
             view: HistoryView,
             onMount: historyLogic,
             title: 'Historique des Parties'
+        });
+
+        this.routes.push({
+            path: '/history/:id',
+            view: GameDetailView,
+            onMount: gameDetailLogic,
+            title: 'Détails de la Partie'
         });
 
 		this.routes.push({

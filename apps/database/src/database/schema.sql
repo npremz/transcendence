@@ -129,3 +129,18 @@ CREATE TABLE IF NOT EXISTS skills_used (
 CREATE INDEX IF NOT EXISTS idx_skills_game ON skills_used(game_id);
 CREATE INDEX IF NOT EXISTS idx_skills_player ON skills_used(player_id);
 CREATE INDEX IF NOT EXISTS idx_skills_type ON skills_used(skill_type);
+
+-- Table des goals marqués (pour heatmap)
+CREATE TABLE IF NOT EXISTS goals_scored (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	game_id TEXT NOT NULL,
+	scorer_side TEXT NOT NULL CHECK(scorer_side IN ('left', 'right')),
+	scored_against_side TEXT NOT NULL CHECK(scored_against_side IN ('left', 'right')),
+	ball_y_position REAL NOT NULL,
+	scored_at_game_time REAL NOT NULL,
+	scored_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_goals_game ON goals_scored(game_id);
+CREATE INDEX IF NOT EXISTS idx_goals_scorer ON goals_scored(scorer_side);
