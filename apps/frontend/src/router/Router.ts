@@ -46,13 +46,13 @@ export class Router {
         });
 
 		this.routes.push({
-            path: '/quickplay',
+            path: '/play',
             view: QuickPlayView,
             title: 'QuickPlay'
         });
 
 		this.routes.push({
-            path: '/quickplay/waiting',
+            path: '/play/waiting',
             view: WaitingRoomView,
             onMount: waitingRoomLogic,
             title: 'Waiting Room'

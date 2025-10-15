@@ -304,7 +304,6 @@ export class PongGame implements Component {
 		this.state.isGameOver = true;
 		this.state.winner = winner;
 
-		// Créer un overlay avec le résultat et un bouton
 		const overlay = document.createElement('div');
 		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
 		overlay.innerHTML = `
@@ -326,10 +325,9 @@ export class PongGame implements Component {
 		
 		document.body.appendChild(overlay);
 
-		// Ajouter l'event listener pour le bouton
 		document.getElementById('return-to-lobby')?.addEventListener('click', () => {
 			sessionStorage.removeItem('gameWsURL');
-			window.location.href = '/test';
+			window.location.href = '/play';
 		});
 	}
 

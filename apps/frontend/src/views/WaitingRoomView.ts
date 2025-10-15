@@ -90,7 +90,7 @@ export const waitingRoomLogic = (): CleanupFunction => {
 
     const handleCancel = () => {
         stopPolling();
-        window.router.navigate('/quickplay');
+        window.router.navigate('/play');
     };
 
     // Start joining immediately on mount
