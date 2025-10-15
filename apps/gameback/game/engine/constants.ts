@@ -7,6 +7,7 @@ export const PADDLE_MARGIN = 30;
 export const PADDLE_SPEED = 400;
 export const PADDLE_SPEED_INCREASE = 1.05;
 export const PADDLE_MAX_SPEED = 1600;
+export const PADDLE_TO_BALL_SPEED_RATIO = 0.6;
 
 
 export const BALL_RADIUS = 15;
@@ -39,6 +40,10 @@ export const SMASH_COOLDOWN = 3;
 export const SMASH_TIMING_WINDOW = 0.2;
 export const SMASH_SPEED_MULTIPLIER = 1.2;
 export const SMASH_ANIM_DURATION = 0.12;
+
+export const DASH_COOLDOWN = 5;
+export const DASH_DURATION = 0.3;
+export const DASH_SPEED = 2000;
 
 export const SERVER_TICK_HZ = 240;
 export const SERVER_DT = 1 / SERVER_TICK_HZ;

@@ -4,9 +4,10 @@ import { GameWorld } from "../engine/world";
 import { SERVER_DT, SERVER_TICK_HZ, BROADCAST_HZ, TIMEOUT_MS } from "../engine/constants";
 import type { ClientMessage, ServerMessage } from "../ws/messageTypes";
 import { safeParse } from "../ws/messageTypes";
+import type { SkillType } from "../engine/types";
 
 type Role = 'left' | 'right' | 'spectator';
-type Player = {id: string; username: string};
+type Player = {id: string; username: string; selectedSkill?: SkillType};
 
 interface GameStats {
 	paddle_hits: number;
@@ -14,6 +15,7 @@ interface GameStats {
 	power_ups_collected: number;
 	skills_used: number;
 	smashes: Array<{time: number; successful: boolean; id?: number}>;
+	dashes: Array<{time: number; successful: boolean; id?: number}>;
 }
 
 const rooms = new Map<string, GameSession>();
@@ -34,14 +36,16 @@ class GameSession {
 		max_ball_speed: 0,
 		power_ups_collected: 0,
 		skills_used: 0,
-		smashes: []
+		smashes: [],
+		dashes: []
 	};
 	private rightStats: GameStats = {
 		paddle_hits: 0,
 		max_ball_speed: 0,
 		power_ups_collected: 0,
 		skills_used: 0,
-		smashes: []
+		smashes: [],
+		dashes: []
 	};
 
 	private tickTimer?: NodeJS.Timeout;
@@ -87,11 +91,12 @@ class GameSession {
 				this.leftStats.max_ball_speed = Math.max(this.leftStats.max_ball_speed, speed);
 				this.rightStats.max_ball_speed = Math.max(this.rightStats.max_ball_speed, speed);
 			},
-			onSmashSuccess: (side, gameTime) => {
+			onSkillSuccess: (side, skillType, gameTime) => {
 				const stats = side === 'left' ? this.leftStats : this.rightStats;
-				for (let i = stats.smashes.length - 1; i >= 0; i--) {
-					if (!stats.smashes[i].successful && Math.abs(stats.smashes[i].time - gameTime) < 1) {
-						stats.smashes[i].successful = true;
+				const skillArray = skillType === 'smash' ? stats.smashes : stats.dashes;
+				for (let i = skillArray.length - 1; i >= 0; i--) {
+					if (!skillArray[i].successful && Math.abs(skillArray[i].time - gameTime) < 1) {
+						skillArray[i].successful = true;
 						break;
 					}
 				}
@@ -121,6 +126,13 @@ class GameSession {
 	}) {
         this.expected.left = players.left;
         this.expected.right = players.right;
+
+		if (players.left.selectedSkill) {
+			this.world.setSkill('left', players.left.selectedSkill);
+		}
+		if (players.right.selectedSkill) {
+			this.world.setSkill('right', players.right.selectedSkill);
+		}
 
 		if (metadata) {
             this.isTournament = metadata.isTournament || false;
@@ -181,15 +193,24 @@ class GameSession {
                 }
                 break;
             }
-            case 'smash': {
+            case 'skill': {
                 if (role === 'left' || role === 'right') {
-                    this.world.pressSmash(role);
+					const skillType = this.world.state.selectedSkills[role];
+                    this.world.useSkill(role);
 					const stats = role === 'left' ? this.leftStats : this.rightStats;
 					stats.skills_used++;
-					stats.smashes.push({
-						time: this.world.state.clock,
-						successful: false
-					});
+					
+					if (skillType === 'smash') {
+						stats.smashes.push({
+							time: this.world.state.clock,
+							successful: false
+						});
+					} else if (skillType === 'dash') {
+						stats.dashes.push({
+							time: this.world.state.clock,
+							successful: false
+						});
+					}
                 }
                 break;
             }
@@ -269,6 +290,9 @@ class GameSession {
                             break;
                         case 'time_scale':
                             this.timeScale = Math.max(0.1, Math.min(4, msg.payload.scale));
+                            break;
+                        case 'change_skill':
+                            this.world.setSkill(msg.payload.side, msg.payload.skill);
                             break;
                     }
                 } catch (e) {
@@ -411,6 +435,22 @@ class GameSession {
 							skill_type: 'smash',
 							activated_at_game_time: smash.time,
 							was_successful: smash.successful
+						}),
+						// @ts-ignore
+						agent
+					});
+				}
+
+				for (const dash of stats.dashes) {
+					await fetch(`https://${host}/gamedb/skills`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							game_id: gameId,
+							player_id: player.id,
+							skill_type: 'dash',
+							activated_at_game_time: dash.time,
+							was_successful: dash.successful
 						}),
 						// @ts-ignore
 						agent

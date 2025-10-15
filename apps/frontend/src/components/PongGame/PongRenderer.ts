@@ -141,13 +141,14 @@ export class PongRenderer {
 		ctx.fillText(String(state.score.left), W / 2 - 100, 60);
 		ctx.fillText(String(state.score.right), W / 2 + 100, 60);
 
-		if ((side === 'left' || side === 'right') && state.smash && !shouldBlackout) 
+		if ((side === 'left' || side === 'right') && !shouldBlackout) 
 		{
-			const smash = state.smash;
-			const mine = side === 'left' ? smash.left : smash.right;
+			const mySkill = side === 'left' ? state.skillStates.left : state.skillStates.right;
+			const skillType = side === 'left' ? state.selectedSkills.left : state.selectedSkills.right;
+			const cooldown = skillType === 'smash' ? 3 : 5;
 			const progress =
-				mine.cooldownRemaining > 0
-					? Math.max(0, Math.min(1, 1 - mine.cooldownRemaining / smash.cooldown))
+				mySkill.cooldownRemaining > 0
+					? Math.max(0, Math.min(1, 1 - mySkill.cooldownRemaining / cooldown))
 					: 1;
 
 			this.drawCooldownDonut(ctx, 60, 60, 28, 10, progress);
@@ -155,9 +156,9 @@ export class PongRenderer {
 			ctx.fillStyle = COLORS.text;
 			ctx.font = '16px monospace';
 			ctx.textAlign = 'left';
-			if (mine.cooldownRemaining > 0) 
+			if (mySkill.cooldownRemaining > 0) 
 			{
-				ctx.fillText(mine.cooldownRemaining.toFixed(1) + 's', 95, 66);
+				ctx.fillText(mySkill.cooldownRemaining.toFixed(1) + 's', 95, 66);
 			}
 			ctx.textAlign = 'center';
 		}

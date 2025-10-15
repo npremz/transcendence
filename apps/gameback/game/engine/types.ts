@@ -1,4 +1,5 @@
 export type Side = 'left' | 'right';
+export type SkillType = 'smash' | 'dash';
 
 export type Ball = {
 	x: number;
@@ -19,10 +20,10 @@ export type PowerUp = {
 	type: 'split' | 'blackout' | 'blackhole';
 };
 
-export type SmashSideState = {
+export type SkillState = {
 	availableAt: number;
 	lastPressAt: number;
-	lastSmashAt: number;
+	lastActivationAt: number;
 };
 
 export type GameState = {
@@ -56,8 +57,12 @@ export type GameState = {
 	blackholeCenterX: number;
 	blackholeCenterY: number;
 
-	smash: {
-		left: SmashSideState;
-		right: SmashSideState;
+	selectedSkills: {
+		left: SkillType;
+		right: SkillType;
+	};
+	skillStates: {
+		left: SkillState;
+		right: SkillState;
 	}
 };

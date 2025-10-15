@@ -27,7 +27,8 @@ export class PongInputHandler {
 				e.preventDefault();
 				break;
 			case ' ':
-				this.net.smash();
+			case 'Shift':
+				this.net.useSkill();
 				e.preventDefault();
 				return;
 			case 'p':

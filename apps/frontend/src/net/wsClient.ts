@@ -18,11 +18,13 @@ export type PublicState = {
 	blackholeProgress: number;
 	blackholeCenterX: number;
 	blackholeCenterY: number;
-	smash: {
-		cooldown: number;
-		animDuration: number;
-		left: {cooldownRemaining: number; lastSmashAt: number};
-		right: {cooldownRemaining: number; lastSmashAt: number};
+	selectedSkills: {
+		left: 'smash' | 'dash';
+		right: 'smash' | 'dash';
+	};
+	skillStates: {
+		left: {cooldownRemaining: number; lastActivationAt: number};
+		right: {cooldownRemaining: number; lastActivationAt: number};
 	};
 };
 
@@ -113,8 +115,8 @@ export class WSClient {
 	resume() {
 		this.ws?.send(JSON.stringify({ type: 'resume' }));
 	}
-	smash() {
-		this.ws?.send(JSON.stringify({ type: 'smash' }));
+	useSkill() {
+		this.ws?.send(JSON.stringify({ type: 'skill' }));
 	}
 
     debugActivatePowerUp(kind: 'split' | 'blackout' | 'blackhole') {
@@ -160,6 +162,12 @@ export class WSClient {
     debugTimeScale(scale: number) {
         this.ws?.send(JSON.stringify({
             type: 'debug', action: 'time_scale', payload: { scale }
+        }));
+    }
+
+    debugChangeSkill(side: 'left' | 'right', skill: 'smash' | 'dash') {
+        this.ws?.send(JSON.stringify({
+            type: 'debug', action: 'change_skill', payload: { side, skill }
         }));
     }
 }

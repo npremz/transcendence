@@ -3,7 +3,7 @@ export type ClientMessage =
 	| {type: 'pause'}
 	| {type: 'resume'}
 	| {type: 'ping'; t: number}
-	| {type: 'smash'}
+	| {type: 'skill'}
 	| {type: 'logIn'; id: string}
     | {type: 'debug'; action: 'activate_powerup'; payload: {kind: 'split' | 'blackout' | 'blackhole'}}
     | {type: 'debug'; action: 'clear_powerups'}
@@ -12,7 +12,8 @@ export type ClientMessage =
     | {type: 'debug'; action: 'set_score'; payload: {left: number; right: number}}
     | {type: 'debug'; action: 'ball_control'; payload: {mode: 'add' | 'remove' | 'reset'}}
     | {type: 'debug'; action: 'ball_speed'; payload: {mode: 'multiply' | 'divide' | 'freeze'}}
-    | {type: 'debug'; action: 'time_scale'; payload: {scale: number}};
+    | {type: 'debug'; action: 'time_scale'; payload: {scale: number}}
+    | {type: 'debug'; action: 'change_skill'; payload: {side: 'left' | 'right'; skill: 'smash' | 'dash'}};
 
 export type ServerMessage = 
 	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'; isTournament?: boolean; tournamentId?: string}
@@ -49,11 +50,13 @@ export type PublicState = {
 	blackholeCenterX: number;
 	blackholeCenterY: number;
 
-	smash: {
-		cooldown: number;
-		animDuration: number;
-		left: {cooldownRemaining: number; lastSmashAt: number};
-		right: {cooldownRemaining: number; lastSmashAt: number};
+	selectedSkills: {
+		left: 'smash' | 'dash';
+		right: 'smash' | 'dash';
+	};
+	skillStates: {
+		left: {cooldownRemaining: number; lastActivationAt: number};
+		right: {cooldownRemaining: number; lastActivationAt: number};
 	};
 };
 

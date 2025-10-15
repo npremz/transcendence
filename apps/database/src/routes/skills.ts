@@ -4,7 +4,7 @@ interface SkillUsed {
 	id?: number;
 	game_id: string;
 	player_id: string;
-	skill_type: 'smash';
+	skill_type: 'smash' | 'dash';
 	activated_at_game_time: number;
 	activated_at?: string;
 	was_successful?: boolean;
@@ -16,7 +16,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void
 	fastify.post<{ Body: {
 		game_id: string;
 		player_id: string;
-		skill_type: 'smash';
+		skill_type: 'smash' | 'dash';
 		activated_at_game_time: number;
 		was_successful?: boolean;
 	}}>(
@@ -103,11 +103,14 @@ export function registerSkillRoutes(fastify: FastifyInstance): void
 			return new Promise((resolve) => {
 				fastify.db.get(
 					`SELECT 
-						COUNT(*) as total_smashes,
-						SUM(CASE WHEN was_successful = 1 THEN 1 ELSE 0 END) as successful_smashes,
-						ROUND(AVG(CASE WHEN was_successful = 1 THEN 1.0 ELSE 0.0 END) * 100, 2) as smash_success_rate
+						COUNT(CASE WHEN skill_type = 'smash' THEN 1 END) as total_smashes,
+						SUM(CASE WHEN skill_type = 'smash' AND was_successful = 1 THEN 1 ELSE 0 END) as successful_smashes,
+						ROUND(AVG(CASE WHEN skill_type = 'smash' AND was_successful = 1 THEN 1.0 ELSE 0.0 END) * 100, 2) as smash_success_rate,
+						COUNT(CASE WHEN skill_type = 'dash' THEN 1 END) as total_dashes,
+						SUM(CASE WHEN skill_type = 'dash' AND was_successful = 1 THEN 1 ELSE 0 END) as successful_dashes,
+						ROUND(AVG(CASE WHEN skill_type = 'dash' AND was_successful = 1 THEN 1.0 ELSE 0.0 END) * 100, 2) as dash_success_rate
 					FROM skills_used
-					WHERE player_id = ? AND skill_type = 'smash'`,
+					WHERE player_id = ?`,
 					[playerId],
 					(err, row) => {
 						if (err)

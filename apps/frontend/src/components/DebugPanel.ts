@@ -11,6 +11,7 @@ export interface DebugPanelCallbacks {
     onBallSpeedControl: (action: 'multiply' | 'divide' | 'freeze') => void;
     onTimeControl: (action: 'slow' | 'fast' | 'normal') => void;
     onToggleOverlay: () => void;
+    onChangeSkill: (side: 'left' | 'right', skill: 'smash' | 'dash') => void;
 }
 
 export class DebugPanel implements Component {
@@ -25,13 +26,32 @@ export class DebugPanel implements Component {
     private particleCount: number = 0;
     private ballsData: Array<{ x: number; y: number; vx: number; vy: number }> = [];
     private activePowerUps: string[] = [];
-    private smashCooldowns: { left: number; right: number } = { left: 0, right: 0 };
+    private skillCooldowns: { 
+        left: number;
+        right: number;
+    } = { 
+        left: 0,
+        right: 0
+    };
+    private selectedSkills: {
+        left: 'smash' | 'dash';
+        right: 'smash' | 'dash';
+    } = {
+        left: 'smash',
+        right: 'smash'
+    };
 
     private listeners: Array<{ el: Element; handler: EventListener }> = [];
     private closeBtn?: Element;
     private closeHandler?: EventListener;
     private boundKeydown?: (e: KeyboardEvent) => void;
     private destroyed = false;
+
+    private isDragging = false;
+    private dragOffsetX = 0;
+    private dragOffsetY = 0;
+    private posX = 20;
+    private posY = 20;
 
     constructor(element: HTMLElement, callbacks: DebugPanelCallbacks) {
         this.element = element;
@@ -43,6 +63,7 @@ export class DebugPanel implements Component {
         this.render();
         this.attachEventListeners();
         this.startFPSCounter();
+        this.setupDragging();
 
         this.boundKeydown = (e: KeyboardEvent) => {
             if (e.key === 'm' || e.key === 'M') {
@@ -57,7 +78,27 @@ export class DebugPanel implements Component {
         this.isOpen = !this.isOpen;
         const panel = this.element.querySelector('.debug-panel') as HTMLElement;
         if (panel) {
-            panel.style.display = this.isOpen ? 'block' : 'none';
+            if (this.isOpen) {
+                panel.classList.add('open');
+            } else {
+                panel.classList.remove('open');
+            }
+        }
+    }
+
+    public open(): void {
+        this.isOpen = true;
+        const panel = this.element.querySelector('.debug-panel') as HTMLElement;
+        if (panel) {
+            panel.classList.add('open');
+        }
+    }
+
+    public close(): void {
+        this.isOpen = false;
+        const panel = this.element.querySelector('.debug-panel') as HTMLElement;
+        if (panel) {
+            panel.classList.remove('open');
         }
     }
 
@@ -97,9 +138,13 @@ export class DebugPanel implements Component {
         if (state.blackoutRight) this.activePowerUps.push('Blackout Right');
         if (state.blackholeActive) this.activePowerUps.push('Blackhole');
 
-        this.smashCooldowns = {
-            left: state.smash.left.cooldownRemaining,
-            right: state.smash.right.cooldownRemaining
+        this.selectedSkills = {
+            left: state.selectedSkills.left,
+            right: state.selectedSkills.right
+        };
+        this.skillCooldowns = {
+            left: state.skillStates.left.cooldownRemaining,
+            right: state.skillStates.right.cooldownRemaining
         };
 
         this.updateOverlay();
@@ -135,9 +180,9 @@ export class DebugPanel implements Component {
                 : '<div class="stat-line small">None</div>'
             }
             
-            <div class="stat-section">Smash Cooldowns:</div>
-            <div class="stat-line small">Left: ${this.smashCooldowns.left.toFixed(1)}s</div>
-            <div class="stat-line small">Right: ${this.smashCooldowns.right.toFixed(1)}s</div>
+            <div class="stat-section">Skill Cooldowns:</div>
+            <div class="stat-line small">Left (${this.selectedSkills.left}): ${this.skillCooldowns.left.toFixed(1)}s</div>
+            <div class="stat-line small">Right (${this.selectedSkills.right}): ${this.skillCooldowns.right.toFixed(1)}s</div>
         `;
     }
 
@@ -145,10 +190,12 @@ export class DebugPanel implements Component {
         this.element.innerHTML = `
         <style>
             .debug-panel {
-                position: static;
-                width: 100%;
-                max-width: 960px;
-                margin: 0 auto;
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                width: 400px;
+                max-height: 80vh;
+                overflow-y: auto;
                 background: rgba(10, 10, 30, 0.95);
                 backdrop-filter: blur(10px);
                 border: 2px solid rgba(100, 150, 255, 0.3);
@@ -157,8 +204,11 @@ export class DebugPanel implements Component {
                 color: #fff;
                 font-family: 'Courier New', monospace;
                 font-size: 13px;
-                z-index: 1;
-                display: block; /* ouvert par défaut */
+                z-index: 9999;
+                display: none;
+            }
+            .debug-panel.open {
+                display: block;
             }
             .debug-header {
                 background: rgba(100, 150, 255, 0.2);
@@ -167,6 +217,8 @@ export class DebugPanel implements Component {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                cursor: move;
+                user-select: none;
             }
             .debug-title { font-size: 16px; font-weight: bold; color: #64B5F6; }
             .debug-close {
@@ -202,9 +254,12 @@ export class DebugPanel implements Component {
             .debug-btn.success { background: rgba(100, 255, 100, 0.2); border-color: rgba(100, 255, 100, 0.4); }
             .debug-btn.success:hover { background: rgba(100, 255, 100, 0.4); box-shadow: 0 4px 12px rgba(100, 255, 100, 0.4); }
             .debug-btn.small { padding: 6px 10px; font-size: 11px; }
+            .debug-btn.active { background: rgba(100, 200, 255, 0.5); border-color: rgba(100, 200, 255, 0.8); box-shadow: 0 0 8px rgba(100, 200, 255, 0.6); }
             .btn-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
             .score-control { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
             .score-label { min-width: 50px; color: #90CAF9; }
+            .skill-control { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+            .skill-label { min-width: 80px; color: #90CAF9; font-weight: bold; }
             .debug-overlay {
                 position: fixed;
                 top: 20px;
@@ -291,6 +346,20 @@ export class DebugPanel implements Component {
             </div>
 
             <div class="debug-section">
+                <div class="section-title">Skills</div>
+                <div class="skill-control">
+                    <span class="skill-label">Left Player:</span>
+                    <button class="debug-btn small" data-action="skill-left-smash" data-skill-left-smash>Smash</button>
+                    <button class="debug-btn small" data-action="skill-left-dash" data-skill-left-dash>Dash</button>
+                </div>
+                <div class="skill-control">
+                    <span class="skill-label">Right Player:</span>
+                    <button class="debug-btn small" data-action="skill-right-smash" data-skill-right-smash>Smash</button>
+                    <button class="debug-btn small" data-action="skill-right-dash" data-skill-right-dash>Dash</button>
+                </div>
+            </div>
+
+            <div class="debug-section">
                 <div class="section-title">Debug Overlay</div>
                 <button class="debug-btn" data-action="toggle-overlay">
                     <span class="status-indicator inactive" data-overlay-indicator></span>
@@ -361,6 +430,26 @@ export class DebugPanel implements Component {
                 overlay.style.display = this.overlayVisible ? 'block' : 'none';
             }
         });
+
+        // Skills
+        this.addListener('skill-left-smash', () => {
+            this.callbacks.onChangeSkill('left', 'smash');
+            this.updateSkillButtons();
+        });
+        this.addListener('skill-left-dash', () => {
+            this.callbacks.onChangeSkill('left', 'dash');
+            this.updateSkillButtons();
+        });
+        this.addListener('skill-right-smash', () => {
+            this.callbacks.onChangeSkill('right', 'smash');
+            this.updateSkillButtons();
+        });
+        this.addListener('skill-right-dash', () => {
+            this.callbacks.onChangeSkill('right', 'dash');
+            this.updateSkillButtons();
+        });
+
+        this.updateSkillButtons();
     }
 
     private addListener(action: string, callback: () => void): void {
@@ -384,6 +473,68 @@ export class DebugPanel implements Component {
         if (indicator) {
             indicator.className = `status-indicator ${this.overlayVisible ? 'active' : 'inactive'}`;
         }
+    }
+
+    private updateSkillButtons(): void {
+        const leftSmash = this.element.querySelector('[data-skill-left-smash]');
+        const leftDash = this.element.querySelector('[data-skill-left-dash]');
+        const rightSmash = this.element.querySelector('[data-skill-right-smash]');
+        const rightDash = this.element.querySelector('[data-skill-right-dash]');
+
+        if (leftSmash && leftDash) {
+            leftSmash.classList.toggle('active', this.selectedSkills.left === 'smash');
+            leftDash.classList.toggle('active', this.selectedSkills.left === 'dash');
+        }
+
+        if (rightSmash && rightDash) {
+            rightSmash.classList.toggle('active', this.selectedSkills.right === 'smash');
+            rightDash.classList.toggle('active', this.selectedSkills.right === 'dash');
+        }
+    }
+
+    private setupDragging(): void {
+        const header = this.element.querySelector('.debug-header') as HTMLElement;
+        const panel = this.element.querySelector('.debug-panel') as HTMLElement;
+        if (!header || !panel) return;
+
+        const onMouseDown = (e: MouseEvent) => {
+            if ((e.target as HTMLElement).classList.contains('debug-close')) return;
+            
+            this.isDragging = true;
+            const rect = panel.getBoundingClientRect();
+            this.dragOffsetX = e.clientX - rect.left;
+            this.dragOffsetY = e.clientY - rect.top;
+            
+            header.style.cursor = 'grabbing';
+        };
+
+        const onMouseMove = (e: MouseEvent) => {
+            if (!this.isDragging) return;
+
+            this.posX = e.clientX - this.dragOffsetX;
+            this.posY = e.clientY - this.dragOffsetY;
+
+            this.posX = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, this.posX));
+            this.posY = Math.max(0, Math.min(window.innerHeight - 100, this.posY));
+
+            panel.style.left = `${this.posX}px`;
+            panel.style.top = `${this.posY}px`;
+        };
+
+        const onMouseUp = () => {
+            this.isDragging = false;
+            header.style.cursor = 'move';
+        };
+
+        header.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+
+        this.listeners.push(
+            { el: header, handler: onMouseDown as EventListener },
+            { el: window as any, handler: onMouseMove as EventListener },
+            { el: window as any, handler: onMouseUp as EventListener }
+        );
     }
 
     cleanup(): void {

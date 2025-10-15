@@ -1,14 +1,14 @@
 import { 
 	WORLD_WIDTH, WORLD_HEIGHT, PADDLE_MARGIN, PADDLE_HEIGHT, PADDLE_SPEED,
 	PADDLE_SPEED_INCREASE, BALL_INITIAL_SPEED, BALL_SPEED_INCREASE, BALL_MAX_SPEED,
-	BALL_RADIUS, SCORE_TO_WIN, PADDLE_MAX_SPEED, SMASH_ANIM_DURATION, SMASH_COOLDOWN,
-	SMASH_SPEED_MULTIPLIER, SMASH_TIMING_WINDOW,
-	PADDLE_WIDTH, MAX_BALLS_ON_FIELD} from "./constants";
-import type { Ball, GameState, Side } from "./types";
+	BALL_RADIUS, SCORE_TO_WIN, PADDLE_MAX_SPEED, SMASH_ANIM_DURATION,
+	PADDLE_WIDTH, MAX_BALLS_ON_FIELD, PADDLE_TO_BALL_SPEED_RATIO} from "./constants";
+import type { Ball, GameState, Side, SkillType } from "./types";
 import { clamp } from "./helpers";
 import { bounceOnWalls, checkPaddleCollision, resolveBallBallCollision } from "./physics";
 import { activateSplit, endSplit, pruneExpiredPowerUps, scheduleNextPowerUp, spawnPowerUp,
 	activateBlackout, updateBlackout, activateBlackhole, updateBlackhole, endBlackhole } from "./powerups";
+import { activateSkill, isSmashActive, isDashActive, getSmashSpeedMultiplier, getDashSpeed, getSkillCooldown } from "./skills";
 import type { PublicState } from "../ws/messageTypes";
 
 const newBall = (vx: number, vy: number): Ball => ({
@@ -24,7 +24,7 @@ export interface GameEventCallbacks {
 	onPaddleHit?: (side: 'left' | 'right') => void;
 	onPowerUpCollected?: (side: 'left' | 'right', type: 'split' | 'blackout' | 'blackhole', gameTime: number) => void;
 	onBallSpeedUpdate?: (speed: number) => void;
-	onSmashSuccess?: (side: 'left' | 'right', gameTime: number) => void;
+	onSkillSuccess?: (side: 'left' | 'right', skillType: SkillType, gameTime: number) => void;
 }
 
 export class GameWorld {
@@ -68,9 +68,13 @@ export class GameWorld {
 			blackholeEndsAt: 0,
 			blackholeCenterX: WORLD_WIDTH / 2,
 			blackholeCenterY: WORLD_HEIGHT / 2,
-			smash : {
-				left: {availableAt: 0, lastPressAt: -1e9, lastSmashAt: -1e9},
-				right: {availableAt: 0, lastPressAt: -1e9, lastSmashAt: -1e9}
+			selectedSkills: {
+				left: 'smash',
+				right: 'smash'
+			},
+			skillStates: {
+				left: {availableAt: 0, lastPressAt: -1e9, lastActivationAt: -1e9},
+				right: {availableAt: 0, lastPressAt: -1e9, lastActivationAt: -1e9}
 			}
 		};
 	}
@@ -79,15 +83,23 @@ export class GameWorld {
 		(side === 'left' ? this.state.leftPaddle : this.state.rightPaddle).intention = intention;
 	}
 
-	pressSmash(side: Side)
-	{
-		const sm = this.state.smash[side];
-        if (this.state.clock >= sm.availableAt)
-        {
-            sm.lastSmashAt = this.state.clock;
-            sm.availableAt = this.state.clock + SMASH_COOLDOWN;
-            sm.lastPressAt = this.state.clock;
-        }
+	useSkill(side: Side) {
+		activateSkill(this.state, side);
+	}
+
+	setSkill(side: Side, skillType: SkillType) {
+		this.state.selectedSkills[side] = skillType;
+	}
+
+	private getMaxBallSpeed(): number {
+		let maxSpeed = BALL_INITIAL_SPEED;
+		for (const ball of this.state.balls) {
+			const speed = Math.hypot(ball.vx, ball.vy);
+			if (speed > maxSpeed) {
+				maxSpeed = speed;
+			}
+		}
+		return maxSpeed;
 	}
 
 	startCountdown() {
@@ -134,9 +146,30 @@ export class GameWorld {
 		s.clock += dt;
 		updateBlackout(s, dt);
 		updateBlackhole(s, dt);
-		s.leftPaddle.y = clamp(s.leftPaddle.y + s.leftPaddle.intention * s.leftPaddle.speed * dt,
+
+		const maxBallSpeed = this.getMaxBallSpeed();
+		const calculatedPaddleSpeed = Math.min(
+			Math.max(PADDLE_SPEED, maxBallSpeed * PADDLE_TO_BALL_SPEED_RATIO),
+			PADDLE_MAX_SPEED
+		);
+		s.leftPaddle.speed = calculatedPaddleSpeed;
+		s.rightPaddle.speed = calculatedPaddleSpeed;
+
+		const leftDashActive = isDashActive(s, 'left');
+		const rightDashActive = isDashActive(s, 'right');
+		const leftSpeed = leftDashActive ? getDashSpeed() : s.leftPaddle.speed;
+		const rightSpeed = rightDashActive ? getDashSpeed() : s.rightPaddle.speed;
+
+		if (leftDashActive && s.leftPaddle.intention !== 0) {
+			this.callbacks.onSkillSuccess?.('left', 'dash', s.clock);
+		}
+		if (rightDashActive && s.rightPaddle.intention !== 0) {
+			this.callbacks.onSkillSuccess?.('right', 'dash', s.clock);
+		}
+
+		s.leftPaddle.y = clamp(s.leftPaddle.y + s.leftPaddle.intention * leftSpeed * dt,
 			PADDLE_HEIGHT / 2, WORLD_HEIGHT - PADDLE_HEIGHT / 2);
-		s.rightPaddle.y = clamp(s.rightPaddle.y + s.rightPaddle.intention * s.rightPaddle.speed * dt,
+		s.rightPaddle.y = clamp(s.rightPaddle.y + s.rightPaddle.intention * rightSpeed * dt,
 			PADDLE_HEIGHT / 2, WORLD_HEIGHT - PADDLE_HEIGHT / 2);
 		
 		if (s.clock >= s.nextPowerUpAt)
@@ -216,12 +249,10 @@ export class GameWorld {
 				const side: Side | '' = hitL ? 'left' : hitR ? 'right' : '';
 				if (side)
 				{
-					const sm = s.smash[side];
-					const smashRecent = (s.clock - sm.lastSmashAt) <= SMASH_TIMING_WINDOW;
-					if (smashRecent)
+					if (isSmashActive(s, side))
 					{
-						target = Math.min(target * SMASH_SPEED_MULTIPLIER, BALL_MAX_SPEED);
-						this.callbacks.onSmashSuccess?.(side, s.clock);
+						target = Math.min(target * getSmashSpeedMultiplier(), BALL_MAX_SPEED);
+						this.callbacks.onSkillSuccess?.(side, 'smash', s.clock);
 					}
 				}
 
@@ -231,9 +262,6 @@ export class GameWorld {
 				b.vy *= k;
 				
 				this.callbacks.onBallSpeedUpdate?.(target);
-				
-				s.leftPaddle.speed = Math.min(s.leftPaddle.speed * PADDLE_SPEED_INCREASE, PADDLE_MAX_SPEED);
-				s.rightPaddle.speed = Math.min(s.rightPaddle.speed * PADDLE_SPEED_INCREASE, PADDLE_MAX_SPEED);
 			}
 		}
 		if (s.balls.length > 1)
@@ -279,8 +307,6 @@ export class GameWorld {
 		if (s.balls.length === 0)
 		{
 			s.balls = [newBall((Math.random() < 0.5 ? -1 : 1) * BALL_INITIAL_SPEED, 0)];
-			s.leftPaddle.speed = PADDLE_SPEED;
-			s.rightPaddle.speed = PADDLE_SPEED;
 			s.splitActive = false;
 			s.splitEndsAt = 0;
 			scheduleNextPowerUp(s);
@@ -458,16 +484,15 @@ export class GameWorld {
 			blackholeProgress: progress,
 			blackholeCenterX: s.blackholeCenterX,
 			blackholeCenterY: s.blackholeCenterY,
-			smash: {
-				cooldown: SMASH_COOLDOWN,
-				animDuration: SMASH_ANIM_DURATION,
+			selectedSkills: {...s.selectedSkills},
+			skillStates: {
 				left: {
-					cooldownRemaining: Math.max(0, s.smash.left.availableAt - s.clock),
-					lastSmashAt: s.smash.left.lastSmashAt
+					cooldownRemaining: Math.max(0, s.skillStates.left.availableAt - s.clock),
+					lastActivationAt: s.skillStates.left.lastActivationAt
 				},
 				right: {
-					cooldownRemaining: Math.max(0, s.smash.right.availableAt - s.clock),
-					lastSmashAt: s.smash.right.lastSmashAt
+					cooldownRemaining: Math.max(0, s.skillStates.right.availableAt - s.clock),
+					lastActivationAt: s.skillStates.right.lastActivationAt
 				}
 			}
 		};

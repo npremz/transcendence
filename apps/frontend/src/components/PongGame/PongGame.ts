@@ -40,11 +40,13 @@ export class PongGame implements Component {
 		blackholeCenterX: 0,
 		blackholeCenterY: 0,
 		blackholeProgress: 0,
-		smash: {
-			cooldown: 0,
-			animDuration: 0.12,
-			left: {cooldownRemaining: 0, lastSmashAt: -1e9},
-			right: {cooldownRemaining: 0, lastSmashAt: -1e9}
+		selectedSkills: {
+			left: 'smash',
+			right: 'smash'
+		},
+		skillStates: {
+			left: {cooldownRemaining: 0, lastActivationAt: -1e9},
+			right: {cooldownRemaining: 0, lastActivationAt: -1e9}
 		}
 	};
 
@@ -202,10 +204,12 @@ export class PongGame implements Component {
 			onBallControl: (action) => this.debugBallControl(action),
 			onBallSpeedControl: (action) => this.debugBallSpeedControl(action),
 			onTimeControl: (action) => this.debugTimeControl(action),
-			onToggleOverlay: () => {}
+			onToggleOverlay: () => {},
+			onChangeSkill: (side, skill) => this.debugChangeSkill(side, skill)
 		};
 
 		this.debugPanel = new DebugPanel(container, callbacks);
+		this.debugPanel.open();
 	}
 
     private debugActivatePowerUp(type: 'split' | 'blackout' | 'blackhole' | 'random'): void {
@@ -241,6 +245,10 @@ export class PongGame implements Component {
     private debugTimeControl(action: 'slow' | 'fast' | 'normal'): void {
         const scale = action === 'slow' ? 0.5 : action === 'fast' ? 2 : 1;
         this.net.debugTimeScale(scale);
+    }
+
+    private debugChangeSkill(side: 'left' | 'right', skill: 'smash' | 'dash'): void {
+        this.net.debugChangeSkill(side, skill);
     }
 
 	private triggerScreenShake(): void 
@@ -365,15 +373,15 @@ export class PongGame implements Component {
 	};
 
 	private smashOffsetX = (side: 'left' | 'right'): number => {
-		const smash = this.state.smash;
-		if (!smash) 
+		const skillType = side === 'left' ? this.state.selectedSkills.left : this.state.selectedSkills.right;
+		if (skillType !== 'smash') 
 		{
 			return 0;
 		}
 
-		const last = side === 'left' ? smash.left.lastSmashAt : smash.right.lastSmashAt;
-		const dur = smash.animDuration;
-		const dt = Math.max(0, this.state.clock - last);
+		const skillState = side === 'left' ? this.state.skillStates.left : this.state.skillStates.right;
+		const dur = 0.12;
+		const dt = Math.max(0, this.state.clock - skillState.lastActivationAt);
 
 		if (dt <= 0 || dt > dur) 
 		{
