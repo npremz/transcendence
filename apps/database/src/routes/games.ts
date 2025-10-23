@@ -68,6 +68,11 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 					{
 						if (err)
 						{
+							fastify.log.error({ 
+								err, 
+								game_data: { id, room_id, game_type, player_left_id, player_right_id }
+							}, 'Failed to create game in database');
+							
 							resolve(reply.status(500).send({
 								success: false,
 								error: err.message

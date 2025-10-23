@@ -43,17 +43,33 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 				username
 			});
 			
-			if (!userResult.success && userResult.error !== 'Username already exists')
+			if (!userResult.success)
 			{
 				fastify.log.warn({ playerId, username, error: userResult.error }, 'Failed to create user in DB');
+				
+				// Vérifier si l'utilisateur existe déjà avec cet ID
+				const existingUser = await callDatabase(`/users/${playerId}`);
+				if (!existingUser.success)
+				{
+					// L'utilisateur n'existe pas avec cet ID, on ne peut pas continuer
+					return reply.code(500).send({ error: 'Failed to create or find user in database' });
+				}
 			}
 		}
 		catch (err)
 		{
 			fastify.log.error({ playerId, username, err }, 'User creation request failed');
+			return reply.code(500).send({ error: 'Failed to create user' });
 		}
 
-		await callDatabase(`/users/${playerId}/last-seen`, 'PATCH');
+		try
+		{
+			await callDatabase(`/users/${playerId}/last-seen`, 'PATCH');
+		}
+		catch (err)
+		{
+			fastify.log.error({ playerId, err }, 'Failed to update last-seen');
+		}
 
 		const player: Player = {
 			id: playerId,
