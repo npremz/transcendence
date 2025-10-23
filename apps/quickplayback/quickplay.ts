@@ -30,11 +30,14 @@ async function callDatabase(endpoint: string, method: string = 'GET', body?: any
 export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManager)
 {
 	fastify.post('/join', async (request, reply) => {
-		const { username, playerId } = request.body as { username: string; playerId: string };
+		const { username, playerId, selectedSkill } = request.body as { username: string; playerId: string; selectedSkill?: 'smash' | 'dash' };
 		
 		if (!username || !playerId) {
 			return reply.code(400).send({ error: 'Username and playerId required' });
 		}
+
+		const normalizedSkill: 'smash' | 'dash' =
+			selectedSkill === 'dash' ? 'dash' : 'smash';
 
 		try
 		{
@@ -49,11 +52,11 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 				
 				// Vérifier si l'utilisateur existe déjà avec cet ID
 				const existingUser = await callDatabase(`/users/${playerId}`);
-				if (!existingUser.success)
-				{
-					// L'utilisateur n'existe pas avec cet ID, on ne peut pas continuer
-					return reply.code(500).send({ error: 'Failed to create or find user in database' });
-				}
+				//if (!existingUser.success)
+				// {
+				// 	// L'utilisateur n'existe pas avec cet ID, on ne peut pas continuer
+				// 	return reply.code(500).send({ error: 'Failed to create or find user in database' });
+				// }
 			}
 		}
 		catch (err)
@@ -74,7 +77,8 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 		const player: Player = {
 			id: playerId,
 			username,
-			isReady: false
+			isReady: false,
+			selectedSkill: normalizedSkill
 		};
 
 		const room = roomManager.findOrCreateRoom(player);
@@ -86,9 +90,12 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 			const fetchURL = `https://${host || 'localhost:8443'}${create_endpoint || '/gameback/create'}`;
 
 			const gameId = uuidv4();
-			
+
 			try
 			{
+				const leftPlayer = room.players[0];
+				const rightPlayer = room.players[1];
+
 				await callDatabase('/games', 'POST', {
 					id: gameId,
 					room_id: room.id,
@@ -102,8 +109,16 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						roomId: room.id,
-						player1: { id: room.players[0].id, username: room.players[0].username },
-						player2: { id: room.players[1].id, username: room.players[1].username },
+						player1: { 
+							id: leftPlayer.id, 
+							username: leftPlayer.username,
+							selectedSkill: leftPlayer.selectedSkill || 'smash'
+						},
+						player2: { 
+							id: rightPlayer.id, 
+							username: rightPlayer.username,
+							selectedSkill: rightPlayer.selectedSkill || 'smash'
+						},
 					}),
 					agent
 				});

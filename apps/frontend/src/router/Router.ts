@@ -1,7 +1,7 @@
 import type { Route, CleanupFunction, RouteParams } from './types';
 import { ComponentManager } from '../components/ComponantManager'
 import { HomeView, homeLogic } from '../views/HomeView';
-import { QuickPlayView } from '../views/QuickPlayView';
+import { QuickPlayView, quickPlayLogic } from '../views/QuickPlayView';
 import { WaitingRoomView, waitingRoomLogic } from '../views/WaitingRoomView';
 import { GameView } from '../views/GameView';
 import { StartGameView } from '../views/StartGameView';
@@ -49,6 +49,7 @@ export class Router {
 		this.routes.push({
             path: '/play',
             view: QuickPlayView,
+            onMount: quickPlayLogic,
             title: 'QuickPlay'
         });
 

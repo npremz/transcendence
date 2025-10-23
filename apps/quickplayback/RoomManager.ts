@@ -11,6 +11,12 @@ export class RoomManager
 		// Vérifier si le joueur est déjà dans la waitingRoom
 		if (this.waitingRoom && this.waitingRoom.players.some(p => p.id === player.id))
 		{
+			const existing = this.waitingRoom.players.find(p => p.id === player.id);
+			if (existing)
+			{
+				existing.username = player.username;
+				existing.selectedSkill = player.selectedSkill;
+			}
 			console.log(`Player ${player.username} (${player.id}) is already in waiting room ${this.waitingRoom.id}`)
 			return this.waitingRoom
 		}
@@ -18,8 +24,11 @@ export class RoomManager
 		// Vérifier si le joueur est déjà dans une autre room active
 		for (const [roomId, room] of this.rooms)
 		{
-			if (room.players.some(p => p.id === player.id))
+			const existing = room.players.find(p => p.id === player.id);
+			if (existing)
 			{
+				existing.username = player.username;
+				existing.selectedSkill = player.selectedSkill;
 				console.log(`Player ${player.username} (${player.id}) is already in room ${roomId}`)
 				return room
 			}
@@ -64,7 +73,10 @@ export class RoomManager
     ): Room {
         const room: Room = {
             id: roomId,
-            players: [player1, player2],
+            players: [
+				{ ...player1, selectedSkill: player1.selectedSkill || 'smash' },
+				{ ...player2, selectedSkill: player2.selectedSkill || 'smash' }
+			],
             status: 'playing',
             createdAt: new Date(),
             isTournament: true,

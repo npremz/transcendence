@@ -11,6 +11,7 @@ export const WaitingRoomView: ViewFunction = () => {
 				<div id="status-display" class="p-4 mb-4 border rounded bg-gray-100">
 					Initializing...
 				</div>
+				<p id="skill-info" class="text-sm text-gray-600 mb-4"></p>
 				
 				<button id="cancel-btn" class="px-6 py-3 bg-red-600 text-white rounded">
 					Cancel
@@ -23,6 +24,7 @@ export const WaitingRoomView: ViewFunction = () => {
 export const waitingRoomLogic = (): CleanupFunction => {
     let pollInterval: NodeJS.Timeout | null = null;
     let roomId: string | null = null;
+	const skill = (sessionStorage.getItem('selectedSkill') as 'smash' | 'dash' | null) || 'smash';
 
     const updateStatus = (message: string) => {
         const statusDisplay = document.getElementById('status-display');
@@ -31,17 +33,26 @@ export const waitingRoomLogic = (): CleanupFunction => {
         }
     };
 
+	const updateSkillInfo = () => {
+		const skillInfo = document.getElementById('skill-info');
+		if (skillInfo) {
+			const label = skill === 'dash' ? 'Dash' : 'Smash';
+			skillInfo.textContent = `Skill sélectionné : ${label}`;
+		}
+	};
+
     const handleJoin = async () => {
         const username = window.simpleAuth.getUsername() || 'Player';
         const playerId = window.simpleAuth.getPlayerId();
 
         updateStatus('Joining quickplay...');
+		updateSkillInfo();
 
         try {
             const response = await fetch('/quickplay/join', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, playerId })
+                body: JSON.stringify({ username, playerId, selectedSkill: skill })
             });
             const data = await response.json();
             
@@ -101,6 +112,8 @@ export const waitingRoomLogic = (): CleanupFunction => {
     if (cancelBtn) {
         cancelBtn.addEventListener('click', handleCancel);
     }
+
+	updateSkillInfo();
 
     return () => {
         stopPolling();

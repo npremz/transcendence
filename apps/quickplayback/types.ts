@@ -4,6 +4,7 @@ export interface Player
 	username: string;
 	roomId ?: string;
 	isReady: boolean;
+	selectedSkill?: 'smash' | 'dash';
 }
 
 export interface Room
