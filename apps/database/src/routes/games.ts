@@ -99,8 +99,8 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 						u2.username as player_right_username,
 						u3.username as winner_username
 					FROM games g
-					JOIN users u1 ON g.player_left_id = u1.id
-					JOIN users u2 ON g.player_right_id = u2.id
+					LEFT JOIN users u1 ON g.player_left_id = u1.id
+					LEFT JOIN users u2 ON g.player_right_id = u2.id
 					LEFT JOIN users u3 ON g.winner_id = u3.id
 					WHERE g.room_id = ?`,
 					[roomId],
@@ -121,6 +121,12 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 						}
 						else
 						{
+							// Log warning if usernames are missing (indicates missing users)
+							if (!row.player_left_username || !row.player_right_username)
+							{
+								console.warn(`Game ${roomId}: Missing player usernames. Left: ${row.player_left_username}, Right: ${row.player_right_username}, Player IDs: ${(row as any).player_left_id}, ${(row as any).player_right_id}`);
+							}
+							
 							resolve(reply.send({
 								success: true,
 								game: row

@@ -106,7 +106,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/quickplayback:/quickplay
-      - quickplayback_node_modules:/quickplayback/node_modules
+      - quickplayback_node_modules:/quickplay/node_modules
     restart: unless-stopped
     expose:
       - "3030"
@@ -129,7 +129,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/tournamentback:/tournament
-      - tournamentback_node_modules:/tournamentback/node_modules
+      - tournamentback_node_modules:/tournament/node_modules
     restart: unless-stopped
     expose:
       - "3040"

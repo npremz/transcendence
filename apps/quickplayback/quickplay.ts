@@ -38,14 +38,19 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 
 		try
 		{
-			await callDatabase('/users', 'POST', {
+			const userResult = await callDatabase('/users', 'POST', {
 				id: playerId,
 				username
 			});
+			
+			if (!userResult.success && userResult.error !== 'Username already exists')
+			{
+				fastify.log.warn({ playerId, username, error: userResult.error }, 'Failed to create user in DB');
+			}
 		}
 		catch (err)
 		{
-			console.log('User already exists or DB error:', err);
+			fastify.log.error({ playerId, username, err }, 'User creation request failed');
 		}
 
 		await callDatabase(`/users/${playerId}/last-seen`, 'PATCH');

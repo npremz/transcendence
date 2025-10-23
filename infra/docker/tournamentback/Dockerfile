@@ -5,7 +5,7 @@ WORKDIR /tournament
 COPY package*.json ./
 
 RUN npm ci
-RUN npm i tsx
+RUN npm install tsx
 
 COPY . .
 
