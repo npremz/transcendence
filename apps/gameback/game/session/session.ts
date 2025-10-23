@@ -389,7 +389,8 @@ class GameSession {
             
             await fetch(url, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
             });
             
             this.log?.info({ roomId: this.roomId }, 'Game start notified to database');

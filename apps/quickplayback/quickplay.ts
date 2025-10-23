@@ -23,10 +23,6 @@ async function callDatabase(endpoint: string, method: string = 'GET', body?: any
 		options.body = JSON.stringify(body);
 	}
 	
-	if (body && method !== 'GET') {
-		options.body = JSON.stringify(body);
-	}
-	
 	const response = await fetch(url, options);
 	return response.json();
 }
