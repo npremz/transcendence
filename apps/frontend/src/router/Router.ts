@@ -17,6 +17,7 @@ import {
     tournamentExistsGuard,
     roomExistsGuard
 } from './Guards'
+import { dbUserLogic, dbUserView } from '../views/DbUserView';
 
 export class Router {
     private routes: Route[];
@@ -82,6 +83,13 @@ export class Router {
             beforeEnter: async (to, from, params) => {
                 return await tournamentExistsGuard(to, from, params);
             }
+        });
+
+        this.routes.push({
+            path: '/dbuser',
+            view: dbUserView,
+            onMount: dbUserLogic,
+            title: 'dbUser',
         });
 
 		this.routes.push({
