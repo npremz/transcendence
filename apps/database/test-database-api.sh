@@ -16,7 +16,7 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
-API_URL="https://fu-r5-p5:8443/gamedb"
+API_URL="https://172.17.0.1:8443/gamedb"
 CURL_OPTS="-k"
 
 # Générer des identifiants uniques avec timestamp

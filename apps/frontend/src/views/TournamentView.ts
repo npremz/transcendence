@@ -1,12 +1,16 @@
 import type { ViewFunction } from "../router/types"
 import { Header } from "../components/Header";
 import { JoinTournament } from "../components/JoinTournament";
+import { BackButton } from "../components/Button";
 
 export const TournamentView: ViewFunction = () => {
     return `
         ${Header({isLogged: false})}
         <div class="relative">
-            <div class="mt-16 flex flex-col gap-4 items-center">
+            <div class="p-8">
+                ${BackButton({ className: "mb-4" })}
+            </div>
+            <div class="flex flex-col gap-4 items-center">
                 <input type="text" name="username" id="usernameInput" value="Anon"
                     class="px-8 py-4 border-b-cyan-300 border-2 rounded-xl"/>
                 ${JoinTournament({slots: 4})}

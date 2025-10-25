@@ -1,5 +1,6 @@
 import type { ViewFunction } from "../router/types"
 import { Header } from "../components/Header";
+import { BackButton } from "../components/Button";
 import type { RouteParams } from "../router/types";
 
 interface Player
@@ -45,6 +46,9 @@ export const BracketView: ViewFunction = () => {
 	return `
 		${Header({isLogged: false})}
         <div class="relative container ml-auto mr-auto">
+            <div class="p-8">
+                ${BackButton({ className: "mb-4" })}
+            </div>
             <div id="tournament-loading" class="text-center p-8">
                 <div>Chargement du tournoi...</div>
             </div>

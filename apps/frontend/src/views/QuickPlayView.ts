@@ -1,10 +1,12 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { Header } from "../components/Header";
+import { BackButton } from "../components/Button";
 
 export const QuickPlayView: ViewFunction = () => {
 	return `
 		${Header({ isLogged: false })}
 		<div class="container mx-auto p-6">
+			${BackButton({ className: "mb-4" })}
 			<h1 class="text-3xl font-bold mb-6">QuickPlay</h1>
 
 			<section class="mb-8">
