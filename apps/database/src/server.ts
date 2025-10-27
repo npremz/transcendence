@@ -35,6 +35,11 @@ fastify.setErrorHandler((error, request, reply) => {
 	})
 })
 
+// Cache pour les stats globales
+let statsCache: any = null;
+let lastStatsFetch = 0;
+const CACHE_DURATION = 5000; // 5 secondes
+
 const start = async (): Promise<void> => {
 	try
 	{
@@ -52,6 +57,77 @@ const start = async (): Promise<void> => {
 		registerPowerUpRoutes(fastify)
 		registerSkillRoutes(fastify)
 		registerGoalRoutes(fastify)
+
+		// Route pour les statistiques globales
+		fastify.get('/stats/global', async (request, reply) => {
+			const now = Date.now();
+			
+			// Retourner le cache si toujours valide
+			if (statsCache && (now - lastStatsFetch) < CACHE_DURATION) {
+				return reply.send(statsCache);
+			}
+
+			return new Promise((resolve) => {
+				fastify.db.get(
+					`SELECT COUNT(*) as total_users FROM users`,
+					[],
+					(err, userCount: any) => {
+						if (err) {
+							resolve(reply.status(500).send({
+								success: false,
+								error: err.message
+							}));
+							return;
+						}
+
+						fastify.db.get(
+							`SELECT COUNT(*) as active_games FROM games 
+							 WHERE status = 'in_progress'`,
+							[],
+							(err2, gameCount: any) => {
+								if (err2) {
+									resolve(reply.status(500).send({
+										success: false,
+										error: err2.message
+									}));
+									return;
+								}
+
+								fastify.db.get(
+									`SELECT COUNT(*) as online_players FROM users 
+									 WHERE last_seen >= datetime('now', '-5 minutes')`,
+									[],
+									(err3, onlineCount: any) => {
+										if (err3) {
+											resolve(reply.status(500).send({
+												success: false,
+												error: err3.message
+											}));
+											return;
+										}
+
+										const result = {
+											success: true,
+											stats: {
+												total_users: userCount.total_users,
+												active_games: gameCount.active_games,
+												online_players: onlineCount.online_players
+											}
+										};
+
+										// Mettre en cache
+										statsCache = result;
+										lastStatsFetch = now;
+
+										resolve(reply.send(result));
+									}
+								);
+							}
+						);
+					}
+				);
+			});
+		});
 
 		await fastify.listen({
 			port: 3020,
