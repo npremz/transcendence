@@ -473,31 +473,31 @@ export class PongGame implements Component {
 	}
 
 	cleanup(): void {
-		if (this.animationFrameId !== null) 
-		{
+		console.log('PongGame: cleaning up...');
+		if (this.animationFrameId !== null) {
 			cancelAnimationFrame(this.animationFrameId);
 			this.animationFrameId = null;
 		}
-
-        window.removeEventListener('resize', this.handleResize);
-        window.removeEventListener('pong:togglePause', this.handleTogglePause);
+		window.removeEventListener('resize', this.handleResize);
+		window.removeEventListener('pong:togglePause', this.handleTogglePause);
 		
 		const forfeitBtn = document.getElementById('forfeit-btn');
 		if (forfeitBtn) {
 			forfeitBtn.removeEventListener('click', this.handleForfeit);
 		}
+		this.input.detach();
+		this.particles.clear();
+		this.net.cleanup();
+		if (this.debugPanel) {
+			this.debugPanel.cleanup();
+			this.debugPanel = undefined;
+		}
+		if (this.debugContainer && this.debugContainer.parentNode) {
+			this.debugContainer.parentNode.removeChild(this.debugContainer);
+			this.debugContainer = undefined;
+		}
+	}
 
-        this.input.detach();
-        this.particles.clear();
-        if (this.debugPanel) {
-            this.debugPanel.cleanup();
-            this.debugPanel = undefined;
-        }
-        if (this.debugContainer && this.debugContainer.parentNode) {
-            this.debugContainer.parentNode.removeChild(this.debugContainer);
-            this.debugContainer = undefined;
-        }
-    }
 }
 
 export function Pong(): string {

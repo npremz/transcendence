@@ -56,6 +56,7 @@ export class WSClient {
         right: {active: boolean; remainingMs: number}
     }) => void;
     onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => void;
+
 	connect(url?: string) {
 		const host = import.meta.env.VITE_HOST
 		const endpoint = import.meta.env.VITE_GAME_ENDPOINT
@@ -107,18 +108,23 @@ export class WSClient {
 			}
 		};
 	}
+
 	sendInput(up: boolean, down: boolean) {
 		this.ws?.send(JSON.stringify({ type: 'input', up, down }));
 	}
+
 	pause() {
 		this.ws?.send(JSON.stringify({ type: 'pause' }));
 	}
+
 	resume() {
 		this.ws?.send(JSON.stringify({ type: 'resume' }));
 	}
+
 	useSkill() {
 		this.ws?.send(JSON.stringify({ type: 'skill' }));
 	}
+
 	forfeit() {
 		this.ws?.send(JSON.stringify({ type: 'forfeit' }));
 	}
@@ -174,4 +180,44 @@ export class WSClient {
             type: 'debug', action: 'change_skill', payload: { side, skill }
         }));
     }
+
+	disconnect(): void {
+		if (this.ws) {
+			console.log('WSClient: disconnecting...');
+	
+			this.ws.onopen = null;
+			this.ws.onmessage = null;
+			this.ws.onerror = null;
+			this.ws.onclose = null;
+			
+			if (this.ws.readyState === WebSocket.OPEN || 
+				this.ws.readyState === WebSocket.CONNECTING) {
+				this.ws.close();
+			}
+			
+			this.ws = undefined;
+		}
+	}
+
+	cleanup(): void {
+		console.log('WSClient: cleaning up...');
+		
+		// 1. Nettoyer tous les callbacks custom
+		this.onState = undefined;
+		this.onCountdown = undefined;
+		this.onGameOver = undefined;
+		this.onPaused = undefined;
+		this.onResumed = undefined;
+		this.onTimeoutStatus = undefined;
+		this.onWelcome = undefined;
+		
+		// 2. Fermer la connexion WebSocket
+		this.disconnect();
+		
+		// 3. Reset les données
+		this.side = 'left';
+		this.isTournament = false;
+		this.tournamentId = undefined;
+		this.playerNames = {};
+	}
 }
