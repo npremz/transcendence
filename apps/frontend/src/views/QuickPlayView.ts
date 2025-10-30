@@ -1,73 +1,343 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
-import { Header } from "../components/Header";
-import { BackButton } from "../components/Button";
+import { gsap } from "gsap";
 
 export const QuickPlayView: ViewFunction = () => {
 	return `
-		${Header({ isLogged: false })}
-		<div class="container mx-auto p-6">
-			${BackButton({ className: "mb-4" })}
-			<h1 class="text-3xl font-bold mb-6">QuickPlay</h1>
-
-			<section class="mb-8">
-				<h2 class="text-xl font-semibold text-zinc-800 mb-3">Choisis ton skill</h2>
-				<div class="grid gap-4 sm:grid-cols-2" data-skill-options>
-					<button
-						type="button"
-						class="skill-option flex flex-col gap-1.5 px-3 py-2 border border-zinc-200 bg-white rounded-md text-left transition duration-150 text-zinc-800 hover:border-indigo-300 hover:bg-indigo-50 focus:outline-none focus:ring-1 focus:ring-indigo-200/70"
-						data-skill-option="smash"
-					>
-						<div class="flex items-center gap-2 text-zinc-900">
-							<span class="text-lg">💥</span>
-							<span class="text-sm font-semibold uppercase tracking-wide">Smash</span>
-						</div>
-						<p class="text-sm text-zinc-600 leading-relaxed">
-							Charge une frappe puissante qui renvoie la balle plus vite et peut surprendre l’adversaire.
-						</p>
-					</button>
-
-					<button
-						type="button"
-						class="skill-option flex flex-col gap-1.5 px-3 py-2 border border-zinc-200 bg-white rounded-md text-left transition duration-150 text-zinc-800 hover:border-indigo-300 hover:bg-indigo-50 focus:outline-none focus:ring-1 focus:ring-indigo-200/70"
-						data-skill-option="dash"
-					>
-						<div class="flex items-center gap-2 text-zinc-900">
-							<span class="text-lg">⚡</span>
-							<span class="text-sm font-semibold uppercase tracking-wide">Dash</span>
-						</div>
-						<p class="text-sm text-zinc-600 leading-relaxed">
-							Fais un déplacement rapide avec ta raquette pour rattraper les balles difficiles.
-						</p>
-					</button>
-				</div>
-				<p id="selected-skill-label" class="text-sm text-zinc-700 mt-3">
-					Skill sélectionné : Smash
-				</p>
-			</section>
+		<!-- Fond avec grille animée -->
+		<div class="fixed inset-0 bg-black overflow-hidden">
+			<!-- Grille de fond -->
+			<div class="absolute inset-0" style="
+				background-image: 
+					linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+					linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+				background-size: 50px 50px;
+				animation: gridMove 20s linear infinite;
+			"></div>
 			
-			<div class="flex flex-col gap-4 max-w-md">
-				<button id="play-online" class="px-6 py-3 bg-green-600 text-white rounded text-center">
-					Play Online
-				</button>
-				<button class="px-6 py-3 bg-gray-400 text-white rounded" disabled>
-					Play Local (Coming Soon)
-				</button>
-				<button class="px-6 py-3 bg-gray-400 text-white rounded" disabled>
-					Play vs AI (Coming Soon)
-				</button>
+			<style>
+				@keyframes gridMove {
+					0% { transform: translateY(0); }
+					100% { transform: translateY(50px); }
+				}
+				
+				@keyframes neonPulse {
+					0%, 100% { 
+						text-shadow: 
+							0 0 10px rgba(59, 130, 246, 0.8),
+							0 0 20px rgba(59, 130, 246, 0.6),
+							0 0 30px rgba(59, 130, 246, 0.4);
+					}
+					50% { 
+						text-shadow: 
+							0 0 20px rgba(59, 130, 246, 1),
+							0 0 30px rgba(59, 130, 246, 0.8),
+							0 0 40px rgba(59, 130, 246, 0.6);
+					}
+				}
+				
+				@keyframes scanline {
+					0% { transform: translateY(-100%); }
+					100% { transform: translateY(100vh); }
+				}
+				
+				.pixel-font {
+					font-family: 'Courier New', monospace;
+					font-weight: bold;
+					letter-spacing: 0.1em;
+				}
+				
+				.neon-border {
+					box-shadow: 
+						0 0 10px rgba(59, 130, 246, 0.5),
+						inset 0 0 10px rgba(59, 130, 246, 0.2);
+					border: 3px solid rgba(59, 130, 246, 0.8);
+				}
+				
+				.neon-border:hover {
+					box-shadow: 
+						0 0 20px rgba(59, 130, 246, 0.8),
+						inset 0 0 20px rgba(59, 130, 246, 0.3);
+					border-color: rgba(59, 130, 246, 1);
+				}
+				
+				.skill-card {
+					transition: all 0.3s ease;
+					background: rgba(15, 23, 42, 0.6);
+					backdrop-filter: blur(10px);
+					cursor: pointer;
+					min-height: 320px;
+					display: flex;
+					flex-direction: column;
+				}
+				
+				.skill-card:hover {
+					transform: translateY(-5px);
+					background: rgba(30, 41, 59, 0.8);
+				}
+				
+				.skill-card.selected {
+					background: rgba(59, 130, 246, 0.2);
+					border-color: rgba(59, 130, 246, 1);
+					box-shadow: 
+						0 0 20px rgba(59, 130, 246, 0.6),
+						inset 0 0 20px rgba(59, 130, 246, 0.3);
+				}
+
+				.mode-button {
+					transition: all 0.3s ease;
+					background: rgba(15, 23, 42, 0.6);
+					backdrop-filter: blur(10px);
+				}
+
+				.mode-button:hover:not(:disabled) {
+					transform: translateY(-3px);
+					background: rgba(30, 41, 59, 0.8);
+				}
+
+				.mode-button:disabled {
+					opacity: 0.4;
+					cursor: not-allowed;
+				}
+			</style>
+			
+			<!-- Scanline effect -->
+			<div class="absolute inset-0 pointer-events-none opacity-10">
+				<div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
 			</div>
+		</div>
+
+		<!-- Contenu principal -->
+		<div class="relative z-10 min-h-screen flex flex-col">
+			<!-- Header avec BackButton et Sign in -->
+			<header class="flex justify-between items-center px-8 py-6">
+				<button 
+					onclick="history.back()" 
+					class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
+					id="back-button"
+				>
+					← BACK
+				</button>
+				
+				<!-- Bouton Sign in -->
+				<a href="/login" 
+				   class="pixel-font bg-blue-500 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
+					<span>SIGN IN</span>
+				</a>
+			</header>
+
+			<!-- Zone centrale -->
+			<div class="flex-1 flex items-center justify-center px-4 py-12">
+				<div class="w-full max-w-4xl">
+					
+					<!-- Titre principal -->
+					<div class="text-center mb-12">
+						<h1 class="pixel-font text-5xl md:text-6xl text-blue-400 mb-4" 
+							style="animation: neonPulse 2s ease-in-out infinite;"
+							id="quickplay-title">
+							⚡ QUICKPLAY ⚡
+						</h1>
+						<p class="pixel-font text-lg text-blue-300 opacity-80">
+							>>> SELECT YOUR SKILL <<<
+						</p>
+					</div>
+
+					<!-- Section Skills -->
+					<div class="mb-12 neon-border bg-black/50 backdrop-blur-sm rounded-lg p-8" id="skills-section">
+						<h2 class="pixel-font text-2xl text-blue-400 mb-6 text-center">
+							CHOOSE YOUR ABILITY
+						</h2>
+						
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6" data-skill-options>
+							<!-- Smash Card -->
+							<div 
+								class="skill-card neon-border rounded-lg p-6 relative selected" 
+								data-skill-option="smash"
+								id="skill-smash"
+							>
+								<!-- Badge sélectionné -->
+								<div class="absolute top-3 right-3 pixel-font text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded border border-green-500/50">
+									✓ SELECTED
+								</div>
+
+								<!-- Icône -->
+								<div class="text-5xl mb-4 text-center">💥</div>
+								
+								<!-- Titre -->
+								<h3 class="pixel-font text-xl text-blue-400 mb-3 text-center uppercase">
+									Smash
+								</h3>
+								
+								<!-- Description -->
+								<p class="pixel-font text-sm text-blue-300 opacity-80 text-center leading-relaxed flex-grow">
+									Charge a powerful strike that sends the ball back faster and can surprise your opponent
+								</p>
+
+								<!-- Stats -->
+								<div class="mt-4 pt-4 border-t border-blue-500/30 space-y-2">
+									<div class="flex justify-between pixel-font text-xs text-blue-300">
+										<span>Cooldown:</span>
+										<span class="text-yellow-400">3s</span>
+									</div>
+									<div class="flex justify-between pixel-font text-xs text-blue-300">
+										<span>Power:</span>
+										<span class="text-green-400">★★★★☆</span>
+									</div>
+								</div>
+
+								<!-- Flèches décoratives -->
+								<div class="absolute bottom-3 left-3 text-red-500 text-xl opacity-50">←</div>
+								<div class="absolute bottom-3 right-3 text-red-500 text-xl opacity-50">→</div>
+							</div>
+
+							<!-- Dash Card -->
+							<div 
+								class="skill-card neon-border rounded-lg p-6 relative" 
+								data-skill-option="dash"
+								id="skill-dash"
+							>
+								<!-- Badge sélectionné (caché par défaut) -->
+								<div class="absolute top-3 right-3 pixel-font text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded border border-green-500/50 hidden">
+									✓ SELECTED
+								</div>
+
+								<!-- Icône -->
+								<div class="text-5xl mb-4 text-center">⚡</div>
+								
+								<!-- Titre -->
+								<h3 class="pixel-font text-xl text-blue-400 mb-3 text-center uppercase">
+									Dash
+								</h3>
+								
+								<!-- Description -->
+								<p class="pixel-font text-sm text-blue-300 opacity-80 text-center leading-relaxed flex-grow">
+									Make a quick move with your paddle to catch difficult balls
+								</p>
+
+								<!-- Stats -->
+								<div class="mt-4 pt-4 border-t border-blue-500/30 space-y-2">
+									<div class="flex justify-between pixel-font text-xs text-blue-300">
+										<span>Cooldown:</span>
+										<span class="text-yellow-400">5s</span>
+									</div>
+									<div class="flex justify-between pixel-font text-xs text-blue-300">
+										<span>Speed:</span>
+										<span class="text-green-400">★★★★★</span>
+									</div>
+								</div>
+
+								<!-- Flèches décoratives -->
+								<div class="absolute bottom-3 left-3 text-blue-500 text-xl opacity-50">←</div>
+								<div class="absolute bottom-3 right-3 text-blue-500 text-xl opacity-50">→</div>
+							</div>
+						</div>
+
+						<!-- Skill sélectionné -->
+						<div class="mt-6 text-center">
+							<p id="selected-skill-label" class="pixel-font text-sm text-blue-300">
+								Selected skill: <span class="text-blue-400 font-bold">SMASH</span>
+							</p>
+						</div>
+					</div>
+
+					<!-- Section Modes de jeu -->
+					<div class="space-y-4" id="modes-section">
+						<!-- Play Online -->
+						<button 
+							id="play-online" 
+							class="mode-button w-full p-6 neon-border rounded-lg pixel-font text-lg text-blue-400 hover:text-white transition-all relative group"
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-4">
+									<span class="text-3xl">🌐</span>
+									<div class="text-left">
+										<div class="text-xl">PLAY ONLINE</div>
+										<div class="text-xs opacity-60 font-normal">Find an opponent and start playing</div>
+									</div>
+								</div>
+								<span class="text-2xl group-hover:translate-x-2 transition-transform">→</span>
+							</div>
+						</button>
+
+						<!-- Play Local (Coming Soon) -->
+						<button 
+							disabled
+							class="mode-button w-full p-6 neon-border rounded-lg pixel-font text-lg text-blue-400/40 relative"
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-4">
+									<span class="text-3xl opacity-40">🎮</span>
+									<div class="text-left">
+										<div class="text-xl">PLAY LOCAL</div>
+										<div class="text-xs opacity-60 font-normal">Coming soon...</div>
+									</div>
+								</div>
+								<span class="pixel-font text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded border border-yellow-500/50">
+									SOON
+								</span>
+							</div>
+						</button>
+
+						<!-- Play vs AI (Coming Soon) -->
+						<button 
+							disabled
+							class="mode-button w-full p-6 neon-border rounded-lg pixel-font text-lg text-blue-400/40 relative"
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-4">
+									<span class="text-3xl opacity-40">🤖</span>
+									<div class="text-left">
+										<div class="text-xl">PLAY VS AI</div>
+										<div class="text-xs opacity-60 font-normal">Coming soon...</div>
+									</div>
+								</div>
+								<span class="pixel-font text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded border border-yellow-500/50">
+									SOON
+								</span>
+							</div>
+						</button>
+					</div>
+
+				</div>
+			</div>
+
+			<!-- Footer -->
+			<footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
+				<p>© 2025 PONG - SKILL ISSUE</p>
+			</footer>
 		</div>
 	`;
 };
 
 export const quickPlayLogic = (): CleanupFunction => {
+	// Animations d'entrée
+	gsap.from('#quickplay-title', {
+		scale: 0.5,
+		opacity: 0,
+		duration: 1,
+		ease: 'back.out(1.7)'
+	});
+
+	gsap.from('#skills-section', {
+		y: 50,
+		opacity: 0,
+		duration: 0.8,
+		delay: 0.3,
+		ease: 'power2.out'
+	});
+
+	gsap.from('#modes-section', {
+		y: 50,
+		opacity: 0,
+		duration: 0.8,
+		delay: 0.5,
+		ease: 'power2.out'
+	});
+
 	const skillButtons = Array.from(
 		document.querySelectorAll<HTMLButtonElement>('[data-skill-option]')
 	);
 	const playButton = document.getElementById('play-online') as HTMLButtonElement | null;
 	const label = document.getElementById('selected-skill-label');
-	const ACTIVE_CLASSES = ['border-indigo-400', 'bg-indigo-50', 'text-indigo-900'];
-	const INACTIVE_CLASSES = ['border-zinc-200', 'bg-white', 'text-zinc-800'];
 
 	let selectedSkill = (sessionStorage.getItem('selectedSkill') as 'smash' | 'dash' | null) || 'smash';
 	sessionStorage.setItem('selectedSkill', selectedSkill);
@@ -75,21 +345,22 @@ export const quickPlayLogic = (): CleanupFunction => {
 	const updateUI = () => {
 		skillButtons.forEach(btn => {
 			const isActive = btn.dataset.skillOption === selectedSkill;
-			btn.classList.toggle('ring-1', isActive);
-			btn.classList.toggle('ring-indigo-300/70', isActive);
-
+			const badge = btn.querySelector('.absolute.top-3.right-3');
+			
 			if (isActive) {
-				btn.classList.add(...ACTIVE_CLASSES);
-				btn.classList.remove(...INACTIVE_CLASSES);
+				btn.classList.add('selected');
+				badge?.classList.remove('hidden');
 			} else {
-				btn.classList.remove(...ACTIVE_CLASSES);
-				btn.classList.add(...INACTIVE_CLASSES);
+				btn.classList.remove('selected');
+				badge?.classList.add('hidden');
 			}
+			
 			btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
 		});
 
 		if (label) {
-			label.textContent = `Skill sélectionné : ${selectedSkill === 'smash' ? 'Smash' : 'Dash'}`;
+			const skillName = selectedSkill === 'smash' ? 'SMASH' : 'DASH';
+			label.innerHTML = `Selected skill: <span class="text-blue-400 font-bold">${skillName}</span>`;
 		}
 	};
 
@@ -100,6 +371,15 @@ export const quickPlayLogic = (): CleanupFunction => {
 		if (!skill || (skill !== 'smash' && skill !== 'dash')) {
 			return;
 		}
+		
+		// Animation de sélection
+		gsap.to(target, {
+			scale: 0.95,
+			duration: 0.1,
+			yoyo: true,
+			repeat: 1
+		});
+
 		selectedSkill = skill;
 		sessionStorage.setItem('selectedSkill', selectedSkill);
 		updateUI();
@@ -120,7 +400,17 @@ export const quickPlayLogic = (): CleanupFunction => {
 				selectedSkill = 'smash';
 				sessionStorage.setItem('selectedSkill', selectedSkill);
 			}
-			window.router.navigate('/play/waiting');
+			
+			// Animation du bouton
+			gsap.to(playButton, {
+				scale: 0.95,
+				duration: 0.1,
+				yoyo: true,
+				repeat: 1,
+				onComplete: () => {
+					window.router.navigate('/play/waiting');
+				}
+			});
 		};
 		playButton.addEventListener('click', playHandler);
 		listeners.push({ element: playButton, handler: playHandler as unknown as (e: Event) => void });
