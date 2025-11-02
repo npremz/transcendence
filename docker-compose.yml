@@ -37,6 +37,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/database:/database
+      - ./apps/shared:/database/shared
       - database_node_modules:/database/node_modules
       - db_data:/database/data
     restart: unless-stopped
@@ -60,6 +61,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/chatback:/chatback
+      - ./apps/shared:/chatback/shared
       - chatback_node_modules:/chatback/node_modules
     restart: unless-stopped
     expose:
@@ -83,6 +85,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/userback:/userback
+      - ./apps/shared:/userback/shared
       - userback_node_modules:/userback/node_modules
     restart: unless-stopped
     expose:
@@ -106,6 +109,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/gameback:/gameback
+      - ./apps/shared:/gameback/shared
       - gameback_node_modules:/gameback/node_modules
     restart: unless-stopped
     expose:
@@ -129,6 +133,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/quickplayback:/quickplay
+      - ./apps/shared:/quickplay/shared
       - quickplayback_node_modules:/quickplay/node_modules
     restart: unless-stopped
     expose:
@@ -152,6 +157,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/tournamentback:/tournament
+      - ./apps/shared:/tournament/shared
       - tournamentback_node_modules:/tournament/node_modules
     restart: unless-stopped
     expose:
@@ -175,6 +181,7 @@ services:
     env_file: .env
     volumes:
       - ./apps/authback:/authback
+      - ./apps/shared:/authback/shared
       - authback_node_modules:/authback/node_modules
     restart: unless-stopped
     expose:

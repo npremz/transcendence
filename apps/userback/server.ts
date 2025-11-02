@@ -1,8 +1,12 @@
 import Fastify from 'fastify'
+import { testMiddleware } from './shared/middleware/test' //dev
 
 const fastify = Fastify({
 	logger: true
 })
+
+//test middleware //dev
+fastify.addHook('onRequest', testMiddleware('userback'))
 
 
 fastify.get('/', function (request, reply)

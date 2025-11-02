@@ -1,12 +1,16 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
 import { handleChat } from './chat/chat'
+import { testMiddleware } from './shared/middleware/test' //dev
 
 const fastify = Fastify({
 	logger: true
 })
 
 await fastify.register(websocket)
+
+//test middleware //dev
+fastify.addHook('onRequest', testMiddleware('chatback'))
 
 fastify.addHook('onRequest', async (request, reply) => {
     console.log('=== REQUÊTE REÇUE ===')

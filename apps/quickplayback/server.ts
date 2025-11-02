@@ -2,12 +2,16 @@ import Fastify from 'fastify'
 import { handleQuickPlay } from './quickplay'
 import { handleTournamentQuickPlay } from './TounamentQuickPlay'
 import { RoomManager } from './RoomManager'
+import { testMiddleware } from './shared/middleware/test' //dev
 
 const fastify = Fastify({
 	logger: true
 })
 
 export const roomManager = new RoomManager()
+
+//test middleware //dev
+fastify.addHook('onRequest', testMiddleware('quickplayback'))
 
 fastify.addHook('onRequest', async (request, reply) => {
     console.log('=== REQUÊTE REÇUE ===')

@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import fastifyCookie from '@fastify/cookie';
 import { LoginRequest, RegisterRequest, UserPayload } from './types';
+import { testMiddleware } from './shared/middleware/test'; //dev
 
 const app = Fastify({
 	logger: true
@@ -15,6 +16,9 @@ app.register(fastifyCookie, {
 app.register(fastifyJwt, {
 	secret: process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET environment variable is required'); })()
 });
+
+//test middleware //dev
+app.addHook('onRequest', testMiddleware('authback'));
 
 // WIP - Temporary storage and id
 const users: Array<{ id: number; username: string; password: string; email?: string }> = [];

@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import { TournamentManager } from './TournamentManager'
 import type { Player } from './types'
+import { testMiddleware } from './shared/middleware/test' //dev
 
 const fastify = Fastify({
 	logger: true
@@ -8,9 +9,13 @@ const fastify = Fastify({
 
 const tournamentManager = new TournamentManager()
 
+
 const initServer = async () => {
 	await tournamentManager.initTournaments()
-
+	
+	//test middleware //dev
+	fastify.addHook('onRequest', testMiddleware('tournamentback'))
+	
     // fastify.addHook('onRequest', async (request, reply) => {
     //     console.log('=== REQUÊTE REÇUE ===')
     //     console.log('URL:', request.url)

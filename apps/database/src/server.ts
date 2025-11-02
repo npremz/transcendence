@@ -9,6 +9,7 @@ import { registerGameStatsRoutes } from './routes/game-stats'
 import { registerPowerUpRoutes } from './routes/power-ups'
 import { registerSkillRoutes } from './routes/skills'
 import { registerGoalRoutes } from './routes/goals'
+import { testMiddleware } from '../shared/middleware/test' //dev
 
 const fastify: FastifyInstance = Fastify({
 	logger: true
@@ -18,6 +19,9 @@ fastify.register(cors, {
 	origin: true,
 	credentials: true
 })
+
+//test middleware //dev
+fastify.addHook('onRequest', testMiddleware('database'))
 
 declare module 'fastify'
 {

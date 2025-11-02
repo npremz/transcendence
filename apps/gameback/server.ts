@@ -3,12 +3,16 @@ import websocket from '@fastify/websocket'
 import { handleGame } from './game/game'
 import { setMatchForRoom } from './game/session/session'
 import { cleanupSession } from './game/session/session'
+import { testMiddleware } from './shared/middleware/test' //dev
 
 const fastify = Fastify({
 	logger: true
 })
 
 await fastify.register(websocket)
+
+//test middleware //dev
+fastify.addHook('onRequest', testMiddleware('gameback'))
 
 fastify.addHook('onRequest', async (request, reply) => {
     console.log('=== REQUÊTE REÇUE ===')
