@@ -10,14 +10,6 @@ const fastify = Fastify({
 
 await fastify.register(websocket)
 
-fastify.addHook('onRequest', async (request, reply) => {
-    console.log('=== REQUÊTE REÇUE ===')
-    console.log('URL:', request.url)
-    console.log('Method:', request.method)
-    console.log('Headers:', JSON.stringify(request.headers, null, 2))
-    console.log('====================')
-})
-
 fastify.get('/game/:roomId', { websocket: true }, function gameHandler (connection, _req)
 	{
 		handleGame(connection, _req, fastify)

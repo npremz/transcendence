@@ -1,0 +1,184 @@
+services:
+  front:
+    container_name: front
+    networks:
+      - transcendence
+    build:
+      context: apps/frontend
+      dockerfile: ../../infra/docker/front/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/frontend:/front
+      - front_node_modules:/front/node_modules
+    restart: unless-stopped
+    expose:
+      - "5173"
+    environment:
+      - PORT=5173
+
+  database:
+    container_name: database
+    networks:
+      - transcendence
+    build:
+      context: apps/database
+      dockerfile: ../../infra/docker/database/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/database:/database
+      - database_node_modules:/database/node_modules
+      - db_data:/database/data
+    restart: unless-stopped
+    expose:
+      - "3020"
+    environment:
+      - PORT=3020
+
+  chatback:
+    container_name: chatback
+    networks:
+      - transcendence
+    build:
+      context: apps/chatback
+      dockerfile: ../../infra/docker/chatback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/chatback:/chatback
+      - chatback_node_modules:/chatback/node_modules
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      - PORT=3000
+    depends_on:
+      - database
+
+  userback:
+    container_name: userback
+    networks:
+      - transcendence
+    build:
+      context: apps/userback
+      dockerfile: ../../infra/docker/userback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/userback:/userback
+      - userback_node_modules:/userback/node_modules
+    restart: unless-stopped
+    expose:
+      - "3060"
+    environment:
+      - PORT=3060
+    depends_on:
+      - database
+
+  gameback:
+    container_name: gameback
+    networks:
+      - transcendence
+    build:
+      context: apps/gameback
+      dockerfile: ../../infra/docker/gameback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/gameback:/gameback
+      - gameback_node_modules:/gameback/node_modules
+    restart: unless-stopped
+    expose:
+      - "3010"
+    environment:
+      - PORT=3010
+    depends_on:
+      - database
+
+  quickplayback:
+    container_name: quickplayback
+    networks:
+      - transcendence
+    build:
+      context: apps/quickplayback
+      dockerfile: ../../infra/docker/quickplayback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/quickplayback:/quickplay
+      - quickplayback_node_modules:/quickplay/node_modules
+    restart: unless-stopped
+    expose:
+      - "3030"
+    environment:
+      - PORT=3030
+    depends_on:
+      - database
+
+  tournamentback:
+    container_name: tournamentback
+    networks:
+      - transcendence
+    build:
+      context: apps/tournamentback
+      dockerfile: ../../infra/docker/tournamentback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/tournamentback:/tournament
+      - tournamentback_node_modules:/tournament/node_modules
+    restart: unless-stopped
+    expose:
+      - "3040"
+    environment:
+      - PORT=3040
+    depends_on:
+      - database
+  
+  authback:
+    container_name: authback
+    networks:
+      - transcendence
+    build:
+      context: apps/authback
+      dockerfile: ../../infra/docker/authback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/authback:/authback
+      - authback_node_modules:/authback/node_modules
+    restart: unless-stopped
+    expose:
+      - "3050"
+    environment:
+      - PORT=3050
+    depends_on:
+      - database
+
+  nginx:
+    container_name: nginx
+    networks:
+      - transcendence
+    build:
+      context: infra/docker/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8443:443"
+    depends_on:
+      - front
+      - database
+      - chatback
+      - gameback
+      - quickplayback
+      - tournamentback
+      - authback
+    restart: unless-stopped
+
+networks:
+  transcendence:
+    driver: bridge
+
+volumes:
+  front_node_modules:
+  chatback_node_modules:
+  userback_node_modules:
+  gameback_node_modules:
+  quickplayback_node_modules:
+  tournamentback_node_modules:
+  authback_node_modules:
+  database_node_modules:
+  agent_node_modules:
+  db_data:

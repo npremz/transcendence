@@ -9,15 +9,6 @@ const fastify = Fastify({
 
 export const roomManager = new RoomManager()
 
-fastify.addHook('onRequest', async (request, reply) => {
-    console.log('=== REQUÊTE REÇUE ===')
-    console.log('URL:', request.url)
-    console.log('Method:', request.method)
-    console.log('Headers:', JSON.stringify(request.headers, null, 2))
-    console.log('====================')
-})
-
-
 fastify.get('/', function (request, reply)
 	{
 		reply.send({ hello: 'world' })

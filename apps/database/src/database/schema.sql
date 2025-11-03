@@ -1,7 +1,7 @@
 -- Table des utilisateurs
 CREATE TABLE IF NOT EXISTS users (
 	id TEXT PRIMARY KEY,
-	username TEXT NOT NULL UNIQUE,
+	username TEXT NOT NULL,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	last_seen DATETIME,
 	total_games INTEGER DEFAULT 0,
@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS skills_used (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	game_id TEXT NOT NULL,
 	player_id TEXT NOT NULL,
-	skill_type TEXT NOT NULL CHECK(skill_type IN ('smash')),
+	skill_type TEXT NOT NULL CHECK(skill_type IN ('smash', 'dash')),
 	activated_at_game_time REAL NOT NULL,
 	activated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	was_successful BOOLEAN DEFAULT 1,

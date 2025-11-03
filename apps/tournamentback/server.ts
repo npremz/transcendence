@@ -11,14 +11,6 @@ const tournamentManager = new TournamentManager()
 const initServer = async () => {
 	await tournamentManager.initTournaments()
 
-    // fastify.addHook('onRequest', async (request, reply) => {
-    //     console.log('=== REQUÊTE REÇUE ===')
-    //     console.log('URL:', request.url)
-    //     console.log('Method:', request.method)
-    //     console.log('Headers:', JSON.stringify(request.headers, null, 2))
-    //     console.log('====================')
-    // })
-
     fastify.post('/match-finished', async (request, reply) => {
         const { matchId, winnerId } = request.body as { 
             matchId: string; 

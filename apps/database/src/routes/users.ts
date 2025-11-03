@@ -35,20 +35,10 @@ export function registerUserRoutes(fastify: FastifyInstance): void
 					{
 						if (err)
 						{
-							if (err.message.includes('UNIQUE constraint failed'))
-							{
-								resolve(reply.status(409).send({
-									success: false,
-									error: 'Username already exists'
-								}));
-							}
-							else
-							{
-								resolve(reply.status(500).send({
-									success: false,
-									error: err.message
-								}));
-							}
+							resolve(reply.status(500).send({
+								success: false,
+								error: err.message
+							}));
 						}
 						else
 						{
