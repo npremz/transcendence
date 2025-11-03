@@ -1,6 +1,6 @@
 DC ?= docker compose
 
-.PHONY: up build down logs restart ps health clean re check-jwt
+.PHONY: up build down logs restart ps health clean re
 
 up:
 	./infra/docker/base/build.sh
@@ -34,9 +34,6 @@ logs-tournament:
 logs-db:
 	$(DC) logs -f database
 
-logs-authback:
-	$(DC) logs -f authback
-
 restart: down up
 
 ps:
@@ -49,6 +46,3 @@ clean:
 	$(DC) down -v --rmi local --remove-orphans
 
 re: clean up
-
-check-jwt:
-	@./scripts/check-jwt.sh
