@@ -34,6 +34,9 @@ logs-tournament:
 logs-db:
 	$(DC) logs -f database
 
+logs-game3dback:
+	$(DC) logs -f game3dback
+
 restart: down up
 
 ps:
