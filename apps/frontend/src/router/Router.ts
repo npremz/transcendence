@@ -11,6 +11,7 @@ import { tournamentLogic, TournamentView } from '../views/TournamentView';
 import { BracketView, bracketLogic } from '../views/BracketView';
 import { HistoryView, historyLogic } from '../views/HistoryView';
 import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
+import { Game3dView } from '../views/Game3dView.ts';
 import type { NavigationGuard } from './types';
 import {
     logGuard,
@@ -124,6 +125,12 @@ export class Router {
             view: CreateAccountView,
             title: 'Test'
         });
+
+		this.routes.push({
+			path: '/game3d',
+			view: Game3dView,
+			title: 'game 3D'
+		});
 
         this.compileRoutes();
     }
