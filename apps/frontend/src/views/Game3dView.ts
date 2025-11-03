@@ -4,58 +4,60 @@ import { gsap } from "gsap";
 import { BackButton } from "../components/Button";
 
  export const Game3dView: ViewFunction = () => {
-
-	// Animation d'entrée
 	setTimeout(() => {
 		initGame3d();
-
-		const tl = gsap.timeline();
-		
-		// Récupérer les positions data-x et data-y
-		const stars = document.querySelectorAll('.star-particle');
-		stars.forEach((star) => {
-			const targetX = parseFloat(star.getAttribute('data-x') || '0');
-			const targetY = parseFloat(star.getAttribute('data-y') || '0');
-			
-			gsap.fromTo(star,
-				{ 
-					x: 0,
-					y: 0,
-					scale: 0.1,
-					opacity: 1
-				},
-				{ 
-					x: targetX,
-					y: targetY,
-					scale: 1,
-					opacity: 1,
-					duration: 4,
-					ease: "power2.out"
-				}
-			);
-		});
-		
-		// Faire disparaître la transition après l'animation
-		tl.to("#space-transition", 
-			{ 
-				opacity: 0,
-				duration: 1,
-				delay: 2, // Attendre que les étoiles soient parties
-				onComplete: () => {
-					const transition = document.getElementById('space-transition');
-					if (transition) transition.style.display = 'none';
-				}
-			}
-		)
-		.fromTo("#game-content", 
-			{ opacity: 0, scale: 0.8 },
-			{ opacity: 1, scale: 1, duration: 0.5, ease: "back.out" },
-			"-=0.5"
-		);
 	}, 0);
-	
+	// // Animation d'entrée
+	// setTimeout(() => {
+	// 	initGame3d();
+
+	// 	const tl = gsap.timeline();
+		
+	// 	// Récupérer les positions data-x et data-y
+	// 	const stars = document.querySelectorAll('.star-particle');
+	// 	stars.forEach((star) => {
+	// 		const targetX = parseFloat(star.getAttribute('data-x') || '0');
+	// 		const targetY = parseFloat(star.getAttribute('data-y') || '0');
+			
+	// 		gsap.fromTo(star,
+	// 			{ 
+	// 				x: 0,
+	// 				y: 0,
+	// 				scale: 0.1,
+	// 				opacity: 1
+	// 			},
+	// 			{ 
+	// 				x: targetX,
+	// 				y: targetY,
+	// 				scale: 1,
+	// 				opacity: 1,
+	// 				duration: 4,
+	// 				ease: "power2.out"
+	// 			}
+	// 		);
+	// 	});
+		
+	// 	// Faire disparaître la transition après l'animation
+	// 	tl.to("#space-transition", 
+	// 		{ 
+	// 			opacity: 0,
+	// 			duration: 1,
+	// 			delay: 2, // Attendre que les étoiles soient parties
+	// 			onComplete: () => {
+	// 				const transition = document.getElementById('space-transition');
+	// 				if (transition) transition.style.display = 'none';
+	// 			}
+	// 		}
+	// 	)
+	// 	.fromTo("#game-content", 
+	// 		{ opacity: 0, scale: 0.8 },
+	// 		{ opacity: 1, scale: 1, duration: 0.5, ease: "back.out" },
+	// 		"-=0.5"
+	// 	);
+	// }, 0);
+	// wip : temporaire, à enlever plus tard (display none dans le style de div space-transisiton)
 	return `
-		<div id="space-transition" class="fixed inset-0 z-50 bg-[#04071A] overflow-hidden">
+		<div id="space-transition" class="fixed inset-0 z-50 bg-[#04071A] overflow-hidden" style="display: none;">
 			${Array.from({length: 300}, (_) => {
 				const angle = Math.random() * Math.PI * 2;
 				const distance = Math.random() * 1500 + 500;
