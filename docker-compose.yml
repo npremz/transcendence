@@ -119,6 +119,29 @@ services:
       <<: *healthcheck-wget
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3010"]
 
+  game3dback:
+    container_name: game3dback
+    networks:
+      - transcendence
+    build:
+      context: apps/game3dback
+      dockerfile: ../../infra/docker/game3dback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/game3dback:/game3dback
+      - game3dback_node_modules:/game3dback/node_modules
+    restart: unless-stopped
+    expose:
+      - "3050"
+    environment:
+      - PORT=3050
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-wget
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3050"]
+
   quickplayback:
     container_name: quickplayback
     networks:
@@ -208,6 +231,8 @@ services:
         condition: service_healthy
       gameback:
         condition: service_healthy
+      game3dback:
+        condition: service_healthy
       quickplayback:
         condition: service_healthy
       tournamentback:
@@ -231,6 +256,7 @@ volumes:
   chatback_node_modules:
   userback_node_modules:
   gameback_node_modules:
+  game3dback_node_modules:
   quickplayback_node_modules:
   tournamentback_node_modules:
   authback_node_modules:
