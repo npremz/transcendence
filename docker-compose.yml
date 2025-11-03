@@ -168,29 +168,6 @@ services:
     healthcheck:
       <<: *healthcheck-wget
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3040/health"]
-  
-  authback:
-    container_name: authback
-    networks:
-      - transcendence
-    build:
-      context: apps/authback
-      dockerfile: ../../infra/docker/authback/Dockerfile
-    env_file: .env
-    volumes:
-      - ./apps/authback:/authback
-      - authback_node_modules:/authback/node_modules
-    restart: unless-stopped
-    expose:
-      - "3050"
-    environment:
-      - PORT=3050
-    depends_on:
-      database:
-        condition: service_healthy
-    healthcheck:
-      <<: *healthcheck-wget
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3050/health"]
 
   blockchainback:
     container_name: blockchainback
