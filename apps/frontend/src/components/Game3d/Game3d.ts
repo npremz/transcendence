@@ -134,10 +134,10 @@ export function initGame3d() {
 	private updatePaddlePosition() {
 		if (!this.paddleOwner) return;
 
-		if (this.keys['w'] || this.keys['arrowup']) {
+		if (this.keys['w']) {
 			this.paddleOwner.position.z -= this.paddleSpeed;
 		}
-		if (this.keys['s'] || this.keys['arrowdown']) {
+		if (this.keys['s']) {
 			this.paddleOwner.position.z += this.paddleSpeed;
 		}
 		const maxZ = 1080 / 2 - 100 / 2;
