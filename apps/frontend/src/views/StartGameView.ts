@@ -161,6 +161,15 @@ export const StartGameView: ViewFunction = () => {
 				Choisissez votre destination !
 			</div>
 
+			<div class="absolute bottom-32 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4">
+				<a href="/local"
+					class="px-6 py-3 rounded-lg border border-white/20 bg-white/10 hover:bg-white/20 text-white font-semibold transition-all"
+					onmouseover="document.getElementById('center-text').textContent = '🎮 Mode Local 2 Joueurs'"
+					onmouseout="document.getElementById('center-text').textContent = 'Choisissez votre destination !'">
+					Mode Local
+				</a>
+			</div>
+
 			<div class="absolute right-0 top-0 w-1/3 h-full">
 				<!-- Bouton Quickplay -->
 				<a href="/game" 
@@ -207,4 +216,3 @@ export const StartGameView: ViewFunction = () => {
 
     `;
 };
-

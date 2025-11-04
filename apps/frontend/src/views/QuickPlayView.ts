@@ -258,22 +258,20 @@ export const QuickPlayView: ViewFunction = () => {
 							</div>
 						</button>
 
-						<!-- Play Local (Coming Soon) -->
+						<!-- Play Local -->
 						<button 
-							disabled
-							class="mode-button w-full p-6 neon-border rounded-lg pixel-font text-lg text-blue-400/40 relative"
+							id="play-local"
+							class="mode-button w-full p-6 neon-border rounded-lg pixel-font text-lg text-blue-400 hover:text-white transition-all relative group"
 						>
 							<div class="flex items-center justify-between">
 								<div class="flex items-center gap-4">
-									<span class="text-3xl opacity-40">🎮</span>
+									<span class="text-3xl">🎮</span>
 									<div class="text-left">
 										<div class="text-xl">PLAY LOCAL</div>
-										<div class="text-xs opacity-60 font-normal">Coming soon...</div>
+										<div class="text-xs opacity-60 font-normal">Two players, one screen</div>
 									</div>
 								</div>
-								<span class="pixel-font text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded border border-yellow-500/50">
-									SOON
-								</span>
+								<span class="text-2xl group-hover:translate-x-2 transition-transform">→</span>
 							</div>
 						</button>
 
@@ -337,6 +335,7 @@ export const quickPlayLogic = (): CleanupFunction => {
 		document.querySelectorAll<HTMLButtonElement>('[data-skill-option]')
 	);
 	const playButton = document.getElementById('play-online') as HTMLButtonElement | null;
+	const localButton = document.getElementById('play-local') as HTMLButtonElement | null;
 	const label = document.getElementById('selected-skill-label');
 
 	let selectedSkill = (sessionStorage.getItem('selectedSkill') as 'smash' | 'dash' | null) || 'smash';
@@ -414,6 +413,23 @@ export const quickPlayLogic = (): CleanupFunction => {
 		};
 		playButton.addEventListener('click', playHandler);
 		listeners.push({ element: playButton, handler: playHandler as unknown as (e: Event) => void });
+	}
+
+	if (localButton) {
+		const localHandler = (event: MouseEvent) => {
+			event.preventDefault();
+			gsap.to(localButton, {
+				scale: 0.95,
+				duration: 0.1,
+				yoyo: true,
+				repeat: 1,
+				onComplete: () => {
+					window.router?.navigateTo('/local');
+				}
+			});
+		};
+		localButton.addEventListener('click', localHandler);
+		listeners.push({ element: localButton, handler: localHandler as unknown as (e: Event) => void });
 	}
 
 	updateUI();

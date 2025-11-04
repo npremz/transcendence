@@ -3,9 +3,15 @@ import type { WSClient } from "../../net/wsClient";
 export class PongInputHandler {
 	private keys = {w: false, s: false, up: false, down: false};
 	private net: WSClient;
+	private secondaryNet?: WSClient;
+	private leftController: WSClient;
+	private rightController?: WSClient;
 
-	constructor(net: WSClient) {
+	constructor(net: WSClient, secondaryNet?: WSClient) {
 		this.net = net;
+		this.secondaryNet = secondaryNet;
+		this.leftController = net;
+		this.rightController = secondaryNet;
 	}
 
 	private onKeyDown = (e: KeyboardEvent): void => {
@@ -27,8 +33,11 @@ export class PongInputHandler {
 				e.preventDefault();
 				break;
 			case ' ':
-			case 'Shift':
-				this.net.useSkill();
+				this.leftController.useSkill();
+				e.preventDefault();
+				return;
+			case 'Enter':
+				(this.rightController ?? this.leftController).useSkill();
 				e.preventDefault();
 				return;
 			case 'p':
@@ -62,9 +71,14 @@ export class PongInputHandler {
 	};
 
 	private sendIntent(): void {
-		const up = this.keys.w || this.keys.up;
-		const down = this.keys.s || this.keys.down;
-		this.net.sendInput(!!up, !!down);
+		if (this.rightController && this.rightController !== this.leftController) {
+			this.leftController.sendInput(!!this.keys.w, !!this.keys.s);
+			this.rightController.sendInput(!!this.keys.up, !!this.keys.down);
+		} else {
+			const up = this.keys.w || this.keys.up;
+			const down = this.keys.s || this.keys.down;
+			this.net.sendInput(!!up, !!down);
+		}
 	}
 
 	private handlePause(): void {
@@ -79,6 +93,11 @@ export class PongInputHandler {
 	detach(): void {
 		window.removeEventListener('keydown', this.onKeyDown);
 		window.removeEventListener('keyup', this.onKeyUp);
+	}
+
+	setControllers(left: WSClient, right?: WSClient): void {
+		this.leftController = left;
+		this.rightController = right;
 	}
 
 	getKeys() {

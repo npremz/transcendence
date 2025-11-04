@@ -53,7 +53,14 @@ export class PongRenderer {
 		this.ctx.imageSmoothingEnabled = true;
 	}
 
-	render(state: PongGameState, timeoutStatus: TimeoutStatus, particles: PongParticleSystem, side: 'left' | 'right' | 'spectator', smashOffsetX: (side: 'left' | 'right') => number): void {
+	render(
+		state: PongGameState,
+		timeoutStatus: TimeoutStatus,
+		particles: PongParticleSystem,
+		side: 'left' | 'right' | 'spectator',
+		smashOffsetX: (side: 'left' | 'right') => number,
+		options?: { showLeftSkill?: boolean; showRightSkill?: boolean }
+	): void {
 		const ctx = this.ctx;
 		const W = WORLD_WIDTH;
 		const H = WORLD_HEIGHT;
@@ -141,27 +148,41 @@ export class PongRenderer {
 		ctx.fillText(String(state.score.left), W / 2 - 100, 60);
 		ctx.fillText(String(state.score.right), W / 2 + 100, 60);
 
-		if ((side === 'left' || side === 'right') && !shouldBlackout) 
-		{
-			const mySkill = side === 'left' ? state.skillStates.left : state.skillStates.right;
-			const skillType = side === 'left' ? state.selectedSkills.left : state.selectedSkills.right;
+		const showLeftHud = (options?.showLeftSkill ?? false) || side === 'left';
+		const showRightHud = (options?.showRightSkill ?? false) || side === 'right';
+
+		const drawSkillHud = (playerSide: 'left' | 'right', centerX: number) => {
+			const isBlackout = playerSide === 'left' ? state.blackoutLeft : state.blackoutRight;
+			if (isBlackout) {
+				return;
+			}
+
+			const skillState = playerSide === 'left' ? state.skillStates.left : state.skillStates.right;
+			const skillType = playerSide === 'left' ? state.selectedSkills.left : state.selectedSkills.right;
 			const cooldown = skillType === 'smash' ? 3 : 5;
 			const progress =
-				mySkill.cooldownRemaining > 0
-					? Math.max(0, Math.min(1, 1 - mySkill.cooldownRemaining / cooldown))
+				skillState.cooldownRemaining > 0
+					? Math.max(0, Math.min(1, 1 - skillState.cooldownRemaining / cooldown))
 					: 1;
 
-			this.drawCooldownDonut(ctx, 60, 60, 28, 10, progress);
+			this.drawCooldownDonut(ctx, centerX, 60, 28, 10, progress);
 
-			ctx.fillStyle = COLORS.text;
-			ctx.font = '16px monospace';
-			ctx.textAlign = 'left';
-			if (mySkill.cooldownRemaining > 0) 
-			{
-				ctx.fillText(mySkill.cooldownRemaining.toFixed(1) + 's', 95, 66);
+			if (skillState.cooldownRemaining > 0) {
+				ctx.fillStyle = COLORS.text;
+				ctx.font = '16px monospace';
+				ctx.textAlign = playerSide === 'left' ? 'left' : 'right';
+				const textX = playerSide === 'left' ? centerX + 35 : centerX - 35;
+				ctx.fillText(skillState.cooldownRemaining.toFixed(1) + 's', textX, 66);
 			}
-			ctx.textAlign = 'center';
+		};
+
+		if (showLeftHud) {
+			drawSkillHud('left', 60);
 		}
+		if (showRightHud) {
+			drawSkillHud('right', W - 60);
+		}
+		ctx.textAlign = 'center';
 
 		if (shouldBlackout && blackoutIntensity > 0)
 		{

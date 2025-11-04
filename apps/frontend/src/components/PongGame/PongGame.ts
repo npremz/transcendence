@@ -8,17 +8,28 @@ import { PongAssets } from "./PongAssets";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
 import { DebugPanel, type DebugPanelCallbacks } from "../DebugPanel";
 
+type LocalGameConfig = {
+	roomId: string;
+	left: { id: string; username: string; selectedSkill?: 'smash' | 'dash' };
+	right: { id: string; username: string; selectedSkill?: 'smash' | 'dash' };
+};
+
 export class PongGame implements Component {
 	private el: HTMLElement;
 	private canvas: HTMLCanvasElement;
 
-	private net = new WSClient();
+	private net: WSClient;
+	private secondaryNet?: WSClient;
 	private renderer: PongRenderer;
 	private input: PongInputHandler;
 	private particles: PongParticleSystem;
 	private assets: PongAssets;
     private debugPanel?: DebugPanel;
     private debugContainer?: HTMLDivElement;
+	private isLocalMode = false;
+	private localConfig?: LocalGameConfig;
+	private leftController?: WSClient;
+	private rightController?: WSClient;
 
 	private state: PublicState = {
 		leftPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
@@ -74,12 +85,22 @@ export class PongGame implements Component {
 		}
 		this.canvas = canvas;
 
+		this.net = new WSClient();
+		this.localConfig = this.loadLocalConfig();
+		if (this.localConfig) {
+			this.secondaryNet = new WSClient();
+			this.isLocalMode = true;
+		}
+
 		this.renderer = new PongRenderer(this.canvas, this.net);
-		this.input = new PongInputHandler(this.net);
 		this.particles = new PongParticleSystem();
 		this.assets = new PongAssets();
+		this.input = new PongInputHandler(this.net, this.secondaryNet);
 
 		this.setupNetworkHandlers();
+		if (this.secondaryNet) {
+			this.setupSecondaryNetworkHandlers();
+		}
 		this.setupEventHandlers();
 		this.connectToServer();
 
@@ -188,41 +209,7 @@ export class PongGame implements Component {
 				this.handleQuickplayGameOver(winner);
 			}
 		};
-        this.net.onWelcome = (side, playerNames) => {
-			console.log('Welcome received:', { side, playerNames });
-			
-			// Update player names with retry in case DOM is not ready
-			const updateNames = () => {
-				const leftNameEl = document.getElementById('player-left-name');
-				const rightNameEl = document.getElementById('player-right-name');
-				
-				console.log('Updating names:', { leftNameEl, rightNameEl, playerNames });
-				
-				if (leftNameEl && playerNames?.left) {
-					leftNameEl.textContent = playerNames.left;
-					console.log('Set left name to:', playerNames.left);
-				}
-				if (rightNameEl && playerNames?.right) {
-					rightNameEl.textContent = playerNames.right;
-					console.log('Set right name to:', playerNames.right);
-				}
-				
-				// If elements not found, retry after a short delay
-				if ((!leftNameEl || !rightNameEl) && playerNames) {
-					console.log('Elements not found, retrying...');
-					setTimeout(updateNames, 100);
-				}
-			};
-			
-			updateNames();
-			
-			// Check for debug mode
-            const username = window.simpleAuth?.getUsername?.();
-            if (username === 'admindebug')
-            {
-                this.enableDebugMode();
-            }
-        }
+        this.net.onWelcome = this.createWelcomeHandler(this.net);
 	}
 
     private enableDebugMode(): void {
@@ -383,9 +370,11 @@ export class PongGame implements Component {
 		window.addEventListener('resize', this.handleResize);
 		window.addEventListener('pong:togglePause', this.handleTogglePause);
 
-		const forfeitBtn = document.getElementById('forfeit-btn');
-		if (forfeitBtn) {
-			forfeitBtn.addEventListener('click', this.handleForfeit);
+		if (!this.isLocalMode) {
+			const forfeitBtn = document.getElementById('forfeit-btn');
+			if (forfeitBtn) {
+				forfeitBtn.addEventListener('click', this.handleForfeit);
+			}
 		}
 
 		this.input.attach();
@@ -393,19 +382,80 @@ export class PongGame implements Component {
 
 	private connectToServer(): void {
 		const storedUrl = sessionStorage.getItem('gameWsURL');
-		if (storedUrl) 
-		{
-			this.net.connect(storedUrl);
-		} 
-		else 
-		{
+		let urlToUse = storedUrl ?? undefined;
+		if (!urlToUse) {
 			const host = import.meta.env.VITE_HOST;
 			const endpoint = import.meta.env.VITE_GAME_ENDPOINT;
 			const roomId = window.location.pathname.split('/').pop();
-			const fallback =
-				host && endpoint && roomId ? `wss://${host}${endpoint}/${roomId}` : undefined;
-			this.net.connect(fallback);
+			if (host && endpoint && roomId) {
+				urlToUse = `wss://${host}${endpoint}/${roomId}`;
+			}
 		}
+
+		const leftId = this.isLocalMode ? this.localConfig?.left.id : undefined;
+		this.net.connect(urlToUse, leftId ? { playerId: leftId } : undefined);
+
+		if (this.isLocalMode && this.secondaryNet) {
+			const rightId = this.localConfig?.right.id;
+			if (urlToUse && rightId) {
+				this.secondaryNet.connect(urlToUse, { playerId: rightId });
+			} else {
+				console.warn('PongGame: missing URL or right player ID for local secondary controller');
+			}
+		}
+	}
+
+	private setupSecondaryNetworkHandlers(): void {
+		if (!this.secondaryNet) {
+			return;
+		}
+		this.secondaryNet.onWelcome = this.createWelcomeHandler(this.secondaryNet);
+	}
+
+	private createWelcomeHandler(client: WSClient) {
+		return (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => {
+			console.log('Welcome received:', { side, playerNames });
+
+			const resolvedLeftName = playerNames?.left ?? this.localConfig?.left.username;
+			const resolvedRightName = playerNames?.right ?? this.localConfig?.right.username;
+
+			const updateNames = () => {
+				const leftNameEl = document.getElementById('player-left-name');
+				const rightNameEl = document.getElementById('player-right-name');
+
+				if (leftNameEl && resolvedLeftName) {
+					leftNameEl.textContent = resolvedLeftName;
+				}
+				if (rightNameEl && resolvedRightName) {
+					rightNameEl.textContent = resolvedRightName;
+				}
+
+				if ((!leftNameEl || !rightNameEl) && (resolvedLeftName || resolvedRightName)) {
+					setTimeout(updateNames, 100);
+				}
+			};
+
+			updateNames();
+
+			if (this.isLocalMode) {
+				if (side === 'left') {
+					this.leftController = client;
+				} else if (side === 'right') {
+					this.rightController = client;
+				}
+
+				if (this.leftController && this.rightController) {
+					this.input.setControllers(this.leftController, this.rightController);
+				}
+			}
+
+			if (!this.isDebugMode) {
+				const username = window.simpleAuth?.getUsername?.();
+				if (username === 'admindebug') {
+					this.enableDebugMode();
+				}
+			}
+        };
 	}
 
 	private handleResize = (): void => {
@@ -465,11 +515,25 @@ export class PongGame implements Component {
 				this.timeoutStatus,
 				this.particles,
 				this.net.side,
-				this.smashOffsetX
+				this.smashOffsetX,
+				this.isLocalMode ? { showLeftSkill: true, showRightSkill: true } : undefined
 			);
 			this.animationFrameId = requestAnimationFrame(animate);
 		};
 		animate();
+	}
+
+	private loadLocalConfig(): LocalGameConfig | undefined {
+		const raw = sessionStorage.getItem('localGameConfig');
+		if (!raw) {
+			return undefined;
+		}
+		try {
+			return JSON.parse(raw) as LocalGameConfig;
+		} catch (err) {
+			console.warn('PongGame: failed to parse local game config', err);
+			return undefined;
+		}
 	}
 
 	cleanup(): void {
@@ -481,9 +545,11 @@ export class PongGame implements Component {
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('pong:togglePause', this.handleTogglePause);
 		
-		const forfeitBtn = document.getElementById('forfeit-btn');
-		if (forfeitBtn) {
-			forfeitBtn.removeEventListener('click', this.handleForfeit);
+		if (!this.isLocalMode) {
+			const forfeitBtn = document.getElementById('forfeit-btn');
+			if (forfeitBtn) {
+				forfeitBtn.removeEventListener('click', this.handleForfeit);
+			}
 		}
 		this.input.detach();
 		this.particles.clear();
@@ -491,6 +557,13 @@ export class PongGame implements Component {
 		if (this.debugPanel) {
 			this.debugPanel.cleanup();
 			this.debugPanel = undefined;
+		}
+		if (this.secondaryNet) {
+			this.secondaryNet.cleanup();
+			this.secondaryNet = undefined;
+		}
+		if (this.isLocalMode) {
+			sessionStorage.removeItem('localGameConfig');
 		}
 		if (this.debugContainer && this.debugContainer.parentNode) {
 			this.debugContainer.parentNode.removeChild(this.debugContainer);
@@ -501,14 +574,18 @@ export class PongGame implements Component {
 }
 
 export function Pong(): string {
-	
+	const isLocal = !!sessionStorage.getItem('localGameConfig');
+	const centerContent = isLocal
+		? '<div class="text-sm font-semibold text-white/60">Partie locale</div>'
+		: `<button id="forfeit-btn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+			Surrender
+		</button>`;
+
 	return `
 		<div class="container ml-auto mr-auto flex flex-col items-center" data-component="pong-game">
 			<div class="w-full flex justify-between items-center px-8 mb-4">
 				<div id="player-left-name" class="text-xl font-bold">Player 1</div>
-				<button id="forfeit-btn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
-					Surrender
-				</button>
+				${centerContent}
 				<div id="player-right-name" class="text-xl font-bold">Player 2</div>
 			</div>
 			<canvas id="pong-canvas"></canvas>

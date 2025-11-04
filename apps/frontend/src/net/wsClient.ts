@@ -45,6 +45,7 @@ export class WSClient {
 	isTournament: boolean = false;
     tournamentId?: string;
 	playerNames: {left?: string; right?: string} = {};
+	private playerIdOverride?: string;
 
 	onState?: (s: PublicState) => void;
 	onCountdown?: (v: number) => void;
@@ -57,12 +58,13 @@ export class WSClient {
     }) => void;
     onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => void;
 
-	connect(url?: string) {
+	connect(url?: string, options?: { playerId?: string }) {
 		const host = import.meta.env.VITE_HOST
 		const endpoint = import.meta.env.VITE_GAME_ENDPOINT
 		const defaultUrl = (host && endpoint) ? `wss://${host}${endpoint}`
 					: undefined;
 		const finalUrl = url ?? defaultUrl;
+		this.playerIdOverride = options?.playerId;
         if (!finalUrl)
         {
             console.warn('WSClient: no URL provided and no defaultUrl');
@@ -71,8 +73,13 @@ export class WSClient {
         console.log('WSClient: connecting to', finalUrl);
         this.ws = new WebSocket(finalUrl);
 		this.ws.onopen = () => {
-			const playerId = window.simpleAuth.getPlayerId();
+			const playerId = this.playerIdOverride ?? window.simpleAuth.getPlayerId();
 			console.log('WebSocket opened, sending logIn with ID:', playerId);
+			if (!playerId) {
+				console.warn('WSClient: no playerId available, closing connection');
+				this.ws?.close();
+				return;
+			}
 			this.ws?.send(JSON.stringify({
 				type: 'logIn', 
 				id: playerId
@@ -175,11 +182,11 @@ export class WSClient {
         }));
     }
 
-    debugChangeSkill(side: 'left' | 'right', skill: 'smash' | 'dash') {
-        this.ws?.send(JSON.stringify({
+	debugChangeSkill(side: 'left' | 'right', skill: 'smash' | 'dash') {
+		this.ws?.send(JSON.stringify({
             type: 'debug', action: 'change_skill', payload: { side, skill }
         }));
-    }
+	}
 
 	disconnect(): void {
 		if (this.ws) {
@@ -219,5 +226,6 @@ export class WSClient {
 		this.isTournament = false;
 		this.tournamentId = undefined;
 		this.playerNames = {};
+		this.playerIdOverride = undefined;
 	}
 }
