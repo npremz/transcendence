@@ -191,6 +191,9 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     const myPlayerId = window.simpleAuth.getPlayerId();
 
     let pollInterval: number | null = null;
+    let isFirstRender = true;
+    let displayedMatchIds = new Set<string>();
+    let currentTournamentState: Tournament | null = null;
 
     // ✅ Fonction de cleanup des intervals
     const cleanupIntervals = () => {
@@ -250,6 +253,23 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         hideLoading();
         showContent();
 
+        // Update header only if tournament state changed
+        const headerNeedsUpdate = !currentTournamentState || 
+            currentTournamentState.status !== tournament.status ||
+            currentTournamentState.currentRound !== tournament.currentRound ||
+            currentTournamentState.winner?.id !== tournament.winner?.id;
+
+        if (headerNeedsUpdate) {
+            updateHeader(tournament);
+        }
+
+        // Update brackets with diff detection
+        updateBrackets(tournament);
+
+        currentTournamentState = tournament;
+    };
+
+    const updateHeader = (tournament: Tournament): void => {
         const headerElement = document.getElementById('tournament-header');
         if (headerElement) {
             headerElement.innerHTML = `
@@ -267,26 +287,79 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                 </div>
             `;
 
-            // Animation du header
-            gsap.from(headerElement.querySelector('.neon-border'), {
-                scale: 0.9,
-                opacity: 0,
-                duration: 0.8,
-                ease: 'back.out'
-            });
+            // Animation du header seulement au premier render
+            if (isFirstRender) {
+                gsap.from(headerElement.querySelector('.neon-border'), {
+                    scale: 0.9,
+                    opacity: 0,
+                    duration: 0.8,
+                    ease: 'back.out'
+                });
+            }
         }
+    };
 
+    const updateBrackets = (tournament: Tournament): void => {
         const bracketsElement = document.getElementById('tournament-brackets');
-        if (bracketsElement) {
-            bracketsElement.innerHTML = generateBracketsHTML(tournament.bracket);
+        if (!bracketsElement) return;
 
-            // Animation des brackets
+        if (isFirstRender) {
+            // Premier rendu : tout afficher avec animation
+            bracketsElement.innerHTML = generateBracketsHTML(tournament.bracket);
+            tournament.bracket.forEach(match => displayedMatchIds.add(match.id));
+
             gsap.from('.round', {
                 y: 50,
                 opacity: 0,
                 duration: 0.8,
                 stagger: 0.2,
                 ease: 'power2.out'
+            });
+
+            isFirstRender = false;
+        } else {
+            // Updates suivants : détecter les nouveaux matches et les changements
+            const newMatches = tournament.bracket.filter(match => !displayedMatchIds.has(match.id));
+            
+            if (newMatches.length > 0) {
+                // Ajouter les nouveaux matches
+                newMatches.forEach(match => {
+                    displayedMatchIds.add(match.id);
+                    const roundElement = bracketsElement.querySelector(`[data-round="${match.round}"]`);
+                    
+                    if (roundElement) {
+                        // Round existe déjà, ajouter le match
+                        const matchesGrid = roundElement.querySelector('.matches-grid');
+                        if (matchesGrid) {
+                            const matchDiv = document.createElement('div');
+                            matchDiv.innerHTML = generateMatchHTML(match);
+                            matchDiv.classList.add('new-match');
+                            matchesGrid.appendChild(matchDiv.firstElementChild as HTMLElement);
+                        }
+                    } else {
+                        // Nouveau round
+                        const newRoundHTML = generateRoundHTML(match.round, [match]);
+                        bracketsElement.insertAdjacentHTML('beforeend', newRoundHTML);
+                    }
+                });
+
+                // Animer uniquement les nouveaux matches
+                gsap.from('.new-match', {
+                    y: 30,
+                    opacity: 0,
+                    duration: 0.5,
+                    ease: 'power2.out',
+                    onComplete: () => {
+                        document.querySelectorAll('.new-match').forEach(el => {
+                            el.classList.remove('new-match');
+                        });
+                    }
+                });
+            }
+
+            // Mettre à jour les matches existants (status, winner, etc.)
+            tournament.bracket.forEach(match => {
+                updateMatchElement(match);
             });
         }
     };
@@ -308,26 +381,24 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         
         Object.keys(matchesByRound).sort((a, b) => parseInt(a) - parseInt(b)).forEach(round => {
             const roundMatches = matchesByRound[parseInt(round)];
-            html += `
-                <div class="round">
-                    <h3 class="pixel-font text-2xl text-blue-400 mb-4 text-center">
-                        >>> ROUND ${round} <<<
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            `;
-            
-            roundMatches.forEach(match => {
-                html += generateMatchHTML(match);
-            });
-            
-            html += `
-                    </div>
-                </div>
-            `;
+            html += generateRoundHTML(parseInt(round), roundMatches);
         });
         
         html += '</div>';
         return html;
+    };
+
+    const generateRoundHTML = (round: number, matches: Match[]): string => {
+        return `
+            <div class="round" data-round="${round}">
+                <h3 class="pixel-font text-2xl text-blue-400 mb-4 text-center">
+                    >>> ROUND ${round} <<<
+                </h3>
+                <div class="matches-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${matches.map(match => generateMatchHTML(match)).join('')}
+                </div>
+            </div>
+        `;
     };
 
     const generateMatchHTML = (match: Match): string => {
@@ -343,10 +414,10 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         const isMyMatch = match.player1?.id === myPlayerId || match.player2?.id === myPlayerId;
 
         return `
-            <div class="match-card neon-border rounded-lg p-4 ${match.status} ${isMyMatch ? 'ring-2 ring-pink-500/50' : ''}">
+            <div class="match-card neon-border rounded-lg p-4 ${match.status} ${isMyMatch ? 'ring-2 ring-pink-500/50' : ''}" data-match-id="${match.id}">
                 <!-- Header du match -->
                 <div class="flex justify-between items-center mb-3">
-                    <span class="pixel-font text-xs ${getStatusColor(match.status)} px-2 py-1 rounded border">
+                    <span class="match-status pixel-font text-xs ${getStatusColor(match.status)} px-2 py-1 rounded border">
                         ${getStatusText(match.status)}
                     </span>
                     ${isMyMatch ? '<span class="pixel-font text-xs text-pink-400">← YOU</span>' : ''}
@@ -355,12 +426,12 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                 <!-- Players -->
                 <div class="space-y-2">
                     <!-- Player 1 -->
-                    <div class="player-slot neon-border p-3 rounded ${match.winner?.id === match.player1?.id ? 'winner' : match.winner ? 'loser' : ''}">
+                    <div class="player-slot player-1 neon-border p-3 rounded ${match.winner?.id === match.player1?.id ? 'winner' : match.winner ? 'loser' : ''}" data-player-id="${match.player1?.id || ''}">
                         <div class="flex items-center justify-between">
                             <span class="pixel-font text-sm text-blue-300">
                                 ${match.player1?.username || 'Waiting...'}
                             </span>
-                            ${match.winner?.id === match.player1?.id ? '<span class="text-xl">👑</span>' : ''}
+                            ${match.winner?.id === match.player1?.id ? '<span class="text-xl winner-crown">👑</span>' : ''}
                         </div>
                     </div>
 
@@ -368,17 +439,83 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                     <div class="text-center pixel-font text-xs text-blue-400/40">VS</div>
 
                     <!-- Player 2 -->
-                    <div class="player-slot neon-border p-3 rounded ${match.winner?.id === match.player2?.id ? 'winner' : match.winner ? 'loser' : ''}">
+                    <div class="player-slot player-2 neon-border p-3 rounded ${match.winner?.id === match.player2?.id ? 'winner' : match.winner ? 'loser' : ''}" data-player-id="${match.player2?.id || ''}">
                         <div class="flex items-center justify-between">
                             <span class="pixel-font text-sm text-blue-300">
                                 ${match.player2?.username || 'Waiting...'}
                             </span>
-                            ${match.winner?.id === match.player2?.id ? '<span class="text-xl">👑</span>' : ''}
+                            ${match.winner?.id === match.player2?.id ? '<span class="text-xl winner-crown">👑</span>' : ''}
                         </div>
                     </div>
                 </div>
             </div>
         `;
+    };
+
+    const updateMatchElement = (match: Match): void => {
+        const matchElement = document.querySelector(`[data-match-id="${match.id}"]`);
+        if (!matchElement) return;
+
+        // Update status
+        const statusEl = matchElement.querySelector('.match-status');
+        if (statusEl) {
+            const newStatus = getStatusText(match.status);
+            if (statusEl.textContent !== newStatus) {
+                statusEl.textContent = newStatus;
+                
+                // Update status color classes
+                statusEl.className = `match-status pixel-font text-xs px-2 py-1 rounded border ${getStatusColor(match.status)}`;
+                
+                // Update match card classes
+                matchElement.className = `match-card neon-border rounded-lg p-4 ${match.status} ${
+                    match.player1?.id === myPlayerId || match.player2?.id === myPlayerId ? 'ring-2 ring-pink-500/50' : ''
+                }`;
+            }
+        }
+
+        // Update winner if changed
+        if (match.winner) {
+            const player1Slot = matchElement.querySelector('.player-1');
+            const player2Slot = matchElement.querySelector('.player-2');
+
+            if (player1Slot && player2Slot) {
+                const isPlayer1Winner = match.winner.id === match.player1?.id;
+                const isPlayer2Winner = match.winner.id === match.player2?.id;
+
+                // Update player 1
+                const p1Classes = `player-slot player-1 neon-border p-3 rounded ${isPlayer1Winner ? 'winner' : 'loser'}`;
+                if (player1Slot.className !== p1Classes) {
+                    player1Slot.className = p1Classes;
+                    if (isPlayer1Winner && !player1Slot.querySelector('.winner-crown')) {
+                        const crownEl = document.createElement('span');
+                        crownEl.className = 'text-xl winner-crown';
+                        crownEl.textContent = '👑';
+                        player1Slot.querySelector('div')?.appendChild(crownEl);
+                    }
+                }
+
+                // Update player 2
+                const p2Classes = `player-slot player-2 neon-border p-3 rounded ${isPlayer2Winner ? 'winner' : 'loser'}`;
+                if (player2Slot.className !== p2Classes) {
+                    player2Slot.className = p2Classes;
+                    if (isPlayer2Winner && !player2Slot.querySelector('.winner-crown')) {
+                        const crownEl = document.createElement('span');
+                        crownEl.className = 'text-xl winner-crown';
+                        crownEl.textContent = '👑';
+                        player2Slot.querySelector('div')?.appendChild(crownEl);
+                    }
+                }
+            }
+        }
+    };
+
+    const getStatusColor = (status: string): string => {
+        switch (status) {
+            case 'ready': return 'bg-blue-500/20 border-blue-500/50 text-blue-400';
+            case 'in_progress': return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400';
+            case 'finished': return 'bg-green-500/20 border-green-500/50 text-green-400';
+            default: return 'bg-gray-500/20 border-gray-500/50 text-gray-400';
+        }
     };
 
     const getStatusText = (status: string): string => {

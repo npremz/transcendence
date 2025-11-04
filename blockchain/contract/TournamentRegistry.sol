@@ -12,12 +12,16 @@ contract TournamentRegistry {
 		bool exists;
 	}
 
+	// Mapping tournamentId => TournamentResult
 	mapping(string => TournamentResult) public tournaments;
 	
+	// Array pour lister tous les tournamentIds
 	string[] public tournamentIds;
 	
+	// Owner du contrat
 	address public owner;
 	
+	// Events pour tracer les actions
 	event TournamentRegistered(
 		string indexed tournamentId,
 		string winnerId,
@@ -33,6 +37,9 @@ contract TournamentRegistry {
 		owner = msg.sender;
 	}
 	
+	/**
+	 * Enregistre un résultat de tournoi
+	 */
 	function registerTournament(
 		string memory _tournamentId,
 		string memory _tournamentName,
@@ -51,5 +58,43 @@ contract TournamentRegistry {
 			timestamp: block.timestamp,
 			exists: true
 		});
+		
+		tournamentIds.push(_tournamentId);
+		
+		emit TournamentRegistered(_tournamentId, _winnerId, block.timestamp);
+	}
+	
+	/**
+	 * Récupère un tournoi par son ID
+	 */
+	function getTournament(string memory _tournamentId) 
+		public 
+		view 
+		returns (
+			string memory tournamentName,
+			uint8 maxPlayers,
+			string memory winnerId,
+			string memory winnerUsername,
+			uint256 timestamp
+		) 
+	{
+		require(tournaments[_tournamentId].exists, "Tournament not found");
+		TournamentResult memory t = tournaments[_tournamentId];
+		return (t.tournamentName, t.maxPlayers, t.winnerId, t.winnerUsername, t.timestamp);
+	}
+	
+	/**
+	 * Récupère le nombre total de tournois
+	 */
+	function getTournamentCount() public view returns (uint256) {
+		return tournamentIds.length;
+	}
+	
+	/**
+	 * Récupère un tournamentId par index
+	 */
+	function getTournamentIdByIndex(uint256 index) public view returns (string memory) {
+		require(index < tournamentIds.length, "Index out of bounds");
+		return tournamentIds[index];
 	}
 }

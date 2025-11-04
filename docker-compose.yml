@@ -188,6 +188,27 @@ services:
       <<: *healthcheck-wget
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3050/health"]
 
+  blockchainback:
+    container_name: blockchainback
+    networks:
+      - transcendence
+    build:
+      context: apps/blockchainback
+      dockerfile: ../../infra/docker/blockchainback/Dockerfile
+    env_file: .env
+    volumes:
+      - ./apps/blockchainback:/blockchainback
+      - blockchainback_node_modules:/blockchainback/node_modules
+      - ./blockchain/build:/blockchain/build:ro
+    restart: unless-stopped
+    expose:
+      - "3070"
+    environment:
+      - PORT=3070
+    healthcheck:
+      <<: *healthcheck-wget
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3070/health"]
+
   nginx:
     container_name: nginx
     networks:
@@ -212,6 +233,8 @@ services:
         condition: service_healthy
       authback:
         condition: service_healthy
+      blockchainback:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck-wget
@@ -230,5 +253,6 @@ volumes:
   quickplayback_node_modules:
   tournamentback_node_modules:
   authback_node_modules:
+  blockchainback_node_modules:
   database_node_modules:
   db_data:

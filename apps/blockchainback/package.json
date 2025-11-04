@@ -1,0 +1,23 @@
+{
+  "type": "module",
+  "name": "blockchainback",
+  "version": "1.0.0",
+  "description": "Blockchain service for tournament results",
+  "main": "server.ts",
+  "scripts": {
+    "dev": "tsx watch server.ts",
+    "start": "tsx server.ts"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0",
+    "fastify": "^5.6.1",
+    "fs": "^0.0.1-security",
+    "tsx": "^4.20.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
