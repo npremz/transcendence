@@ -1,6 +1,6 @@
 DC ?= docker compose
 
-.PHONY: up build down logs restart ps health clean re check-jwt
+.PHONY: up build down logs restart ps health clean re check-jwt test-blockchain
 
 up:
 	./infra/docker/base/build.sh
@@ -37,6 +37,9 @@ logs-db:
 logs-authback:
 	$(DC) logs -f authback
 
+logs-blockchain:
+	$(DC) logs -f blockchainback
+
 restart: down up
 
 ps:
@@ -52,3 +55,6 @@ re: clean up
 
 check-jwt:
 	@./scripts/check-jwt.sh
+
+test-blockchain:
+	@./scripts/test-blockchain.sh

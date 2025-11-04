@@ -379,6 +379,18 @@ export class TournamentManager
 				});
 
 				console.log(`Tournament finished! Winner: ${tournament.winner?.username}`);
+				
+				// Register tournament result on blockchain
+				if (tournament.winner) {
+					await this.registerTournamentOnBlockchain(
+						tournament.id,
+						tournament.name,
+						tournament.maxPlayers,
+						tournament.winner.id,
+						tournament.winner.username
+					);
+				}
+				
 				return;
 			}
 
@@ -457,5 +469,45 @@ export class TournamentManager
 		}
 
 		return shuffled
+	}
+
+	private async registerTournamentOnBlockchain(
+		tournamentId: string,
+		tournamentName: string,
+		maxPlayers: number,
+		winnerId: string,
+		winnerUsername: string
+	): Promise<void> {
+		try {
+			const host = process.env.VITE_HOST || 'localhost:8443';
+			const url = `https://${host}/blockchainback/register-tournament`;
+
+			console.log(`Registering tournament ${tournamentId} on blockchain...`);
+
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					tournamentId,
+					tournamentName,
+					maxPlayers,
+					winnerId,
+					winnerUsername
+				}),
+				// @ts-ignore
+				agent
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(`Blockchain registration failed: ${error.error || response.statusText}`);
+			}
+
+			const data = await response.json();
+			console.log(`Tournament ${tournamentId} registered on blockchain: ${data.transactionHash}`);
+		} catch (error) {
+			console.error('Failed to register tournament on blockchain:', error);
+			// Don't throw - we don't want to fail the tournament completion if blockchain fails
+		}
 	}
 }
