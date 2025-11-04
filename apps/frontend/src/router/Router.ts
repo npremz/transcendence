@@ -9,6 +9,7 @@ import { LoginView } from '../views/LoginView';
 import { CreateAccountView } from '../views/CreateAccountView';
 import { tournamentLogic, TournamentView } from '../views/TournamentView';
 import { BracketView, bracketLogic } from '../views/BracketView';
+import { LocalGameView, localGameLogic } from '../views/LocalGameView';
 import { HistoryView, historyLogic } from '../views/HistoryView';
 import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
 import type { NavigationGuard } from './types';
@@ -58,6 +59,13 @@ export class Router {
             view: WaitingRoomView,
             onMount: waitingRoomLogic,
             title: 'Waiting Room'
+        });
+
+		this.routes.push({
+            path: '/local',
+            view: LocalGameView,
+            onMount: localGameLogic,
+            title: 'Local Game'
         });
 
 		this.routes.push({
