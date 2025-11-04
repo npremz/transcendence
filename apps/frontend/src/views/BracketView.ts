@@ -1,75 +1,208 @@
-import type { ViewFunction } from "../router/types"
-import { Header } from "../components/Header";
-import { BackButton } from "../components/Button";
-import type { RouteParams } from "../router/types";
+import type { ViewFunction, CleanupFunction, RouteParams } from "../router/types";
+import { gsap } from "gsap";
 
-interface Player
-{
-	id: string;
-	username: string;
-	currentTournament?: string;
-	isEleminated: boolean;
-}
-
-interface Match
-{
+interface Player {
     id: string;
-	tournamentId: string;
-	round: number;
-	position: number;
-	player1?: Player;
-	player2?: Player;
-	winner?: Player;
-	roomId?: string;
-	status: 'pending' | 'ready' | 'in_progress' | 'finished';
-	scheduledAt?: Date;
-	finishedAt?: Date;
+    username: string;
+    currentTournament?: string;
+    isEleminated: boolean;
 }
 
-interface Tournament
-{
-	id: string;
-	name: string;
-	status: 'registration' | 'in_progress' | 'finished';
-	maxPlayers: number;
-	currentPlayers: Player[];
-	bracket: Match[];
-	currentRound: number;
-	winner?: Player;
-	createdAt: Date;
-	StartedAt?: Date;
-	finishedAt?: Date;
+interface Match {
+    id: string;
+    tournamentId: string;
+    round: number;
+    position: number;
+    player1?: Player;
+    player2?: Player;
+    winner?: Player;
+    roomId?: string;
+    status: 'pending' | 'ready' | 'in_progress' | 'finished';
+    scheduledAt?: Date;
+    finishedAt?: Date;
 }
 
+interface Tournament {
+    id: string;
+    name: string;
+    status: 'registration' | 'in_progress' | 'finished';
+    maxPlayers: number;
+    currentPlayers: Player[];
+    bracket: Match[];
+    currentRound: number;
+    winner?: Player;
+    createdAt: Date;
+    StartedAt?: Date;
+    finishedAt?: Date;
+}
 
 export const BracketView: ViewFunction = () => {
-	return `
-		${Header({isLogged: false})}
-        <div class="relative container ml-auto mr-auto">
-            <div class="p-8">
-                ${BackButton({ className: "mb-4" })}
-            </div>
-            <div id="tournament-loading" class="text-center p-8">
-                <div>Chargement du tournoi...</div>
-            </div>
-            <div id="tournament-content" style="display: none;">
-                <div id="tournament-header" class="mb-6"></div>
-                <div id="tournament-brackets"></div>
-            </div>
-            <div id="tournament-error" style="display: none;" class="text-center p-8 text-red-500">
-                <div>Erreur lors du chargement du tournoi</div>
+    return `
+        <!-- Fond avec grille animée -->
+        <div class="fixed inset-0 bg-black overflow-hidden">
+            <!-- Grille de fond -->
+            <div class="absolute inset-0" style="
+                background-image: 
+                    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+                background-size: 50px 50px;
+                animation: gridMove 20s linear infinite;
+            "></div>
+            
+            <style>
+                @keyframes gridMove {
+                    0% { transform: translateY(0); }
+                    100% { transform: translateY(50px); }
+                }
+                
+                @keyframes neonPulse {
+                    0%, 100% { 
+                        text-shadow: 
+                            0 0 10px rgba(59, 130, 246, 0.8),
+                            0 0 20px rgba(59, 130, 246, 0.6),
+                            0 0 30px rgba(59, 130, 246, 0.4);
+                    }
+                    50% { 
+                        text-shadow: 
+                            0 0 20px rgba(59, 130, 246, 1),
+                            0 0 30px rgba(59, 130, 246, 0.8),
+                            0 0 40px rgba(59, 130, 246, 0.6);
+                    }
+                }
+                
+                @keyframes scanline {
+                    0% { transform: translateY(-100%); }
+                    100% { transform: translateY(100vh); }
+                }
+                
+                .pixel-font {
+                    font-family: 'Courier New', monospace;
+                    font-weight: bold;
+                    letter-spacing: 0.1em;
+                }
+                
+                .neon-border {
+                    box-shadow: 
+                        0 0 10px rgba(59, 130, 246, 0.5),
+                        inset 0 0 10px rgba(59, 130, 246, 0.2);
+                    border: 3px solid rgba(59, 130, 246, 0.8);
+                }
+                
+                .match-card {
+                    transition: all 0.3s ease;
+                    background: rgba(15, 23, 42, 0.6);
+                    backdrop-filter: blur(10px);
+                }
+
+                .match-card.finished {
+                    border-color: rgba(34, 197, 94, 0.8);
+                }
+
+                .match-card.in_progress {
+                    border-color: rgba(234, 179, 8, 0.8);
+                    animation: matchPulse 2s ease-in-out infinite;
+                }
+
+                @keyframes matchPulse {
+                    0%, 100% { 
+                        box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+                    }
+                    50% { 
+                        box-shadow: 0 0 20px rgba(234, 179, 8, 0.8);
+                    }
+                }
+
+                .player-slot {
+                    transition: all 0.2s ease;
+                }
+
+                .player-slot.winner {
+                    background: rgba(34, 197, 94, 0.2);
+                    border-color: rgba(34, 197, 94, 0.5);
+                }
+
+                .player-slot.loser {
+                    opacity: 0.5;
+                }
+            </style>
+            
+            <!-- Scanline effect -->
+            <div class="absolute inset-0 pointer-events-none opacity-10">
+                <div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
             </div>
         </div>
-	`
-}
 
-export const bracketLogic = (params: RouteParams | undefined): (() => void) => {
-	const tournamentId = params?.id;
-	const myPlayerId = window.simpleAuth.getPlayerId();
+        <!-- Contenu principal -->
+        <div class="relative z-10 min-h-screen flex flex-col">
+            <!-- Header avec BackButton -->
+            <header class="flex justify-between items-center px-8 py-6">
+                <button 
+                    onclick="history.back()" 
+                    class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
+                    id="back-button"
+                >
+                    ← BACK
+                </button>
+                
+                <!-- Bouton Sign in -->
+                <a href="/login" 
+                   class="pixel-font bg-blue-500 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
+                    <span>SIGN IN</span>
+                </a>
+            </header>
+
+            <!-- Container principal -->
+            <div class="flex-1 container mx-auto px-4 py-8">
+                <!-- Loading state -->
+                <div id="tournament-loading" class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-400 border-t-transparent"></div>
+                    <p class="pixel-font text-blue-300 mt-4">Loading tournament...</p>
+                </div>
+
+                <!-- Content -->
+                <div id="tournament-content" style="display: none;">
+                    <!-- Header du tournoi -->
+                    <div id="tournament-header" class="mb-8"></div>
+                    
+                    <!-- Brackets -->
+                    <div id="tournament-brackets"></div>
+                </div>
+
+                <!-- Error state -->
+                <div id="tournament-error" style="display: none;" class="text-center py-12">
+                    <div class="text-6xl mb-4">⚠️</div>
+                    <h3 class="pixel-font text-2xl text-red-400 mb-2">Tournament not found</h3>
+                    <p class="pixel-font text-sm text-blue-300/60">Unable to load tournament data</p>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
+                <p>© 2025 PONG - SKILL ISSUE</p>
+            </footer>
+        </div>
+    `;
+};
+
+export const bracketLogic = (params: RouteParams | undefined): CleanupFunction => {
+    console.log('🎮 BracketView: Initializing...');
+
+    const tournamentId = params?.id;
+    const myPlayerId = window.simpleAuth.getPlayerId();
+
+    let pollInterval: number | null = null;
+
+    // ✅ Fonction de cleanup des intervals
+    const cleanupIntervals = () => {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+            console.log('🧹 Polling interval cleared');
+        }
+    };
 
     const fetchTournamentData = async (): Promise<void> => {
-        try
-		{
+        try {
             const host = import.meta.env.VITE_HOST || 'localhost:8443';
             const response = await fetch(`https://${host}/tournamentback/tournaments/${tournamentId}`, {
                 method: 'GET',
@@ -78,8 +211,7 @@ export const bracketLogic = (params: RouteParams | undefined): (() => void) => {
                 }
             });
 
-            if (!response.ok)
-			{
+            if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
@@ -87,25 +219,23 @@ export const bracketLogic = (params: RouteParams | undefined): (() => void) => {
             const tournament = data.tournament;
             
             displayTournament(tournament);
-            
             checkIfMyTurn(tournament);
-        }
-		catch (error)
-		{
+        } catch (error) {
             console.error('Erreur lors de la récupération du tournoi:', error);
             showError();
         }
     };
 
-	const checkIfMyTurn = (tournament: Tournament): void => {
+    const checkIfMyTurn = (tournament: Tournament): void => {
         const myMatch = tournament.bracket.find(match => 
             match.status === 'in_progress' &&
             (match.player1?.id === myPlayerId || match.player2?.id === myPlayerId)
         );
 
-        if (myMatch && myMatch.roomId)
-		{
+        if (myMatch && myMatch.roomId) {
             console.log('Mon match est prêt ! Redirection...');
+            
+            cleanupIntervals(); // ✅ Nettoyer avant redirect
             
             const host = import.meta.env.VITE_HOST;
             const endpoint = import.meta.env.VITE_GAME_ENDPOINT;
@@ -116,34 +246,54 @@ export const bracketLogic = (params: RouteParams | undefined): (() => void) => {
         }
     };
 
-	const displayTournament = (tournament: Tournament): void => {
+    const displayTournament = (tournament: Tournament): void => {
         hideLoading();
         showContent();
 
         const headerElement = document.getElementById('tournament-header');
         if (headerElement) {
             headerElement.innerHTML = `
-                <div class="bg-gray-800 p-4 rounded-lg mb-4">
-                    <h2 class="text-2xl font-bold text-white mb-2">Tournoi ${tournament.name}</h2>
-                    <div class="text-gray-300">
-                        <span class="mr-4">Statut: <span class="text-blue-400">${getStatusText(tournament.status)}</span></span>
-                        <span class="mr-4">Round actuel: <span class="text-green-400">${tournament.currentRound}</span></span>
-                        ${tournament.winner ? `<span>Gagnant: <span class="text-yellow-400">${tournament.winner.username}</span></span>` : ''}
+                <div class="neon-border bg-black/50 backdrop-blur-sm rounded-lg p-6 mb-6">
+                    <div class="text-center">
+                        <h2 class="pixel-font text-4xl text-pink-500 mb-4" style="animation: neonPulse 2s ease-in-out infinite;">
+                            🏆 TOURNAMENT ${tournament.name.toUpperCase()} 🏆
+                        </h2>
+                        <div class="flex justify-center gap-8 pixel-font text-sm text-blue-300">
+                            <span>Status: <span class="text-yellow-400">${getStatusText(tournament.status)}</span></span>
+                            <span>Round: <span class="text-green-400">${tournament.currentRound}</span></span>
+                            ${tournament.winner ? `<span>Winner: <span class="text-yellow-400">👑 ${tournament.winner.username}</span></span>` : ''}
+                        </div>
                     </div>
                 </div>
             `;
+
+            // Animation du header
+            gsap.from(headerElement.querySelector('.neon-border'), {
+                scale: 0.9,
+                opacity: 0,
+                duration: 0.8,
+                ease: 'back.out'
+            });
         }
 
         const bracketsElement = document.getElementById('tournament-brackets');
         if (bracketsElement) {
             bracketsElement.innerHTML = generateBracketsHTML(tournament.bracket);
+
+            // Animation des brackets
+            gsap.from('.round', {
+                y: 50,
+                opacity: 0,
+                duration: 0.8,
+                stagger: 0.2,
+                ease: 'power2.out'
+            });
         }
-		
     };
 
-	const generateBracketsHTML = (matches: Match[]): string => {
+    const generateBracketsHTML = (matches: Match[]): string => {
         if (matches.length === 0) {
-            return '<div class="text-center p-8 text-gray-500">Aucun match disponible</div>';
+            return '<div class="text-center p-8 pixel-font text-blue-300/60">No matches available</div>';
         }
 
         const matchesByRound = matches.reduce((acc, match) => {
@@ -154,14 +304,16 @@ export const bracketLogic = (params: RouteParams | undefined): (() => void) => {
             return acc;
         }, {} as Record<number, Match[]>);
 
-        let html = '<div class="brackets-container">';
+        let html = '<div class="space-y-8">';
         
         Object.keys(matchesByRound).sort((a, b) => parseInt(a) - parseInt(b)).forEach(round => {
             const roundMatches = matchesByRound[parseInt(round)];
             html += `
-                <div class="round mb-8">
-                    <h3 class="text-xl font-semibold mb-4 ">Round ${round}</h3>
-                    <div class="matches grid gap-4">
+                <div class="round">
+                    <h3 class="pixel-font text-2xl text-blue-400 mb-4 text-center">
+                        >>> ROUND ${round} <<<
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             `;
             
             roundMatches.forEach(match => {
@@ -178,46 +330,65 @@ export const bracketLogic = (params: RouteParams | undefined): (() => void) => {
         return html;
     };
 
-	const generateMatchHTML = (match: Match): string => {
+    const generateMatchHTML = (match: Match): string => {
         const getStatusColor = (status: string): string => {
             switch (status) {
-                case 'ready': return 'bg-blue-600';
-                case 'in_progress': return 'bg-yellow-600';
-                case 'finished': return 'bg-green-600';
-                default: return 'bg-gray-600';
+                case 'ready': return 'bg-blue-500/20 border-blue-500/50 text-blue-400';
+                case 'in_progress': return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400';
+                case 'finished': return 'bg-green-500/20 border-green-500/50 text-green-400';
+                default: return 'bg-gray-500/20 border-gray-500/50 text-gray-400';
             }
         };
 
+        const isMyMatch = match.player1?.id === myPlayerId || match.player2?.id === myPlayerId;
+
         return `
-            <div class="match bg-gray-800 p-4 rounded-lg border-2 ${match.winner ? 'border-green-500' : 'border-gray-600'}">
-                <div class="match-header mb-2">
-                    <span class="text-sm ${getStatusColor(match.status)} text-white px-2 py-1 rounded">
+            <div class="match-card neon-border rounded-lg p-4 ${match.status} ${isMyMatch ? 'ring-2 ring-pink-500/50' : ''}">
+                <!-- Header du match -->
+                <div class="flex justify-between items-center mb-3">
+                    <span class="pixel-font text-xs ${getStatusColor(match.status)} px-2 py-1 rounded border">
                         ${getStatusText(match.status)}
                     </span>
+                    ${isMyMatch ? '<span class="pixel-font text-xs text-pink-400">← YOU</span>' : ''}
                 </div>
-                <div class="players">
-                    <div class="player ${match.winner?.id === match.player1?.id ? 'winner' : ''} p-2 mb-1 rounded ${match.winner?.id === match.player1?.id ? 'bg-green-700' : 'bg-gray-700'}">
-                        <span class="text-white">${match.player1?.username || 'En attente...'}</span>
-                        ${match.winner?.id === match.player1?.id ? '<span class="text-yellow-400 ml-2">👑</span>' : ''}
+
+                <!-- Players -->
+                <div class="space-y-2">
+                    <!-- Player 1 -->
+                    <div class="player-slot neon-border p-3 rounded ${match.winner?.id === match.player1?.id ? 'winner' : match.winner ? 'loser' : ''}">
+                        <div class="flex items-center justify-between">
+                            <span class="pixel-font text-sm text-blue-300">
+                                ${match.player1?.username || 'Waiting...'}
+                            </span>
+                            ${match.winner?.id === match.player1?.id ? '<span class="text-xl">👑</span>' : ''}
+                        </div>
                     </div>
-                    <div class="vs text-center text-gray-400 text-sm">VS</div>
-                    <div class="player ${match.winner?.id === match.player2?.id ? 'winner' : ''} p-2 mt-1 rounded ${match.winner?.id === match.player2?.id ? 'bg-green-700' : 'bg-gray-700'}">
-                        <span class="text-white">${match.player2?.username || 'En attente...'}</span>
-                        ${match.winner?.id === match.player2?.id ? '<span class="text-yellow-400 ml-2">👑</span>' : ''}
+
+                    <!-- VS -->
+                    <div class="text-center pixel-font text-xs text-blue-400/40">VS</div>
+
+                    <!-- Player 2 -->
+                    <div class="player-slot neon-border p-3 rounded ${match.winner?.id === match.player2?.id ? 'winner' : match.winner ? 'loser' : ''}">
+                        <div class="flex items-center justify-between">
+                            <span class="pixel-font text-sm text-blue-300">
+                                ${match.player2?.username || 'Waiting...'}
+                            </span>
+                            ${match.winner?.id === match.player2?.id ? '<span class="text-xl">👑</span>' : ''}
+                        </div>
                     </div>
                 </div>
             </div>
         `;
     };
 
-	const getStatusText = (status: string): string => {
+    const getStatusText = (status: string): string => {
         switch (status) {
-            case 'registration': return 'Inscription';
-            case 'in_progress': return 'En cours';
-            case 'finished': return 'Terminé';
-            case 'ready': return 'Prêt';
-            case 'pending': return 'En attente';
-            default: return status;
+            case 'registration': return 'REGISTRATION';
+            case 'in_progress': return 'IN PROGRESS';
+            case 'finished': return 'FINISHED';
+            case 'ready': return 'READY';
+            case 'pending': return 'PENDING';
+            default: return status.toUpperCase();
         }
     };
 
@@ -237,12 +408,19 @@ export const bracketLogic = (params: RouteParams | undefined): (() => void) => {
         if (error) error.style.display = 'block';
     };
 
+    // Charger les données initiales
     fetchTournamentData();
 
-    const pollInterval = setInterval(fetchTournamentData, 2000);
+    // Polling toutes les 2 secondes
+    pollInterval = setInterval(fetchTournamentData, 2000);
+    console.log('🔄 Started bracket polling');
 
-	// === FONCTION DE CLEANUP ===
-	return (): void => {
-		clearInterval(pollInterval);
-	};
+    // ✅ FONCTION DE CLEANUP COMPLÈTE
+    return (): void => {
+        console.log('🧹 BracketView: Cleaning up...');
+        
+        cleanupIntervals();
+        
+        console.log('✅ BracketView: Cleanup complete');
+    };
 };
