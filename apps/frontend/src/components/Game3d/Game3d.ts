@@ -1,5 +1,7 @@
 import '@babylonjs/loaders'; // for gltf
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, MeshBuilder, SceneLoader, StandardMaterial, Color3, Mesh, Texture, AxesViewer, Animation, CubicEase, EasingFunction } from '@babylonjs/core';
+import { WSClient } from '../../net/wsClient';
+import { Game3dConnector, type Game3dMeshes } from './Game3dConnector';
 
 export function initGame3d() {
 	
@@ -10,19 +12,22 @@ export function initGame3d() {
 		private scene: Scene;
 		
 		// Camera and lights
-		private camera: ArcRotateCamera;
+		private camera!: ArcRotateCamera;
 		
 		// Assets
-		private imported_stadium: any;
 		private ground: any;
 		private group_border: any;
 		private sphereBackground: any;
 		private paddleOwner: any;
 		private paddleOpponent: any;
+		private ball: any;
+
+		// Network and game logic
+		private net = new WSClient();
+		private connector: Game3dConnector | null = null;
 
 		// Input tracking
 		private keys: { [key: string]: boolean } = {};
-		private paddleSpeed: number = 20;
 
 		constructor(canvasId: string) {
 			const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -34,12 +39,70 @@ export function initGame3d() {
 			
 			this.setupCamera();
 			this.setupLights();
-			this.loadModels();
+			this.loadModels().then(() => {
+				// Initialize connector after models are loaded
+				this.initializeConnector();
+			});
 			this.loadMeshes();
+			this.setupKeyboardControls();
+			this.setupNetworkHandlers();
+			this.connectToServer();
 			this.start();
 			this.animateCameraIntro();
-			this.setupKeyboardControls();
-	}
+		}
+
+		private initializeConnector() {
+			const meshes: Game3dMeshes = {
+				paddleOwner: this.paddleOwner,
+				paddleOpponent: this.paddleOpponent,
+				ball: this.ball,
+				ground: this.ground
+			};
+			this.connector = new Game3dConnector(this.scene, meshes);
+		}
+
+		private setupNetworkHandlers(): void {
+			// Handle game state updates from server
+			this.net.onState = (state) => {
+				if (this.connector) {
+					this.connector.updateFromGameState(state);
+				}
+			};
+
+			// Handle welcome message to know which side we're on
+			this.net.onWelcome = (side) => {
+				console.log('3D Game: Assigned to side', side);
+				if (this.connector) {
+					this.connector.setSide(side === 'spectator' ? 'left' : side);
+				}
+			};
+
+			// Handle game over
+			this.net.onGameOver = (winner) => {
+				console.log('3D Game: Game over, winner is', winner);
+				// Clean up sessionStorage
+				sessionStorage.removeItem('gameWsURL');
+				// TODO: Show game over UI
+			};
+		}
+
+		private connectToServer() {
+			// First check if URL is stored in sessionStorage (from waiting room)
+			const storedUrl = sessionStorage.getItem('gameWsURL');
+			if (storedUrl) {
+				console.log('3D Game: Connecting with stored URL:', storedUrl);
+				this.net.connect(storedUrl);
+			} else {
+				// Fallback: construct URL from current path
+				const host = import.meta.env.VITE_HOST;
+				const endpoint = import.meta.env.VITE_GAME_ENDPOINT;
+				const roomId = window.location.pathname.split('/').pop();
+				const fallbackUrl =
+					host && endpoint && roomId ? `wss://${host}${endpoint}/${roomId}` : undefined;
+				console.log('3D Game: Connecting with fallback URL:', fallbackUrl);
+				this.net.connect(fallbackUrl);
+			}
+		}
 
 	private setupCamera() {
 		this.camera = new ArcRotateCamera(
@@ -116,43 +179,36 @@ export function initGame3d() {
 		alphaAnimation.setEasingFunction(easingFunction);
 		betaAnimation.setEasingFunction(easingFunction);
 		radiusAnimation.setEasingFunction(easingFunction);
-
+		// START ANIM
 		this.camera.animations = [alphaAnimation, betaAnimation, radiusAnimation];
 		this.scene.beginAnimation(this.camera, 0, 180, false);
 	}
 
 	private setupKeyboardControls() {
-		window.addEventListener('keydown', (event) => {
-			this.keys[event.key.toLowerCase()] = true;
-		});
-
-		window.addEventListener('keyup', (event) => {
-			this.keys[event.key.toLowerCase()] = false;
-		});
+		window.addEventListener('keydown', this.onKeyDown);
+		window.addEventListener('keyup', this.onKeyUp);
 	}
 
 	private updatePaddlePosition() {
-		if (!this.paddleOwner) return;
+		if (!this.connector) return;
 
-		if (this.keys['w']) {
-			this.paddleOwner.position.z -= this.paddleSpeed;
-		}
-		if (this.keys['s']) {
-			this.paddleOwner.position.z += this.paddleSpeed;
-		}
-		const maxZ = 1080 / 2 - 100 / 2;
-		const minZ = -1080 / 2 + 100 / 2;
-		this.paddleOwner.position.z = Math.max(minZ, Math.min(maxZ, this.paddleOwner.position.z));
+		// Get paddle intention from keys
+		const intention = this.connector.getPaddleIntention(this.keys);
+		
+		// Send input to server
+		const up = intention < 0;  // Moving up (W or ArrowUp)
+		const down = intention > 0; // Moving down (S or ArrowDown)
+		
+		this.net.sendInput(up, down);
 	}
 		
 	private setupLights() {
 		new HemisphericLight('light', new Vector3(0, 1, 0), this.scene);
-		// new AxesViewer(this.scene, 5); //dev axis XYZ
+		new AxesViewer(this.scene, 5); //dev axis XYZ
 	}
 
 		private async loadModels() {
-			const result = await SceneLoader.ImportMeshAsync('', '/assets/models/', 'stadium.gltf', this.scene);
-			this.imported_stadium = result.meshes; // wip is this important?
+			await SceneLoader.ImportMeshAsync('', '/assets/models/', 'stadium.gltf', this.scene);
 
 			// Components from stadium.gltf
 			this.ground = this.scene.getMeshByName('ground');
@@ -183,8 +239,13 @@ export function initGame3d() {
 				this.paddleOpponent.material = paddleOpponentMaterial;
 			}
 		}
-		
+
 		private async loadMeshes() {
+			this.ball = MeshBuilder.CreateSphere('ball', {diameter: 0.3}, this.scene);
+			const ballMaterial = new StandardMaterial('ballMat', this.scene);
+			ballMaterial.diffuseColor = Color3.FromHexString('#FFFFFF');
+			this.ball.material = ballMaterial;
+
 			this.sphereBackground = MeshBuilder.CreateSphere('sphereBackground', { diameter: 150, sideOrientation: Mesh.BACKSIDE }, this.scene);
 			const sphereBgMaterial = new StandardMaterial('sphereBgMat', this.scene);
 			const sphereTexture = new Texture('/assets/textures/skysphere_bg.png', this.scene);
@@ -207,19 +268,48 @@ export function initGame3d() {
 				this.scene.render();
 			});
 			
-			window.addEventListener('resize', () => {
-				this.engine.resize();
-			});
+			window.addEventListener('resize', this.onResize);
 		}
 		
 		public dispose() {
+			console.log('Game3d: disposing...');
+			
+			// Clean up sessionStorage
+			sessionStorage.removeItem('gameWsURL');
+			
+			// Disconnect from server
+			this.net.cleanup();
+			
+			// Dispose connector
+			if (this.connector) {
+				this.connector.dispose();
+				this.connector = null;
+			}
+			
+			// Stop render loop
 			this.engine.stopRenderLoop();
-			window.removeEventListener('resize', () => {
-				this.engine.resize();
-			});
+			
+			// Clean up keyboard listeners
+			window.removeEventListener('keydown', this.onKeyDown);
+			window.removeEventListener('keyup', this.onKeyUp);
+			window.removeEventListener('resize', this.onResize);
+			
+			// Dispose Babylon.js resources
 			this.scene.dispose();
 			this.engine.dispose();
 		}
+
+		private onKeyDown = (event: KeyboardEvent) => {
+			this.keys[event.key.toLowerCase()] = true;
+		};
+
+		private onKeyUp = (event: KeyboardEvent) => {
+			this.keys[event.key.toLowerCase()] = false;
+		};
+
+		private onResize = () => {
+			this.engine.resize();
+		};
 	}
 	new Game3d('game3d-canvas');
 }
