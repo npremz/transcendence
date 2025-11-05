@@ -78,6 +78,15 @@ export class Router {
             },
         });
 
+		this.routes.push({
+            path: '/game3d/:roomId',
+            view: Game3dView,
+            title: 'Pong 3D gaming',
+            beforeEnter: async (to, from, params) => {
+                return await roomExistsGuard(to, from, params);
+            },
+        });
+
         this.routes.push({
             path: '/tournament',
             view: TournamentView,
@@ -133,12 +142,12 @@ export class Router {
             view: CreateAccountView,
             title: 'Test'
         });
-
-		this.routes.push({
-			path: '/game3d',
-			view: Game3dView,
-			title: 'game 3D'
-		});
+		//wip temp road to work on the visual
+		// this.routes.push({
+		// 	path: '/game3d',
+		// 	view: Game3dView,
+		// 	title: 'game 3D'
+		// });
 
         this.compileRoutes();
     }
