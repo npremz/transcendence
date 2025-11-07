@@ -18,8 +18,8 @@ export function initGame3d() {
 		private ground: any;
 		private group_border: any;
 		private sphereBackground: any;
-		private paddleOwner: any;
-		private paddleOpponent: any;
+		private paddleLeft: any;
+		private paddleRight: any;
 		private ball: any;
 
 		// Network and game logic
@@ -53,8 +53,8 @@ export function initGame3d() {
 
 		private initializeConnector() {
 			const meshes: Game3dMeshes = {
-				paddleOwner: this.paddleOwner,
-				paddleOpponent: this.paddleOpponent,
+				paddleLeft: this.paddleLeft,
+				paddleRight: this.paddleRight,
 				ball: this.ball,
 				ground: this.ground
 			};
@@ -75,6 +75,9 @@ export function initGame3d() {
 				if (this.connector) {
 					this.connector.setSide(side === 'spectator' ? 'left' : side);
 				}
+				
+				// Update UI to show which side each player is on
+				this.updatePlayerSideLabels(side === 'spectator' ? 'left' : side);
 			};
 
 			// Handle game over
@@ -86,14 +89,27 @@ export function initGame3d() {
 			};
 		}
 
+		private updatePlayerSideLabels(playerSide: 'left' | 'right') {
+			const leftNameEl = document.getElementById('player-left-name');
+			const rightNameEl = document.getElementById('player-right-name');
+			
+			if (leftNameEl && rightNameEl) {
+				if (playerSide === 'left') {
+					leftNameEl.textContent = 'Player 1 (You - Left)';
+					rightNameEl.textContent = 'Player 2 (Opponent - Right)';
+				} else {
+					leftNameEl.textContent = 'Player 1 (Opponent - Left)';
+					rightNameEl.textContent = 'Player 2 (You - Right)';
+				}
+			}
+		}
+
 		private connectToServer() {
-			// First check if URL is stored in sessionStorage (from waiting room)
 			const storedUrl = sessionStorage.getItem('gameWsURL');
 			if (storedUrl) {
 				console.log('3D Game: Connecting with stored URL:', storedUrl);
 				this.net.connect(storedUrl);
 			} else {
-				// Fallback: construct URL from current path
 				const host = import.meta.env.VITE_HOST;
 				const endpoint = import.meta.env.VITE_GAME_ENDPOINT;
 				const roomId = window.location.pathname.split('/').pop();
@@ -107,7 +123,7 @@ export function initGame3d() {
 	private setupCamera() {
 		this.camera = new ArcRotateCamera(
 			'camera', 
-			Math.PI / 2,
+			-Math.PI / 2,  // Look from right to left (opposite direction)
 			Math.PI / 3,
 			30,
 			Vector3.Zero(),
@@ -120,67 +136,68 @@ export function initGame3d() {
 	}
 
 	private animateCameraIntro() {
-		const startAlpha = -Math.PI; // opposite side
-		const startBeta = Math.PI / 6; // higher
-		const startRadius = 80; // Farther
+		const startHorizontalRotation = Math.PI / 2;
+		const startVerticalAngle = Math.PI / 6;
+		const startDistance = 80;
 
-		const finalAlpha = Math.PI / 2;
-		const finalBeta = Math.PI / 3;
-		const finalRadius = 30;
+		const finalHorizontalRotation = -Math.PI / 2;
+		const finalVerticalAngle = Math.PI / 3;
+		const finalDistance = 30;
 
-		this.camera.alpha = startAlpha;
-		this.camera.beta = startBeta;
-		this.camera.radius = startRadius;
+		this.camera.alpha = startHorizontalRotation;
+		this.camera.beta = startVerticalAngle;
+		this.camera.radius = startDistance;
 
 		// CREATE ANIMATIONS
-		const alphaAnimation = new Animation(
-			'cameraAlphaAnimation',
+		const horizontalRotationAnimation = new Animation(
+			'cameraHorizontalRotation',
 			'alpha',
 			60,  //fps
 			Animation.ANIMATIONTYPE_FLOAT,
 			Animation.ANIMATIONLOOPMODE_CONSTANT
 		);
-		const betaAnimation = new Animation(
-			'cameraBetaAnimation',
+		const verticalAngleAnimation = new Animation(
+			'cameraVerticalAngle',
 			'beta',
 			60,
 			Animation.ANIMATIONTYPE_FLOAT,
 			Animation.ANIMATIONLOOPMODE_CONSTANT
 		);
-		const radiusAnimation = new Animation(
-			'cameraRadiusAnimation',
+		const distanceAnimation = new Animation(
+			'cameraDistance',
 			'radius',
 			60,
 			Animation.ANIMATIONTYPE_FLOAT,
 			Animation.ANIMATIONLOOPMODE_CONSTANT
 		);
-		// KEYS
-		// Rotation
-		const alphaKeys = [
-			{ frame: 0, value: startAlpha },
-			{ frame: 180, value: finalAlpha }
+		
+		// KEYFRAMES
+		const horizontalRotationKeys = [
+			{ frame: 0, value: startHorizontalRotation },
+			{ frame: 180, value: finalHorizontalRotation }
 		];
-		// Vertical down
-		const betaKeys = [
-			{ frame: 0, value: startBeta },
-			{ frame: 180, value: finalBeta }
+		const verticalAngleKeys = [
+			{ frame: 0, value: startVerticalAngle },
+			{ frame: 180, value: finalVerticalAngle }
 		];
-		// Zoom in
-		const radiusKeys = [
-			{ frame: 0, value: startRadius },
-			{ frame: 180, value: finalRadius }
+		const distanceKeys = [
+			{ frame: 0, value: startDistance },
+			{ frame: 180, value: finalDistance }
 		];
-		alphaAnimation.setKeys(alphaKeys);
-		betaAnimation.setKeys(betaKeys);
-		radiusAnimation.setKeys(radiusKeys);
+		
+		horizontalRotationAnimation.setKeys(horizontalRotationKeys);
+		verticalAngleAnimation.setKeys(verticalAngleKeys);
+		distanceAnimation.setKeys(distanceKeys);
+		
 		// EASING
 		const easingFunction = new CubicEase();
 		easingFunction.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
-		alphaAnimation.setEasingFunction(easingFunction);
-		betaAnimation.setEasingFunction(easingFunction);
-		radiusAnimation.setEasingFunction(easingFunction);
-		// START ANIM
-		this.camera.animations = [alphaAnimation, betaAnimation, radiusAnimation];
+		horizontalRotationAnimation.setEasingFunction(easingFunction);
+		verticalAngleAnimation.setEasingFunction(easingFunction);
+		distanceAnimation.setEasingFunction(easingFunction);
+		
+		// START ANIMATION
+		this.camera.animations = [horizontalRotationAnimation, verticalAngleAnimation, distanceAnimation];
 		this.scene.beginAnimation(this.camera, 0, 180, false);
 	}
 
@@ -192,12 +209,10 @@ export function initGame3d() {
 	private updatePaddlePosition() {
 		if (!this.connector) return;
 
-		// Get paddle intention from keys
 		const intention = this.connector.getPaddleIntention(this.keys);
 		
-		// Send input to server
-		const up = intention < 0;  // Moving up (W or ArrowUp)
-		const down = intention > 0; // Moving down (S or ArrowDown)
+		const up = intention < 0;
+		const down = intention > 0;
 		
 		this.net.sendInput(up, down);
 	}
@@ -213,8 +228,8 @@ export function initGame3d() {
 			// Components from stadium.gltf
 			this.ground = this.scene.getMeshByName('ground');
 			this.group_border = this.scene.getMeshByName('group_border');
-			this.paddleOwner = this.scene.getMeshByName('paddleOwner');
-			this.paddleOpponent = this.scene.getMeshByName('paddleOpponent');
+			this.paddleLeft = this.scene.getMeshByName('paddleOwner');
+			this.paddleRight = this.scene.getMeshByName('paddleOpponent');
 
 			if (this.ground) {
 				const groundMaterial = new StandardMaterial('groundMat', this.scene);
@@ -228,15 +243,15 @@ export function initGame3d() {
 				borderGroundMaterial.diffuseColor = Color3.FromHexString('#232323');
 				this.group_border.material = borderGroundMaterial;
 			}
-			if (this.paddleOwner) {
+			if (this.paddleLeft) {
 				const paddleMaterial = new StandardMaterial('paddleMat', this.scene);
 				paddleMaterial.diffuseColor = Color3.FromHexString('#FFFFFF');
-				this.paddleOwner.material = paddleMaterial;
+				this.paddleLeft.material = paddleMaterial;
 			}
-			if (this.paddleOpponent) {
+			if (this.paddleRight) {
 				const paddleOpponentMaterial = new StandardMaterial('paddleOpponentMat', this.scene);
 				paddleOpponentMaterial.diffuseColor = Color3.FromHexString('#FFFFFF');
-				this.paddleOpponent.material = paddleOpponentMaterial;
+				this.paddleRight.material = paddleOpponentMaterial;
 			}
 		}
 
@@ -253,6 +268,7 @@ export function initGame3d() {
 			sphereTexture.uScale = 8; // horizontally
 			sphereTexture.vScale = 5; // vertically
 			sphereTexture.wAng = Math.PI;
+			
 			sphereBgMaterial.diffuseTexture = sphereTexture;
 			sphereBgMaterial.emissiveTexture = sphereTexture;
 			sphereBgMaterial.emissiveColor = new Color3(0.7, 0.7, 0.7);
