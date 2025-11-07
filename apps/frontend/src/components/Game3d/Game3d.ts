@@ -116,7 +116,7 @@ export function initGame3d() {
 		this.camera.attachControl(this.canvas, true);
 		
 		this.camera.lowerRadiusLimit = 10;
-		this.camera.upperRadiusLimit = 100;
+		this.camera.upperRadiusLimit = 400;
 	}
 
 	private animateCameraIntro() {
