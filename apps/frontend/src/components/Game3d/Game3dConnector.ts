@@ -1,6 +1,7 @@
 import type { PublicState } from "../../net/wsClient";
 import type { Scene, Mesh } from "@babylonjs/core";
 import { WORLD_WIDTH, WORLD_HEIGHT } from "../PongGame/constants";
+import { PADDLE_DEPTH } from "./constants";
 const STADIUM_3D_WIDTH = 1920 / 100;
 const STADIUM_3D_HEIGHT = 1080 / 100;
 
@@ -9,20 +10,20 @@ const SCALE_X = STADIUM_3D_WIDTH / WORLD_WIDTH;
 const SCALE_Z = STADIUM_3D_HEIGHT / WORLD_HEIGHT;
 
 export interface Game3dMeshes {
-	paddleOwner: Mesh | null;
-	paddleOpponent: Mesh | null;
+	paddleLeft: Mesh | null;
+	paddleRight: Mesh | null;
 	ball: Mesh | null;
 	ground: Mesh | null;
 }
 
 export class Game3dConnector {
 	private meshes: Game3dMeshes;
-	private side: 'left' | 'right' = 'left';
+	private playerSide: 'left' | 'right' = 'left';
 	
 	// Interpolation for smooth movement
 	private targetPositions: {
-		paddleOwner: { x: number; z: number };
-		paddleOpponent: { x: number; z: number };
+		paddleLeft: { x: number; z: number };
+		paddleRight: { x: number; z: number };
 		ball: { x: number; y: number; z: number };
 	};
 
@@ -30,30 +31,26 @@ export class Game3dConnector {
 		this.meshes = meshes;
 		
 		this.targetPositions = {
-			paddleOwner: { x: 0, z: 0 },
-			paddleOpponent: { x: 0, z: 0 },
+			paddleLeft: { x: 0, z: 0 },
+			paddleRight: { x: 0, z: 0 },
 			ball: { x: 0, y: 0, z: 0 }
 		};
 	}
 
 	setSide(side: 'left' | 'right') {
-		this.side = side;
-		console.log(`[Game3dConnector] Player assigned to side: ${side}`);
+		this.playerSide = side;
 	}
 
 	updateFromGameState(state: PublicState) {
-		const leftMesh = this.side === 'left' ? this.meshes.paddleOpponent : this.meshes.paddleOwner;
-		const rightMesh = this.side === 'left' ? this.meshes.paddleOwner : this.meshes.paddleOpponent;
-
-		this.updatePaddlePosition(leftMesh, state.leftPaddle.y, 'left');
-		this.updatePaddlePosition(rightMesh, state.rightPaddle.y, 'right');
+		this.updatePaddlePosition(this.meshes.paddleRight, state.leftPaddle.y, 'right');
+		this.updatePaddlePosition(this.meshes.paddleLeft, state.rightPaddle.y, 'left');
 
 		if (state.balls.length > 0) {
 			const mainBall = state.balls[0];
 			this.updateBallPosition(mainBall.x, mainBall.y);
 		}
 
-		// TODO: Handle powerups, blackhole effect, blackout effect, etc.
+		// TODO: powerups
 	}
 
 	private convert2DYto3DZ(y2d: number): number {
@@ -67,19 +64,20 @@ export class Game3dConnector {
 	private updatePaddlePosition(paddle: Mesh | null, y2d: number, side: 'left' | 'right') {
 		if (!paddle) return;
 
-		const z3d = y2d - STADIUM_3D_HEIGHT / 2;
-		
-		if (paddle === this.meshes.paddleOwner) {
-			this.targetPositions.paddleOwner.z = z3d;
+		const z3d = y2d - 540; //!!!!!!!!!!!!!!!!!!!!!!!
+		if (side === 'left') {
+			this.targetPositions.paddleLeft.z = z3d;
 		} else {
-			this.targetPositions.paddleOpponent.z = z3d;
+			this.targetPositions.paddleRight.z = z3d;
 		}
 
 		paddle.position.z = z3d;
 		
-		// X position
 		const paddleDistance = WORLD_WIDTH / 2 - 50; // 910
-		paddle.position.x = side === 'left' ? -paddleDistance : paddleDistance;
+		const x3d = side === 'left' ? - paddleDistance : paddleDistance;
+		paddle.position.x = x3d;
+		
+		paddle.position.y = 0;
 	}
 
 	private updateBallPosition(x2d: number, y2d: number) {
@@ -99,22 +97,22 @@ export class Game3dConnector {
 	}
 
 	getPaddleIntention(keys: { [key: string]: boolean }): number {
-		if (keys['w']) return -1;
-		if (keys['s']) return 1;
+		if (keys['w']) return 1;   // Move up
+		if (keys['s']) return -1;  // Move down
 		return 0;
 	}
 
 	interpolate(deltaTime: number) {
 		const lerpFactor = Math.min(1, deltaTime * 10);
 
-		if (this.meshes.paddleOwner) {
-			this.meshes.paddleOwner.position.z += 
-				(this.targetPositions.paddleOwner.z - this.meshes.paddleOwner.position.z) * lerpFactor;
+		if (this.meshes.paddleLeft) {
+			this.meshes.paddleLeft.position.z += 
+				(this.targetPositions.paddleLeft.z - this.meshes.paddleLeft.position.z) * lerpFactor;
 		}
 
-		if (this.meshes.paddleOpponent) {
-			this.meshes.paddleOpponent.position.z += 
-				(this.targetPositions.paddleOpponent.z - this.meshes.paddleOpponent.position.z) * lerpFactor;
+		if (this.meshes.paddleRight) {
+			this.meshes.paddleRight.position.z += 
+				(this.targetPositions.paddleRight.z - this.meshes.paddleRight.position.z) * lerpFactor;
 		}
 
 		if (this.meshes.ball) {
@@ -125,6 +123,17 @@ export class Game3dConnector {
 		}
 	}
 
-	// dispose() {
-	// }
+	dispose() {
+		// Clean up if needed
+	}
+
+	// Debug method to visualize current state
+	getDebugInfo() {
+		return {
+			playerSide: this.playerSide,
+			leftPaddlePos: this.meshes.paddleLeft?.position,
+			rightPaddlePos: this.meshes.paddleRight?.position,
+			ballPos: this.meshes.ball?.position
+		};
+	}
 }
