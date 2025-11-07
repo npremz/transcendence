@@ -83,7 +83,6 @@ export const waitingRoomLogic = (): CleanupFunction => {
                     sessionStorage.setItem('gameWsURL', data.gameServerURL);
                     
                     setTimeout(() => {
-                        // If skill is smash, use 3D game, otherwise use 2D
                         const gamePath = skill === 'smash' ? `/game3d/${roomId}` : `/game/${roomId}`;
                         window.router.navigate(gamePath);
                     }, 1000);
