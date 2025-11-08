@@ -46,6 +46,7 @@ export function initGame3d() {
 				this.initializeConnector();
 			});
 			this.setupKeyboardControls();
+this.setupEventHandlers();
 			this.setupNetworkHandlers();
 			this.connectToServer();
 			this.start();
@@ -226,6 +227,13 @@ export function initGame3d() {
 			window.addEventListener('keydown', this.onKeyDown);
 			window.addEventListener('keyup', this.onKeyUp);
 		}
+private setupEventHandlers(): void {
+			// Forfeit button
+			const forfeitBtn = document.getElementById('forfeit-btn');
+			if (forfeitBtn) {
+				forfeitBtn.addEventListener('click', this.handleForfeit);
+			}
+		}
 
 		private updatePaddlePosition() {
 			if (!this.connector) return;
@@ -280,6 +288,12 @@ export function initGame3d() {
 			window.removeEventListener('keydown', this.onKeyDown);
 			window.removeEventListener('keyup', this.onKeyUp);
 			window.removeEventListener('resize', this.onResize);
+
+			// Clean up forfeit button
+			const forfeitBtn = document.getElementById('forfeit-btn');
+			if (forfeitBtn) {
+				forfeitBtn.removeEventListener('click', this.handleForfeit);
+			}
 			
 			// Dispose Babylon.js resources
 			this.scene.dispose();
