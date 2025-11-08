@@ -1,13 +1,44 @@
 import '@babylonjs/loaders'; // for gltf
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, AxesViewer, Animation, CubicEase, EasingFunction } from '@babylonjs/core';
-import { WSClient } from '../../net/wsClient';
+import { WSClient, type PublicState } from '../../net/wsClient';
+import { WORLD_HEIGHT } from "../PongGame/constants";
 import { Game3dConnector, type Game3dMeshes } from './Game3dConnector';
 import { loadBall, loadBackgroundSphere, loadStadium, type StadiumMeshes , loadScoreboard, type ScoreboardMeshes, updateScoreTexture} from './AssetLoader';
 
 
 export function initGame3d() {
-	
 	class Game3d {
+		// Game state
+		private state: PublicState = {
+			leftPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
+			rightPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
+			balls: [],
+			score: { left: 0, right: 0 },
+			isPaused: true,
+			isGameOver: false,
+			winner: '',
+			countdownValue: 0,
+			powerUps: [],
+			splitActive: false,
+			clock: 0,
+			blackoutLeft: false,
+			blackoutRight: false,
+			blackoutLeftIntensity: 0,
+			blackoutRightIntensity: 0,
+			blackholeActive: false,
+			blackholeCenterX: 0,
+			blackholeCenterY: 0,
+			blackholeProgress: 0,
+			selectedSkills: {
+				left: 'smash',
+				right: 'smash'
+			},
+			skillStates: {
+				left: {cooldownRemaining: 0, lastActivationAt: -1e9},
+				right: {cooldownRemaining: 0, lastActivationAt: -1e9}
+			}
+		};
+
 		// Babylon.js core objects
 		private canvas: HTMLCanvasElement;
 		private engine: Engine;
@@ -25,6 +56,7 @@ export function initGame3d() {
 		// Network and game logic
 		private net = new WSClient();
 		private connector: Game3dConnector | null = null;
+		private gameoverHandled: boolean = false;
 
 		// Input tracking
 		private keys: { [key: string]: boolean } = {};
@@ -46,7 +78,7 @@ export function initGame3d() {
 				this.initializeConnector();
 			});
 			this.setupKeyboardControls();
-this.setupEventHandlers();
+			this.setupEventHandlers();
 			this.setupNetworkHandlers();
 			this.connectToServer();
 			this.start();
@@ -104,9 +136,12 @@ this.setupEventHandlers();
 				if (forfeitBtn) {
 					forfeitBtn.disabled = true;
 				}
+				if (isTournament && tournamentId) {
+					this.handleTournamentGameOver(winner, tournamentId);
+				} else {
+					this.handleQuickplayGameOver(winner);
+				}
 				console.log('3D Game: Game over, winner is', winner);
-				// Clean up sessionStorage
-				sessionStorage.removeItem('gameWsURL');
 				// TODO: Show game over UI
 			};
 		}
@@ -233,7 +268,7 @@ this.setupEventHandlers();
 			window.addEventListener('keydown', this.onKeyDown);
 			window.addEventListener('keyup', this.onKeyUp);
 		}
-private setupEventHandlers(): void {
+		private setupEventHandlers(): void {
 			// Forfeit button
 			const forfeitBtn = document.getElementById('forfeit-btn');
 			if (forfeitBtn) {
@@ -262,6 +297,66 @@ private setupEventHandlers(): void {
 			this.ball = loadBall(this.scene);
 			this.sphereBackground = loadBackgroundSphere(this.scene);
 			this.scoreboard = loadScoreboard(this.scene);
+		}
+
+
+		private handleTournamentGameOver(winner: 'left' | 'right', tournamentId: string) {
+			const amILeft = this.net.side === 'left';
+			const didIWin = (amILeft && winner === 'left') || (!amILeft && winner === 'right');
+
+			this.state.isGameOver = true;
+			this.state.winner = winner;
+
+			const message = didIWin 
+				? 'Victoire ! Redirection vers les brackets...' 
+				: 'Défaite... Redirection vers les brackets...';
+			
+			console.log(message);
+
+			setTimeout(() => {
+				sessionStorage.removeItem('gameWsURL');
+				window.location.href = `/tournament/${tournamentId}`;
+			}, 3000);
+		}
+
+		private handleQuickplayGameOver(winner: 'left' | 'right') {
+			const amILeft = this.net.side === 'left';
+			const didIWin = (amILeft && winner === 'left') || (!amILeft && winner === 'right');
+
+			this.state.isGameOver = true;
+			this.state.winner = winner;
+
+			const overlay = document.createElement('div');
+			overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
+			overlay.innerHTML = `
+				<div class="bg-[#0C154D]/90 border-2 border-white/20 rounded-lg p-8 text-center max-w-md">
+					<h2 class="text-4xl font-bold mb-4 ${didIWin ? 'text-green-400' : 'text-red-400'}">
+						${didIWin ? '🏆 VICTOIRE !' : '💀 DÉFAITE'}
+					</h2>
+					<p class="text-white/80 text-xl mb-6">
+						Score: ${this.state.score.left} - ${this.state.score.right}
+					</p>
+					<button 
+						id="return-to-lobby"
+						class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all cursor-pointer"
+					>
+						Retour au lobby
+					</button>
+				</div>
+			`;
+			
+			document.body.appendChild(overlay);
+
+			overlay.addEventListener('click', (e) => {
+				const target = e.target as HTMLElement;
+				if (target.id === 'return-to-lobby' || target.closest('#return-to-lobby')) {
+					console.log('Return to lobby clicked');
+					e.stopPropagation();
+					sessionStorage.removeItem('gameWsURL');
+					document.body.removeChild(overlay);
+					window.router?.navigateTo('/play');
+				}
+			});
 		}
 
 		private handleForfeit = (): void => {
@@ -304,7 +399,7 @@ private setupEventHandlers(): void {
 			window.removeEventListener('keydown', this.onKeyDown);
 			window.removeEventListener('keyup', this.onKeyUp);
 			window.removeEventListener('resize', this.onResize);
-
+			
 			// Clean up forfeit button
 			const forfeitBtn = document.getElementById('forfeit-btn');
 			if (forfeitBtn) {
