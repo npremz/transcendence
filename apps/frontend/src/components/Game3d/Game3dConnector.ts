@@ -1,7 +1,6 @@
 import type { PublicState } from "../../net/wsClient";
-import type { Scene, Mesh } from "@babylonjs/core";
+import type { Scene, Mesh, AbstractMesh } from "@babylonjs/core";
 import { WORLD_WIDTH, WORLD_HEIGHT } from "../PongGame/constants";
-import { PADDLE_DEPTH } from "./constants";
 const STADIUM_3D_WIDTH = 1920 / 100;
 const STADIUM_3D_HEIGHT = 1080 / 100;
 
@@ -10,10 +9,10 @@ const SCALE_X = STADIUM_3D_WIDTH / WORLD_WIDTH;
 const SCALE_Z = STADIUM_3D_HEIGHT / WORLD_HEIGHT;
 
 export interface Game3dMeshes {
-	paddleLeft: Mesh | null;
-	paddleRight: Mesh | null;
+	paddleLeft: AbstractMesh | null;
+	paddleRight: AbstractMesh | null;
 	ball: Mesh | null;
-	ground: Mesh | null;
+	ground: AbstractMesh | null;
 }
 
 export class Game3dConnector {
@@ -61,7 +60,7 @@ export class Game3dConnector {
 		return (x2d - WORLD_WIDTH / 2) * SCALE_X;
 	}
 
-	private updatePaddlePosition(paddle: Mesh | null, y2d: number, side: 'left' | 'right') {
+	private updatePaddlePosition(paddle: AbstractMesh | null, y2d: number, side: 'left' | 'right') {
 		if (!paddle) return;
 
 		const z3d = y2d - 540; //!!!!!!!!!!!!!!!!!!!!!!!
