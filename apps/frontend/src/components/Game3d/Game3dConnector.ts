@@ -1,5 +1,6 @@
 import type { PublicState } from "../../net/wsClient";
-import type { Scene, Mesh, AbstractMesh } from "@babylonjs/core";
+import type { Scene, Mesh, AbstractMesh, ShadowGenerator } from "@babylonjs/core";
+import { MeshBuilder, StandardMaterial, Color3 } from "@babylonjs/core";
 import { WORLD_WIDTH, WORLD_HEIGHT } from "../PongGame/constants";
 const STADIUM_3D_WIDTH = 1920 / 100;
 const STADIUM_3D_HEIGHT = 1080 / 100;
@@ -18,6 +19,14 @@ export interface Game3dMeshes {
 export class Game3dConnector {
 	private meshes: Game3dMeshes;
 	private playerSide: 'left' | 'right' = 'left';
+	private scene: Scene;
+	private shadowGenerator: ShadowGenerator;
+	
+	// Track additional balls for split powerup
+	private additionalBalls: Mesh[] = [];
+	
+	// Track powerup meshes
+	private powerUpMeshes: Map<string, Mesh> = new Map();
 	
 	// Interpolation for smooth movement
 	private targetPositions: {
@@ -26,8 +35,10 @@ export class Game3dConnector {
 		ball: { x: number; y: number; z: number };
 	};
 
-	constructor(_scene: Scene, meshes: Game3dMeshes) {
+	constructor(scene: Scene, meshes: Game3dMeshes, shadowGenerator: ShadowGenerator) {
+		this.scene = scene;
 		this.meshes = meshes;
+		this.shadowGenerator = shadowGenerator;
 		
 		this.targetPositions = {
 			paddleLeft: { x: 0, z: 0 },
@@ -44,12 +55,133 @@ export class Game3dConnector {
 		this.updatePaddlePosition(this.meshes.paddleRight, state.leftPaddle.y, 'right');
 		this.updatePaddlePosition(this.meshes.paddleLeft, state.rightPaddle.y, 'left');
 
-		if (state.balls.length > 0) {
-			const mainBall = state.balls[0];
-			this.updateBallPosition(mainBall.x, mainBall.y);
+		// Handle multiple balls (split powerup)
+		this.updateAllBalls(state.balls);
+
+		// handle powerups
+		// handle split powerup
+		this.updatePowerUps(state.powerUps);
+
+		// TODO: other powerups (blackhole, blackout)
+	}
+
+	/**
+	 * Update powerup meshes - create/destroy/position based on server state
+	 */
+	private updatePowerUps(powerUps: Array<{x: number; y: number; radius: number; type: string}>) {
+		// Create a set of current powerup IDs from server
+		const currentPowerUpIds = new Set<string>();
+		
+		// Update or create powerup meshes
+		for (let i = 0; i < powerUps.length; i++) {
+			const powerUp = powerUps[i];
+			const id = `powerup-${i}-${powerUp.type}`;
+			currentPowerUpIds.add(id);
+			
+			let mesh = this.powerUpMeshes.get(id);
+			
+			// Create new mesh if it doesn't exist
+			if (!mesh) {
+				mesh = this.createPowerUpMesh(powerUp.type, powerUp.radius);
+				this.powerUpMeshes.set(id, mesh);
+			}
+			
+			// Update position
+			mesh.position.x = this.convert2DXto3DX(powerUp.x);
+			mesh.position.z = this.convert2DYto3DZ(powerUp.y);
+			mesh.position.y = 1; // Slightly above ground for visibility
+			
+			// Add floating animation
+			mesh.position.y += Math.sin(Date.now() * 0.003 + i) * 0.2;
+		}
+		
+		// Remove powerups that no longer exist
+		for (const [id, mesh] of this.powerUpMeshes.entries()) {
+			if (!currentPowerUpIds.has(id)) {
+				if (mesh.material) {
+					mesh.material.dispose();
+				}
+				mesh.dispose();
+				this.powerUpMeshes.delete(id);
+			}
+		}
+	}
+	
+	/**
+	 * Create a powerup mesh based on type
+	 */
+	private createPowerUpMesh(type: string, radius: number): Mesh {
+		const diameter = radius * 2 * SCALE_X; // Scale to match 3D world
+		const mesh = MeshBuilder.CreateSphere(`powerup-${type}`, { diameter }, this.scene);
+		const material = new StandardMaterial(`powerup-${type}-mat`, this.scene);
+		
+		// Set color based on type
+		switch (type) {
+			case 'split':
+				material.diffuseColor = Color3.FromHexString('#FFD700'); // Gold
+				material.emissiveColor = Color3.FromHexString('#FFD700').scale(0.3);
+				break;
+			case 'blackout':
+				material.diffuseColor = Color3.FromHexString('#9B59B6'); // Purple
+				material.emissiveColor = Color3.FromHexString('#9B59B6').scale(0.3);
+				break;
+			case 'blackhole':
+				material.diffuseColor = Color3.FromHexString('#20054b'); // Dark blue
+				material.emissiveColor = Color3.FromHexString('#0ea5e9').scale(0.5);
+				break;
+			default:
+				material.diffuseColor = Color3.Red();
+		}
+		
+		mesh.material = material;
+		
+		// Enable shadow casting
+		this.shadowGenerator.addShadowCaster(mesh);
+		
+		return mesh;
+	}
+
+	private updateAllBalls(balls: Array<{x: number; y: number; vx: number; vy: number; radius: number}>) {
+		if (balls.length === 0) return;
+
+		// Update main ball (always exists)
+		if (this.meshes.ball) {
+			this.updateBallPosition(this.meshes.ball, balls[0].x, balls[0].y);
 		}
 
-		// TODO: powerups
+		// Handle additional balls for split powerup
+		const additionalBallCount = balls.length - 1;
+
+		// Create additional balls if needed
+		while (this.additionalBalls.length < additionalBallCount) {
+			const newBall = this.createBall();
+			this.additionalBalls.push(newBall);
+		}
+
+	// Remove extra balls if split ended
+	while (this.additionalBalls.length > additionalBallCount) {
+		const ball = this.additionalBalls.pop();
+		if (ball) {
+			if (ball.material) {
+				ball.material.dispose();
+			}
+			ball.dispose();
+		}
+	}		// Update positions of additional balls
+		for (let i = 0; i < this.additionalBalls.length; i++) {
+			const ballData = balls[i + 1]; // Skip first ball (main ball)
+			this.updateBallPosition(this.additionalBalls[i], ballData.x, ballData.y);
+		}
+	}
+
+	private createBall(): Mesh {
+		const ball = MeshBuilder.CreateSphere('ball-extra', { diameter: 0.3 }, this.scene);
+		const material = new StandardMaterial('ballMat-extra', this.scene);
+		material.diffuseColor = Color3.FromHexString('#FFFFFF');
+		ball.material = material;
+		ball.position.y = 0;
+		
+		return ball;
 	}
 
 	private convert2DYto3DZ(y2d: number): number {
@@ -79,20 +211,19 @@ export class Game3dConnector {
 		paddle.position.y = 0;
 	}
 
-	private updateBallPosition(x2d: number, y2d: number) {
-		if (!this.meshes.ball) return;
+	/**
+	 * Update single ball position (works for main ball and additional balls)
+	 */
+	private updateBallPosition(ball: Mesh, x2d: number, y2d: number) {
+		if (!ball) return;
 		
 		const x3d = this.convert2DXto3DX(x2d);
 		const z3d = this.convert2DYto3DZ(y2d);
 
-		this.targetPositions.ball.x = x3d;
-		this.targetPositions.ball.z = z3d;
-		this.targetPositions.ball.y = 0;
-
 		// visual pos
-		this.meshes.ball.position.x = x3d;
-		this.meshes.ball.position.z = z3d;
-		this.meshes.ball.position.y = 0;
+		ball.position.x = x3d;
+		ball.position.z = z3d;
+		ball.position.y = 0;
 	}
 
 	getPaddleIntention(keys: { [key: string]: boolean }): number {
@@ -123,7 +254,23 @@ export class Game3dConnector {
 	}
 
 	dispose() {
-		// Clean up if needed
+		// Dispose additional balls created for split powerup
+		for (const ball of this.additionalBalls) {
+			if (ball.material) {
+				ball.material.dispose();
+			}
+			ball.dispose();
+		}
+		this.additionalBalls = [];
+		
+		// Dispose all powerup meshes
+		for (const [_, mesh] of this.powerUpMeshes.entries()) {
+			if (mesh.material) {
+				mesh.material.dispose();
+			}
+			mesh.dispose();
+		}
+		this.powerUpMeshes.clear();
 	}
 
 	// Debug method to visualize current state
