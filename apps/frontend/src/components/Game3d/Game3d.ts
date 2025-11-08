@@ -1,7 +1,9 @@
 import '@babylonjs/loaders'; // for gltf
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, MeshBuilder, SceneLoader, StandardMaterial, Color3, Mesh, Texture, AxesViewer, Animation, CubicEase, EasingFunction } from '@babylonjs/core';
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, AxesViewer, Animation, CubicEase, EasingFunction } from '@babylonjs/core';
 import { WSClient } from '../../net/wsClient';
 import { Game3dConnector, type Game3dMeshes } from './Game3dConnector';
+import { loadBall, loadBackgroundSphere, loadStadium, type StadiumMeshes , loadScoreboard, type ScoreboardMeshes, updateScoreTexture} from './AssetLoader';
+
 
 export function initGame3d() {
 	
@@ -15,12 +17,10 @@ export function initGame3d() {
 		private camera!: ArcRotateCamera;
 		
 		// Assets
-		private ground: any;
-		private group_border: any;
-		private sphereBackground: any;
-		private paddleLeft: any;
-		private paddleRight: any;
-		private ball: any;
+		private stadium: StadiumMeshes | null = null;
+		private sphereBackground: Mesh | null = null;
+		private ball: Mesh | null = null;
+		private scoreboard: ScoreboardMeshes | null = null;
 
 		// Network and game logic
 		private net = new WSClient();
@@ -28,6 +28,9 @@ export function initGame3d() {
 
 		// Input tracking
 		private keys: { [key: string]: boolean } = {};
+		
+		// Score tracking for updates
+		private lastScore = { left: 0, right: 0 };
 
 		constructor(canvasId: string) {
 			const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -39,11 +42,9 @@ export function initGame3d() {
 			
 			this.setupCamera();
 			this.setupLights();
-			this.loadModels().then(() => {
-				// Initialize connector after models are loaded
+			this.loadAssets().then(() => {
 				this.initializeConnector();
 			});
-			this.loadMeshes();
 			this.setupKeyboardControls();
 			this.setupNetworkHandlers();
 			this.connectToServer();
@@ -52,11 +53,12 @@ export function initGame3d() {
 		}
 
 		private initializeConnector() {
+			if (!this.stadium || !this.ball) return;
 			const meshes: Game3dMeshes = {
-				paddleLeft: this.paddleLeft,
-				paddleRight: this.paddleRight,
+				paddleLeft: this.stadium.paddleLeft,
+				paddleRight: this.stadium.paddleRight,
 				ball: this.ball,
-				ground: this.ground
+				ground: this.stadium.ground
 			};
 			this.connector = new Game3dConnector(this.scene, meshes);
 		}
@@ -67,16 +69,21 @@ export function initGame3d() {
 				if (this.connector) {
 					this.connector.updateFromGameState(state);
 				}
+				
+				if (this.scoreboard && 
+					(state.score.left !== this.lastScore.left || state.score.right !== this.lastScore.right)) {
+					for (const texture of this.scoreboard.panelTextures) {
+						updateScoreTexture(texture, state.score.left, state.score.right);
+					}
+					this.lastScore = { left: state.score.left, right: state.score.right };
+				}
 			};
 
-			// Handle welcome message to know which side we're on
 			this.net.onWelcome = (side) => {
 				console.log('3D Game: Assigned to side', side);
 				if (this.connector) {
 					this.connector.setSide(side === 'spectator' ? 'left' : side);
 				}
-				
-				// Update UI to show which side each player is on
 				this.updatePlayerSideLabels(side === 'spectator' ? 'left' : side);
 			};
 
@@ -120,162 +127,119 @@ export function initGame3d() {
 			}
 		}
 
-	private setupCamera() {
-		this.camera = new ArcRotateCamera(
-			'camera', 
-			-Math.PI / 2,  // Look from right to left (opposite direction)
-			Math.PI / 3,
-			30,
-			Vector3.Zero(),
-			this.scene
-		);
-		this.camera.attachControl(this.canvas, true);
-		
-		this.camera.lowerRadiusLimit = 10;
-		this.camera.upperRadiusLimit = 400;
-	}
-
-	private animateCameraIntro() {
-		const startHorizontalRotation = Math.PI / 2;
-		const startVerticalAngle = Math.PI / 6;
-		const startDistance = 80;
-
-		const finalHorizontalRotation = -Math.PI / 2;
-		const finalVerticalAngle = Math.PI / 3;
-		const finalDistance = 30;
-
-		this.camera.alpha = startHorizontalRotation;
-		this.camera.beta = startVerticalAngle;
-		this.camera.radius = startDistance;
-
-		// CREATE ANIMATIONS
-		const horizontalRotationAnimation = new Animation(
-			'cameraHorizontalRotation',
-			'alpha',
-			60,  //fps
-			Animation.ANIMATIONTYPE_FLOAT,
-			Animation.ANIMATIONLOOPMODE_CONSTANT
-		);
-		const verticalAngleAnimation = new Animation(
-			'cameraVerticalAngle',
-			'beta',
-			60,
-			Animation.ANIMATIONTYPE_FLOAT,
-			Animation.ANIMATIONLOOPMODE_CONSTANT
-		);
-		const distanceAnimation = new Animation(
-			'cameraDistance',
-			'radius',
-			60,
-			Animation.ANIMATIONTYPE_FLOAT,
-			Animation.ANIMATIONLOOPMODE_CONSTANT
-		);
-		
-		// KEYFRAMES
-		const horizontalRotationKeys = [
-			{ frame: 0, value: startHorizontalRotation },
-			{ frame: 180, value: finalHorizontalRotation }
-		];
-		const verticalAngleKeys = [
-			{ frame: 0, value: startVerticalAngle },
-			{ frame: 180, value: finalVerticalAngle }
-		];
-		const distanceKeys = [
-			{ frame: 0, value: startDistance },
-			{ frame: 180, value: finalDistance }
-		];
-		
-		horizontalRotationAnimation.setKeys(horizontalRotationKeys);
-		verticalAngleAnimation.setKeys(verticalAngleKeys);
-		distanceAnimation.setKeys(distanceKeys);
-		
-		// EASING
-		const easingFunction = new CubicEase();
-		easingFunction.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
-		horizontalRotationAnimation.setEasingFunction(easingFunction);
-		verticalAngleAnimation.setEasingFunction(easingFunction);
-		distanceAnimation.setEasingFunction(easingFunction);
-		
-		// START ANIMATION
-		this.camera.animations = [horizontalRotationAnimation, verticalAngleAnimation, distanceAnimation];
-		this.scene.beginAnimation(this.camera, 0, 180, false);
-	}
-
-	private setupKeyboardControls() {
-		window.addEventListener('keydown', this.onKeyDown);
-		window.addEventListener('keyup', this.onKeyUp);
-	}
-
-	private updatePaddlePosition() {
-		if (!this.connector) return;
-
-		const intention = this.connector.getPaddleIntention(this.keys);
-		
-		const up = intention < 0;
-		const down = intention > 0;
-		
-		this.net.sendInput(up, down);
-	}
-		
-	private setupLights() {
-		new HemisphericLight('light', new Vector3(0, 1, 0), this.scene);
-		new AxesViewer(this.scene, 5); //dev axis XYZ
-	}
-
-		private async loadModels() {
-			await SceneLoader.ImportMeshAsync('', '/assets/models/', 'stadium.gltf', this.scene);
-
-			// Components from stadium.gltf
-			this.ground = this.scene.getMeshByName('ground');
-			this.group_border = this.scene.getMeshByName('group_border');
-			this.paddleLeft = this.scene.getMeshByName('paddleOwner');
-			this.paddleRight = this.scene.getMeshByName('paddleOpponent');
-
-			if (this.ground) {
-				const groundMaterial = new StandardMaterial('groundMat', this.scene);
-				groundMaterial.diffuseColor = Color3.FromHexString('#0A6219');
-				groundMaterial.alpha = 0.7;
-				groundMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
-				this.ground.material = groundMaterial;
-			}
-			if (this.group_border) {
-				const borderGroundMaterial = new StandardMaterial('borderMat', this.scene);
-				borderGroundMaterial.diffuseColor = Color3.FromHexString('#232323');
-				this.group_border.material = borderGroundMaterial;
-			}
-			if (this.paddleLeft) {
-				const paddleMaterial = new StandardMaterial('paddleMat', this.scene);
-				paddleMaterial.diffuseColor = Color3.FromHexString('#FFFFFF');
-				this.paddleLeft.material = paddleMaterial;
-			}
-			if (this.paddleRight) {
-				const paddleOpponentMaterial = new StandardMaterial('paddleOpponentMat', this.scene);
-				paddleOpponentMaterial.diffuseColor = Color3.FromHexString('#FFFFFF');
-				this.paddleRight.material = paddleOpponentMaterial;
-			}
+		private setupCamera() {
+			this.camera = new ArcRotateCamera(
+				'camera', 
+				-Math.PI / 2,  // Look from right to left (opposite direction)
+				Math.PI / 3,
+				30,
+				Vector3.Zero(),
+				this.scene
+			);
+			this.camera.attachControl(this.canvas, true);
+			
+			this.camera.lowerRadiusLimit = 10;
+			this.camera.upperRadiusLimit = 400;
 		}
 
-		private async loadMeshes() {
-			this.ball = MeshBuilder.CreateSphere('ball', {diameter: 0.3}, this.scene);
-			const ballMaterial = new StandardMaterial('ballMat', this.scene);
-			ballMaterial.diffuseColor = Color3.FromHexString('#FFFFFF');
-			this.ball.material = ballMaterial;
+		private animateCameraIntro() {
+			const startHorizontalRotation = Math.PI / 2;
+			const startVerticalAngle = Math.PI / 6;
+			const startDistance = 80;
 
-			this.sphereBackground = MeshBuilder.CreateSphere('sphereBackground', { diameter: 150, sideOrientation: Mesh.BACKSIDE }, this.scene);
-			const sphereBgMaterial = new StandardMaterial('sphereBgMat', this.scene);
-			const sphereTexture = new Texture('/assets/textures/skysphere_bg.png', this.scene);
+			const finalHorizontalRotation = -Math.PI / 2;
+			const finalVerticalAngle = Math.PI / 3;
+			const finalDistance = 30;
 
-			sphereTexture.uScale = 8; // horizontally
-			sphereTexture.vScale = 5; // vertically
-			sphereTexture.wAng = Math.PI;
+			this.camera.alpha = startHorizontalRotation;
+			this.camera.beta = startVerticalAngle;
+			this.camera.radius = startDistance;
+
+			// CREATE ANIMATIONS
+			const horizontalRotationAnimation = new Animation(
+				'cameraHorizontalRotation',
+				'alpha',
+				60,  //fps
+				Animation.ANIMATIONTYPE_FLOAT,
+				Animation.ANIMATIONLOOPMODE_CONSTANT
+			);
+			const verticalAngleAnimation = new Animation(
+				'cameraVerticalAngle',
+				'beta',
+				60,
+				Animation.ANIMATIONTYPE_FLOAT,
+				Animation.ANIMATIONLOOPMODE_CONSTANT
+			);
+			const distanceAnimation = new Animation(
+				'cameraDistance',
+				'radius',
+				60,
+				Animation.ANIMATIONTYPE_FLOAT,
+				Animation.ANIMATIONLOOPMODE_CONSTANT
+			);
 			
-			sphereBgMaterial.diffuseTexture = sphereTexture;
-			sphereBgMaterial.emissiveTexture = sphereTexture;
-			sphereBgMaterial.emissiveColor = new Color3(0.7, 0.7, 0.7);
-			sphereBgMaterial.backFaceCulling = false; // texture inside
-			sphereBgMaterial.specularColor = new Color3(0, 0, 0);
-			sphereBgMaterial.disableLighting = true;
-			this.sphereBackground.material = sphereBgMaterial;
+			// KEYFRAMES
+			const horizontalRotationKeys = [
+				{ frame: 0, value: startHorizontalRotation },
+				{ frame: 180, value: finalHorizontalRotation }
+			];
+			const verticalAngleKeys = [
+				{ frame: 0, value: startVerticalAngle },
+				{ frame: 180, value: finalVerticalAngle }
+			];
+			const distanceKeys = [
+				{ frame: 0, value: startDistance },
+				{ frame: 180, value: finalDistance }
+			];
+			
+			horizontalRotationAnimation.setKeys(horizontalRotationKeys);
+			verticalAngleAnimation.setKeys(verticalAngleKeys);
+			distanceAnimation.setKeys(distanceKeys);
+			
+			// EASING
+			const easingFunction = new CubicEase();
+			easingFunction.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
+			horizontalRotationAnimation.setEasingFunction(easingFunction);
+			verticalAngleAnimation.setEasingFunction(easingFunction);
+			distanceAnimation.setEasingFunction(easingFunction);
+			
+			// START ANIMATION
+			this.camera.animations = [horizontalRotationAnimation, verticalAngleAnimation, distanceAnimation];
+			const animatable = this.scene.beginAnimation(this.camera, 0, 180, false);
+			
+			// animatable.onAnimationEnd = () => { // DEV: is the reason why const animatable is created
+			// 	this.camera.alpha = -Math.PI / 2;
+			// 	this.camera.beta = Math.PI / 3;
+			// 	this.camera.radius = 75;
+			// };
+		}
+
+		private setupKeyboardControls() {
+			window.addEventListener('keydown', this.onKeyDown);
+			window.addEventListener('keyup', this.onKeyUp);
+		}
+
+		private updatePaddlePosition() {
+			if (!this.connector) return;
+
+			const intention = this.connector.getPaddleIntention(this.keys);
+			
+			const up = intention < 0;
+			const down = intention > 0;
+			
+			this.net.sendInput(up, down);
+		}
+			
+		private setupLights() {
+			new HemisphericLight('light', new Vector3(0, 1, 0), this.scene);
+			// new AxesViewer(this.scene, 1); //dev axis XYZ
+		}
+
+		private async loadAssets() {
+			this.stadium = await loadStadium(this.scene);
+			this.ball = loadBall(this.scene);
+			this.sphereBackground = loadBackgroundSphere(this.scene);
+			this.scoreboard = loadScoreboard(this.scene);
 		}
 
 		private start() {
@@ -283,7 +247,6 @@ export function initGame3d() {
 				this.updatePaddlePosition();
 				this.scene.render();
 			});
-			
 			window.addEventListener('resize', this.onResize);
 		}
 		
