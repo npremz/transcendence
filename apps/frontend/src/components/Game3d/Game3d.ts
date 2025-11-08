@@ -79,12 +79,20 @@ export function initGame3d() {
 				}
 			};
 
-			this.net.onWelcome = (side) => {
+			this.net.onWelcome = (side, playerNames) => {
 				console.log('3D Game: Assigned to side', side);
 				if (this.connector) {
 					this.connector.setSide(side === 'spectator' ? 'left' : side);
 				}
 				this.updatePlayerSideLabels(side === 'spectator' ? 'left' : side);
+				const updateNames = () => {
+					const leftNameEl = document.getElementById('player-left-name');
+					const rightNameEl = document.getElementById('player-right-name');
+					if (leftNameEl && playerNames?.left) leftNameEl.textContent = playerNames.left;
+					if (rightNameEl && playerNames?.right) rightNameEl.textContent = playerNames.right;
+					if ((!leftNameEl || !rightNameEl) && playerNames) setTimeout(updateNames, 100);
+				};
+				updateNames();
 			};
 
 			// Handle game over
