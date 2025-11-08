@@ -97,7 +97,13 @@ this.setupEventHandlers();
 			};
 
 			// Handle game over
-			this.net.onGameOver = (winner) => {
+			this.net.onGameOver = (winner, isTournament, tournamentId) => {
+				if (this.gameoverHandled) return;
+				this.gameoverHandled = true;
+				const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement;
+				if (forfeitBtn) {
+					forfeitBtn.disabled = true;
+				}
 				console.log('3D Game: Game over, winner is', winner);
 				// Clean up sessionStorage
 				sessionStorage.removeItem('gameWsURL');
@@ -257,6 +263,16 @@ private setupEventHandlers(): void {
 			this.sphereBackground = loadBackgroundSphere(this.scene);
 			this.scoreboard = loadScoreboard(this.scene);
 		}
+
+		private handleForfeit = (): void => {
+			if (this.state.isGameOver) {
+				return;
+			}
+			const confirmed = confirm('Are you sure you want to forfeit this game?');
+			if (confirmed) {
+				this.net.forfeit();
+			}
+		};
 
 		private start() {
 			this.engine.runRenderLoop(() => {
