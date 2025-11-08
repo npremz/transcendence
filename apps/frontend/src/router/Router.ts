@@ -143,11 +143,11 @@ export class Router {
             title: 'Test'
         });
 		//wip temp road to work on the visual
-		// this.routes.push({
-		// 	path: '/game3d',
-		// 	view: Game3dView,
-		// 	title: 'game 3D'
-		// });
+		this.routes.push({
+			path: '/dev3d',
+			view: Game3dView,
+			title: 'game 3D'
+		});
 
         this.compileRoutes();
     }
