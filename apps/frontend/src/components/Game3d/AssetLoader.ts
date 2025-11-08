@@ -63,6 +63,7 @@ export async function loadStadium(scene: Scene): Promise<StadiumMeshes> {
 		groundMaterial.alpha = 0.7;
 		groundMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
 		ground.material = groundMaterial;
+		ground.receiveShadows = true; // Enable shadow receiving
 	}
 
 	// Border material
@@ -200,7 +201,7 @@ export function loadScoreboard(scene: Scene): ScoreboardMeshes {
 		
 		// Material
 		const holographicMaterial = new StandardMaterial(`${p.name}_holographicMat`, scene);
-		const panelTexture = createScoreTexture(scene, 1, 0);
+		const panelTexture = createScoreTexture(scene, 0, 0);
 		
 		// Texture
 		panelTexture.vScale = 1;

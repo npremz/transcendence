@@ -1,10 +1,9 @@
 import '@babylonjs/loaders'; // for gltf
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, AxesViewer, Animation, CubicEase, EasingFunction } from '@babylonjs/core';
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight, ShadowGenerator, Mesh, AxesViewer, Animation, CubicEase, EasingFunction } from '@babylonjs/core';
 import { WSClient, type PublicState } from '../../net/wsClient';
 import { WORLD_HEIGHT } from "../PongGame/constants";
 import { Game3dConnector, type Game3dMeshes } from './Game3dConnector';
 import { loadBall, loadBackgroundSphere, loadStadium, type StadiumMeshes , loadScoreboard, type ScoreboardMeshes, updateScoreTexture} from './AssetLoader';
-
 
 export function initGame3d() {
 	class Game3d {
@@ -46,6 +45,7 @@ export function initGame3d() {
 		
 		// Camera and lights
 		private camera!: ArcRotateCamera;
+		private shadowGenerator!: ShadowGenerator;
 		
 		// Assets
 		private stadium: StadiumMeshes | null = null;
@@ -93,7 +93,7 @@ export function initGame3d() {
 				ball: this.ball,
 				ground: this.stadium.ground
 			};
-			this.connector = new Game3dConnector(this.scene, meshes);
+			this.connector = new Game3dConnector(this.scene, meshes, this.shadowGenerator);
 		}
 
 		private setupNetworkHandlers(): void {
@@ -102,7 +102,13 @@ export function initGame3d() {
 				if (this.connector) {
 					this.connector.updateFromGameState(state);
 				}
-				
+				// // Goal animation
+				// if (state.score.left > this.lastScore.left) {
+				// 	const lastBall
+				// } else if (state.score.right > this.lastScore.right) {
+				// 	// Animate right goal
+				// }
+				// Update scoreboard if score changed
 				if (this.scoreboard && 
 					(state.score.left !== this.lastScore.left || state.score.right !== this.lastScore.right)) {
 					for (const texture of this.scoreboard.panelTextures) {
@@ -288,7 +294,19 @@ export function initGame3d() {
 		}
 			
 		private setupLights() {
-			new HemisphericLight('light', new Vector3(0, 1, 0), this.scene);
+			// Ambient light for general illumination
+			new HemisphericLight('ambientLight', new Vector3(0, 1, 0), this.scene);
+			
+			// Directional light for shadows
+			const directionalLight = new DirectionalLight('dirLight', new Vector3(-1, -2, -1), this.scene);
+			directionalLight.position = new Vector3(20, 40, 20);
+			directionalLight.intensity = 0.7;
+			
+			// Create shadow generator
+			this.shadowGenerator = new ShadowGenerator(1024, directionalLight);
+			this.shadowGenerator.useBlurExponentialShadowMap = true;
+			this.shadowGenerator.blurKernel = 32;
+			
 			// new AxesViewer(this.scene, 1); //dev axis XYZ
 		}
 
@@ -406,11 +424,15 @@ export function initGame3d() {
 				forfeitBtn.removeEventListener('click', this.handleForfeit);
 			}
 			
+			// Dispose shadow generator
+			if (this.shadowGenerator) {
+				this.shadowGenerator.dispose();
+			}
+			
 			// Dispose Babylon.js resources
 			this.scene.dispose();
 			this.engine.dispose();
 		}
-
 		private onKeyDown = (event: KeyboardEvent) => {
 			this.keys[event.key.toLowerCase()] = true;
 		};
