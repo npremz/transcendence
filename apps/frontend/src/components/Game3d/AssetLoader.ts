@@ -1,4 +1,4 @@
-import { MeshBuilder, StandardMaterial, Color3, Scene, Mesh, Texture, SceneLoader, AbstractMesh, Vector3, DynamicTexture } from '@babylonjs/core';
+import { MeshBuilder, StandardMaterial, Color3, Scene, Mesh, Texture, SceneLoader, AbstractMesh, Vector3, DynamicTexture, ParticleSystem, Color4 } from '@babylonjs/core';
 
 export interface StadiumMeshes {
 	ground: AbstractMesh | null;
@@ -44,6 +44,16 @@ export function loadBackgroundSphere(scene: Scene): Mesh {
 	sphereBackground.material = sphereBgMaterial;
 	
 	return sphereBackground;
+}
+
+export function loadCelebrationSphere(scene: Scene): Mesh {
+	// Geometry
+	const sphereCelebration = MeshBuilder.CreateSphere('sphereCelebration', { diameter: 149, sideOrientation: Mesh.BACKSIDE }, scene);
+	const sphereCelebrationMaterial = new StandardMaterial('sphereCelebrationMat', scene);
+	sphereCelebrationMaterial.alpha = 0;
+	sphereCelebrationMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
+	sphereCelebration.material = sphereCelebrationMaterial;
+	return sphereCelebration;
 }
 
 export async function loadStadium(scene: Scene): Promise<StadiumMeshes> {
@@ -306,4 +316,49 @@ export function loadScoreboard(scene: Scene): ScoreboardMeshes {
 		panels,
 		panelTextures
 	};
+}
+
+export function createGoalCelebrationParticles(scene: Scene, sphereCelebration: Mesh): ParticleSystem {
+	const particleSystem = new ParticleSystem('goalParticles', 3000, scene);
+	const particleTexture = new DynamicTexture('particleTexture', 64, scene, false);
+	const ctx = particleTexture.getContext() as CanvasRenderingContext2D;
+	const centerX = 32;
+	const centerY = 32;
+	const radius = 30;
+	const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+	gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+	gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.9)');
+	gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.5)');
+	gradient.addColorStop(0.85, 'rgba(255, 255, 255, 0.1)');
+	gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+	ctx.fillStyle = gradient;
+	ctx.fillRect(0, 0, 64, 64);
+	particleTexture.update();
+	particleSystem.particleTexture = particleTexture;
+	
+	particleSystem.emitter = sphereCelebration;
+	particleSystem.createSphereEmitter(74.5, 0); // Radius 74.5 (149/2), radiusRange 0 = surface only
+	particleSystem.color1 = new Color4(2, 2, 2, 1);
+	particleSystem.color2 = new Color4(2, 2, 2, 1);
+	particleSystem.colorDead = new Color4(1, 1, 1, 0);
+	particleSystem.minSize = 0.3;
+	particleSystem.maxSize = 0.8;
+	particleSystem.minLifeTime = 0.2;
+	particleSystem.maxLifeTime = 0.4;
+	particleSystem.emitRate = 1500;
+	particleSystem.minEmitPower = 0;
+	particleSystem.maxEmitPower = 0;
+	particleSystem.updateSpeed = 0.02;
+	particleSystem.blendMode = ParticleSystem.BLENDMODE_ADD;
+	particleSystem.stop();
+	return particleSystem;
+}
+
+export function triggerGoalCelebration(particleSystem: ParticleSystem, sphereCelebration: Mesh, side: 'left' | 'right'): void {
+	const material = sphereCelebration.material as StandardMaterial;
+	material.alpha = 0;
+	particleSystem.start();
+	setTimeout(() => {
+		particleSystem.stop();
+	}, 2000);
 }
