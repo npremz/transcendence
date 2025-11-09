@@ -19,8 +19,10 @@ export const MAX_BOUNCE_DEG = 45;
 export const SCORE_TO_WIN = 11;
 
 export const POWERUP_RADIUS = 55;
-export const POWERUP_MIN_DELAY_SEC = 6;
-export const POWERUP_EXTRA_RANDOM_SEC = 6;
+// export const POWERUP_MIN_DELAY_SEC = 6;
+// export const POWERUP_EXTRA_RANDOM_SEC = 6;
+export const POWERUP_MIN_DELAY_SEC = 2; // DEV
+export const POWERUP_EXTRA_RANDOM_SEC = 2; // DEV
 export const POWERUP_LIFETIME_SEC = 9;
 export const POWERUP_MAX_ON_SCREEN = 5;
 
