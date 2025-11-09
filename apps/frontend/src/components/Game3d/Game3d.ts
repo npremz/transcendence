@@ -89,7 +89,7 @@ export function initGame3d() {
 				powerPreference: 'high-performance'
 			});
 			this.scene = new Scene(this.engine);
-
+			
 			// Optimize scene settings
 			this.scene.skipPointerMovePicking = true;
 			this.scene.autoClear = true;
@@ -146,12 +146,24 @@ export function initGame3d() {
 				if (this.connector) {
 					this.connector.setSide(side === 'spectator' ? 'left' : side);
 				}
-				this.updatePlayerSideLabels(side === 'spectator' ? 'left' : side);
 				const updateNames = () => {
 					const leftNameEl = document.getElementById('player-left-name');
 					const rightNameEl = document.getElementById('player-right-name');
-					if (leftNameEl && playerNames?.left) leftNameEl.textContent = playerNames.left;
-					if (rightNameEl && playerNames?.right) rightNameEl.textContent = playerNames.right;
+					
+					if (leftNameEl && playerNames?.left) {
+						const leftName = side === 'left' 
+							? `${playerNames.left} (You)` 
+							: `${playerNames.left} (Opponent)`;
+						leftNameEl.textContent = leftName;
+					}
+					
+					if (rightNameEl && playerNames?.right) {
+						const rightName = side === 'right' 
+							? `${playerNames.right} (You)` 
+							: `${playerNames.right} (Opponent)`;
+						rightNameEl.textContent = rightName;
+					}
+					
 					if ((!leftNameEl || !rightNameEl) && playerNames) setTimeout(updateNames, 100);
 				};
 				updateNames();
@@ -173,21 +185,6 @@ export function initGame3d() {
 				console.log('3D Game: Game over, winner is', winner);
 				// TODO: Show game over UI
 			};
-		}
-
-		private updatePlayerSideLabels(playerSide: 'left' | 'right') {
-			const leftNameEl = document.getElementById('player-left-name');
-			const rightNameEl = document.getElementById('player-right-name');
-			
-			if (leftNameEl && rightNameEl) {
-				if (playerSide === 'left') {
-					leftNameEl.textContent = 'Player 1 (You - Left)';
-					rightNameEl.textContent = 'Player 2 (Opponent - Right)';
-				} else {
-					leftNameEl.textContent = 'Player 1 (Opponent - Left)';
-					rightNameEl.textContent = 'Player 2 (You - Right)';
-				}
-			}
 		}
 
 		private connectToServer() {
@@ -315,7 +312,7 @@ export function initGame3d() {
 			
 			this.net.sendInput(up, down);
 		}
-			
+
 		private setupLights() {
 			// Ambient light for general illumination
 			new HemisphericLight('ambientLight', new Vector3(0, 1, 0), this.scene);
@@ -414,7 +411,7 @@ export function initGame3d() {
 		private start() {
 			this.engine.runRenderLoop(() => {
 				this.updatePaddlePosition();
-this.updateCameraPosition();
+				this.updateCameraPosition();
 				this.scene.render();
 			});
 			window.addEventListener('resize', this.onResize);
