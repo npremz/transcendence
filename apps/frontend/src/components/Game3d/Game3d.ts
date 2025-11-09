@@ -1,9 +1,9 @@
 import '@babylonjs/loaders'; // for gltf
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight, ShadowGenerator, Mesh, AxesViewer, Animation, CubicEase, EasingFunction } from '@babylonjs/core';
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight, ShadowGenerator, Mesh, AxesViewer, Animation, CubicEase, EasingFunction, ParticleSystem } from '@babylonjs/core';
 import { WSClient, type PublicState } from '../../net/wsClient';
 import { WORLD_HEIGHT } from "../PongGame/constants";
 import { Game3dConnector, type Game3dMeshes } from './Game3dConnector';
-import { loadBall, loadBackgroundSphere, loadStadium, type StadiumMeshes , loadScoreboard, type ScoreboardMeshes, updateScoreTexture} from './AssetLoader';
+import { loadBall, loadBackgroundSphere, loadCelebrationSphere, loadStadium, type StadiumMeshes , loadScoreboard, type ScoreboardMeshes, updateScoreTexture, createGoalCelebrationParticles, triggerGoalCelebration} from './AssetLoader';
 
 export function initGame3d() {
 	class Game3d {
@@ -63,6 +63,8 @@ export function initGame3d() {
 		// Assets
 		private stadium: StadiumMeshes | null = null;
 		private sphereBackground: Mesh | null = null;
+		private sphereGoalCelebration: Mesh | null = null;
+		private goalParticleSystem: ParticleSystem | null = null;
 		private ball: Mesh | null = null;
 		private scoreboard: ScoreboardMeshes | null = null;
 
@@ -125,12 +127,14 @@ export function initGame3d() {
 				if (this.connector) {
 					this.connector.updateFromGameState(state);
 				}
-				// // Goal animation
-				// if (state.score.left > this.lastScore.left) {
-				// 	const lastBall
-				// } else if (state.score.right > this.lastScore.right) {
-				// 	// Animate right goal
-				// }
+				
+				// Goal celebration animation
+				if (state.score.left > this.lastScore.left && this.goalParticleSystem && this.sphereGoalCelebration) {
+					triggerGoalCelebration(this.goalParticleSystem, this.sphereGoalCelebration, 'left');
+				} else if (state.score.right > this.lastScore.right && this.goalParticleSystem && this.sphereGoalCelebration) {
+					triggerGoalCelebration(this.goalParticleSystem, this.sphereGoalCelebration, 'right');
+				}
+				
 				// Update scoreboard if score changed
 				if (this.scoreboard && 
 					(state.score.left !== this.lastScore.left || state.score.right !== this.lastScore.right)) {
@@ -335,7 +339,13 @@ export function initGame3d() {
 			this.stadium = await loadStadium(this.scene);
 			this.ball = loadBall(this.scene);
 			this.sphereBackground = loadBackgroundSphere(this.scene);
+			this.sphereGoalCelebration = loadCelebrationSphere(this.scene);
 			this.scoreboard = loadScoreboard(this.scene);
+			
+			// Create particle system for goal celebrations
+			if (this.sphereGoalCelebration) {
+				this.goalParticleSystem = createGoalCelebrationParticles(this.scene, this.sphereGoalCelebration);
+			}
 		}
 
 
@@ -443,6 +453,18 @@ export function initGame3d() {
 			const forfeitBtn = document.getElementById('forfeit-btn');
 			if (forfeitBtn) {
 				forfeitBtn.removeEventListener('click', this.handleForfeit);
+			}
+			
+			// Dispose particle system
+			if (this.goalParticleSystem) {
+				this.goalParticleSystem.dispose();
+				this.goalParticleSystem = null;
+			}
+			
+			// Dispose celebration sphere
+			if (this.sphereGoalCelebration) {
+				this.sphereGoalCelebration.dispose();
+				this.sphereGoalCelebration = null;
 			}
 			
 			// Dispose shadow generator
