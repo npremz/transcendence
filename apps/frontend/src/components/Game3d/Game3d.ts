@@ -69,8 +69,18 @@ export function initGame3d() {
 			if (!canvas) throw new Error(`Canvas with id ${canvasId} not found`);
 			this.canvas = canvas;
 			
-			this.engine = new Engine(this.canvas, true);
+			this.engine = new Engine(this.canvas, true, {
+				preserveDrawingBuffer: false,
+				stencil: false,
+				antialias: true,
+				powerPreference: 'high-performance'
+			});
 			this.scene = new Scene(this.engine);
+
+			// Optimize scene settings
+			this.scene.skipPointerMovePicking = true;
+			this.scene.autoClear = true;
+			this.scene.autoClearDepthAndStencil = true;
 			
 			this.setupCamera();
 			this.setupLights();
@@ -302,10 +312,11 @@ export function initGame3d() {
 			directionalLight.position = new Vector3(20, 40, 20);
 			directionalLight.intensity = 0.7;
 			
-			// Create shadow generator
-			this.shadowGenerator = new ShadowGenerator(1024, directionalLight);
-			this.shadowGenerator.useBlurExponentialShadowMap = true;
-			this.shadowGenerator.blurKernel = 32;
+			// Create shadow generator with optimized settings
+			this.shadowGenerator = new ShadowGenerator(512, directionalLight); // Reduced from 1024
+			this.shadowGenerator.useBlurExponentialShadowMap = false; // Disabled expensive blur
+			this.shadowGenerator.usePoissonSampling = true; // Lighter alternative
+			this.shadowGenerator.bias = 0.00001; // Prevent shadow acne
 			
 			// new AxesViewer(this.scene, 1); //dev axis XYZ
 		}
