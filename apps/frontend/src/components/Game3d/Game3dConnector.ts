@@ -229,6 +229,13 @@ export class Game3dConnector {
 	getPaddleIntention(keys: { [key: string]: boolean }): number {
 		if (keys['w']) return 1;   // Move up
 		if (keys['s']) return -1;  // Move down
+		if (this.playerSide === 'left') {
+			if (keys['a']) return 1;   // Move up
+			if (keys['d']) return -1;  // Move down
+		} else {
+			if (keys['a']) return -1;   // Move up
+			if (keys['d']) return 1;  // Move down
+		}
 		return 0;
 	}
 
