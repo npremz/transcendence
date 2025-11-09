@@ -47,6 +47,19 @@ export function initGame3d() {
 		private camera!: ArcRotateCamera;
 		private shadowGenerator!: ShadowGenerator;
 		
+		// Camera view state
+		private cameraView: 'overhead' | 'firstPerson' = 'overhead';
+		private defaultCameraSettings = {
+			alpha: -Math.PI / 2,
+			beta: Math.PI / 3,
+			radius: 30
+		};
+		private fpsCameraSettings = {
+			alpha: 0,
+			beta: Math.PI / 2.5,
+			radius: 20
+		};
+
 		// Assets
 		private stadium: StadiumMeshes | null = null;
 		private sphereBackground: Mesh | null = null;
@@ -213,9 +226,9 @@ export function initGame3d() {
 			const startVerticalAngle = Math.PI / 6;
 			const startDistance = 80;
 
-			const finalHorizontalRotation = -Math.PI / 2;
-			const finalVerticalAngle = Math.PI / 3;
-			const finalDistance = 30;
+			const finalHorizontalRotation = this.defaultCameraSettings.alpha;
+			const finalVerticalAngle = this.defaultCameraSettings.beta;
+			const finalDistance = this.defaultCameraSettings.radius;
 
 			this.camera.alpha = startHorizontalRotation;
 			this.camera.beta = startVerticalAngle;
@@ -401,11 +414,11 @@ export function initGame3d() {
 		private start() {
 			this.engine.runRenderLoop(() => {
 				this.updatePaddlePosition();
+this.updateCameraPosition();
 				this.scene.render();
 			});
 			window.addEventListener('resize', this.onResize);
 		}
-		
 		public dispose() {
 			console.log('Game3d: disposing...');
 			
@@ -444,8 +457,14 @@ export function initGame3d() {
 			this.scene.dispose();
 			this.engine.dispose();
 		}
+
 		private onKeyDown = (event: KeyboardEvent) => {
-			this.keys[event.key.toLowerCase()] = true;
+			const key = event.key.toLowerCase();
+			this.keys[key] = true;
+			
+			if (key === 'v') {
+				this.toggleCameraView();
+			}
 		};
 
 		private onKeyUp = (event: KeyboardEvent) => {
@@ -455,6 +474,33 @@ export function initGame3d() {
 		private onResize = () => {
 			this.engine.resize();
 		};
+
+		private toggleCameraView(): void {
+			if (this.cameraView === 'overhead') {
+				this.cameraView = 'firstPerson';
+			} else {
+				this.cameraView = 'overhead';
+				this.camera.alpha = this.defaultCameraSettings.alpha;
+				this.camera.beta = this.defaultCameraSettings.beta;
+				this.camera.radius = this.defaultCameraSettings.radius;
+			}
+		}
+		
+		private updateCameraPosition(): void {
+			if (this.cameraView !== 'firstPerson' || !this.connector || !this.stadium) {
+				return;
+			}
+			const side = this.net.side;
+			if (side === 'left') {
+				this.camera.alpha = this.fpsCameraSettings.alpha + Math.PI;
+				this.camera.beta = this.fpsCameraSettings.beta;
+				this.camera.radius = this.fpsCameraSettings.radius;
+			} else {
+				this.camera.alpha = this.fpsCameraSettings.alpha;
+				this.camera.beta = this.fpsCameraSettings.beta;
+				this.camera.radius = this.fpsCameraSettings.radius;
+			}
+		}
 	}
 	new Game3d('game3d-canvas');
 }
@@ -472,6 +518,11 @@ export function Game3d(): string {
 					Surrender
 				</button>
 				<div id="player-right-name" class="text-xl font-bold text-white drop-shadow-lg">Player 2</div>
+			</div>
+			
+			<!-- Camera View Indicator -->
+			<div class="absolute bottom-4 right-4 px-3 py-2 bg-black/50 text-white text-sm rounded pointer-events-none">
+				Press <span class="font-bold text-cyan-400">V</span> to toggle camera view
 			</div>
 		</div>
 	`;
