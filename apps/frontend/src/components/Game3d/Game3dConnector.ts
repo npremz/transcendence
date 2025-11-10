@@ -201,19 +201,13 @@ export class Game3dConnector {
 		} else {
 			this.targetPositions.paddleRight.z = z3d;
 		}
-
 		paddle.position.z = z3d;
-		
 		const paddleDistance = WORLD_WIDTH / 2 - 50; // 910
 		const x3d = side === 'left' ? - paddleDistance : paddleDistance;
 		paddle.position.x = x3d;
-		
 		paddle.position.y = 0;
 	}
 
-	/**
-	 * Update single ball position (works for main ball and additional balls)
-	 */
 	private updateBallPosition(ball: Mesh, x2d: number, y2d: number) {
 		if (!ball) return;
 		
@@ -226,15 +220,13 @@ export class Game3dConnector {
 		ball.position.y = 0;
 	}
 
-	getPaddleIntention(keys: { [key: string]: boolean }): number {
-		if (keys['w']) return 1;   // Move up
-		if (keys['s']) return -1;  // Move down
-		if (this.playerSide === 'left') {
-			if (keys['a']) return 1;   // Move up
-			if (keys['d']) return -1;  // Move down
+	getPaddleIntention(keys: { [key: string]: boolean }, side: 'left' | 'right'): number {
+		if (side === 'left') {
+			if (keys['w'] || keys['a']) return 1;
+			if (keys['s'] || keys['d']) return -1;
 		} else {
-			if (keys['a']) return -1;   // Move up
-			if (keys['d']) return 1;  // Move down
+			if (keys['w'] || keys['d']) return 1;
+			if (keys['s'] || keys['a']) return -1;
 		}
 		return 0;
 	}
