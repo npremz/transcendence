@@ -51,18 +51,15 @@ export class Game3dConnector {
 		this.playerSide = side;
 	}
 
-	updateFromGameState(state: PublicState) {
-		this.updatePaddlePosition(this.meshes.paddleRight, state.leftPaddle.y, 'right');
-		this.updatePaddlePosition(this.meshes.paddleLeft, state.rightPaddle.y, 'left');
+	updateFromGameState(state: PublicState, smashOffsetX?: (side: 'left' | 'right') => number) {
+		this.updatePaddlePosition(this.meshes.paddleRight, state.leftPaddle.y, 'right', smashOffsetX);
+		this.updatePaddlePosition(this.meshes.paddleLeft, state.rightPaddle.y, 'left', smashOffsetX);
 
 		// Handle multiple balls (split powerup)
 		this.updateAllBalls(state.balls);
 
 		// handle powerups
-		// handle split powerup
 		this.updatePowerUps(state.powerUps);
-
-		// TODO: other powerups (blackhole, blackout)
 	}
 
 	/**
@@ -192,7 +189,7 @@ export class Game3dConnector {
 		return (x2d - WORLD_WIDTH / 2) * SCALE_X;
 	}
 
-	private updatePaddlePosition(paddle: AbstractMesh | null, y2d: number, side: 'left' | 'right') {
+	private updatePaddlePosition(paddle: AbstractMesh | null, y2d: number, side: 'left' | 'right', smashOffsetX?: (side: 'left' | 'right') => number) {
 		if (!paddle) return;
 
 		const z3d = y2d - 540; //!!!!!!!!!!!!!!!!!!!!!!!
@@ -202,9 +199,22 @@ export class Game3dConnector {
 			this.targetPositions.paddleRight.z = z3d;
 		}
 		paddle.position.z = z3d;
+		
+		// Calculate base position
 		const paddleDistance = WORLD_WIDTH / 2 - 50; // 910
-		const x3d = side === 'left' ? - paddleDistance : paddleDistance;
-		paddle.position.x = x3d;
+		const baseX3d = side === 'left' ? -paddleDistance : paddleDistance;
+		
+		// Apply smash offset (convert 2D pixels to 3D units)
+		const smashOffset2D = smashOffsetX ? smashOffsetX(side) : 0;
+		const smashOffset3D = smashOffset2D; // baseX is already in the same unit space, no extra scaling
+		
+		// Debug logging
+		if (smashOffset2D !== 0) {
+			console.log(`[CONNECTOR] ${side} paddle: smash=${smashOffset2D.toFixed(2)} (units), baseX=${baseX3d.toFixed(2)}, finalX=${(baseX3d + smashOffset3D).toFixed(2)}`);
+		}
+		
+		// Final position with smash animation
+		paddle.position.x = baseX3d + smashOffset3D;
 		paddle.position.y = 0;
 	}
 

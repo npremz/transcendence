@@ -124,8 +124,11 @@ export function initGame3d() {
 		private setupNetworkHandlers(): void {
 			// Handle game state updates from server
 			this.net.onState = (state) => {
+				// Update local state copy for smash animation
+				this.state = state;
+				
 				if (this.connector) {
-					this.connector.updateFromGameState(state);
+					this.connector.updateFromGameState(state, this.smashOffsetX);
 				}
 				
 				// Goal celebration animation
@@ -418,6 +421,29 @@ export function initGame3d() {
 			}
 		};
 
+
+		// function copy pasted from 2d pong
+		private smashOffsetX = (side: 'left' | 'right'): number => {
+			const skillType = side === 'left' ? this.state.selectedSkills.left : this.state.selectedSkills.right;
+			if (skillType !== 'smash') 
+			{
+				return 0;
+			}
+
+			const skillState = side === 'left' ? this.state.skillStates.left : this.state.skillStates.right;
+			const dur = 0.12;
+			const dt = Math.max(0, this.state.clock - skillState.lastActivationAt);
+
+			if (dt <= 0 || dt > dur) 
+			{
+				return 0;
+			}
+			const t = dt / dur;
+			const amp = 48;
+			const dir = side === 'left' ? 1 : -1;
+			return dir * amp * Math.sin(Math.PI * t);
+		};
+
 		private start() {
 			this.engine.runRenderLoop(() => {
 				this.updatePaddlePosition();
@@ -480,9 +506,17 @@ export function initGame3d() {
 		private onKeyDown = (event: KeyboardEvent) => {
 			const key = event.key.toLowerCase();
 			this.keys[key] = true;
-			
-			if (key === 'v') {
-				this.toggleCameraView();
+
+			switch (key) {
+				case 'v':
+					this.toggleCameraView();
+					break;
+				case ' ':
+				case 'shift':
+					console.log(`[SMASH] Key pressed by ${this.net.side}, sending useSkill()`);
+					this.net.useSkill();
+					event.preventDefault();
+					break;
 			}
 		};
 
