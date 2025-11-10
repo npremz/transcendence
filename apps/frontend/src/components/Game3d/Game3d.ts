@@ -309,8 +309,8 @@ export function initGame3d() {
 		private updatePaddlePosition() {
 			if (!this.connector) return;
 
-			const intention = this.connector.getPaddleIntention(this.keys);
-			
+			const intention = this.connector.getPaddleIntention(this.keys, this.net.side);
+
 			const up = intention < 0;
 			const down = intention > 0;
 			
