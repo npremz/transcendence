@@ -35,11 +35,11 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
                 matchId
             );
 
-			const host = process.env.VITE_HOST || 'localhost:8443';
-			const create_endpoint = process.env.VITE_CREATEGAME_ENDPOINT || '/gameback/create';
-			const fetchURL = `https://${host}${create_endpoint}`;
+			// Use internal Docker service name for backend-to-backend communication
+			const gamebackHost = process.env.GAMEBACK_HOST || 'gameback:3010';
+			const fetchURL = `http://${gamebackHost}/create`;
 
-			await fetch(fetchURL, {
+			const gameResponse = await fetch(fetchURL, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -49,10 +49,14 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
 					isTournament: true,
 					tournamentId,
 					matchId
-				}),
-				// @ts-ignore
-				agent
+				})
 			});
+
+			if (!gameResponse.ok) {
+				const errorText = await gameResponse.text();
+				fastify.log.error({ status: gameResponse.status, error: errorText }, 'Tournament game creation failed');
+				throw new Error(`Game creation failed: ${gameResponse.status}`);
+			}
 
 			console.log(`Tournament match created successfully: roomId=${roomId}`);
 
