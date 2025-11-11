@@ -12,6 +12,7 @@ import { BracketView, bracketLogic } from '../views/BracketView';
 import { HistoryView, historyLogic } from '../views/HistoryView';
 import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
 import { Game3dView } from '../views/Game3dView.ts';
+import { Game3dView_old } from '../views/Game3dView_old.ts';
 import type { NavigationGuard } from './types';
 import {
     logGuard,
@@ -139,6 +140,12 @@ export class Router {
 			path: '/dev3d',
 			view: Game3dView,
 			title: 'game 3D'
+		});
+
+		this.routes.push({
+			path: '/dev3d_old',
+			view: Game3dView_old,
+			title: 'game 3D old'
 		});
 
         this.compileRoutes();

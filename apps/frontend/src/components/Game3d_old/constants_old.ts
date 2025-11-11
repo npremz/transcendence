@@ -24,30 +24,3 @@ export const CAMERA_DEFAULT_RADIUS = 30;
 
 // Positions
 export const PADDLE_DISTANCE_FROM_CENTER = STADIUM_WIDTH / 2 - 50;
-
-
-export const WORLD_3D = {
-	WIDTH: 1920,
-	HEIGHT: 1080,
-	DEPTH: 500,
-	CAMERA_DISTANCE: 1500
-} as const;
-
-export const PADDLE_3D = {
-	WIDTH: 15,
-	HEIGHT: 100,
-	DEPTH: 15,
-	MARGIN: 30,
-	SPEED: 800
-} as const;
-
-export const BALL_3D = {
-} as const;
-
-export const MATERIALS = {
-	PADDLE_COLOR: '#00FFFF',
-	BALL_COLOR: '#FFFFFF',
-	POWERUP_SPLIT: '#FFD700',
-	POWERUP_BLACKOUT: '#1522daff',
-	POWERUP_BLACKHOLE: '#12012eff'
-} as const;
