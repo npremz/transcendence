@@ -9,7 +9,7 @@ const isDevelopment = process.env.NODE_ENV === 'development'
 const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
 
 async function callDatabase(endpoint: string, method: string = 'GET', body?: any) {
-	const host = process.env.VITE_HOST || 'localhost:8443';
+	const host = process.env.BACKEND_HOST || process.env.VITE_HOST || 'localhost:8443';
 	const url = `https://${host}/gamedb${endpoint}`;
 	
 	const options: RequestInit = {
@@ -85,9 +85,9 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 		
 		if (room.players.length === 2)
 		{
-			const host = process.env.VITE_HOST;
-			const create_endpoint = process.env.VITE_CREATEGAME_ENDPOINT;
-			const fetchURL = `https://${host || 'localhost:8443'}${create_endpoint || '/gameback/create'}`;
+			// Use internal Docker service name for backend-to-backend communication
+			const gamebackHost = process.env.GAMEBACK_HOST || 'gameback:3010';
+			const fetchURL = `http://${gamebackHost}/create`;
 
 			const gameId = uuidv4();
 
@@ -104,7 +104,7 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 					player_right_id: room.players[1].id
 				});
 
-				await fetch(fetchURL, {
+				const gameResponse = await fetch(fetchURL, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
@@ -119,9 +119,15 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 							username: rightPlayer.username,
 							selectedSkill: rightPlayer.selectedSkill || 'smash'
 						},
-					}),
-					agent
+					})
 				});
+
+				if (!gameResponse.ok) {
+					const errorText = await gameResponse.text();
+					fastify.log.error({ status: gameResponse.status, error: errorText }, 'Game creation failed');
+					throw new Error(`Game creation failed: ${gameResponse.status}`);
+				}
+
 				room.status = 'playing';
 			}
 			catch (err)

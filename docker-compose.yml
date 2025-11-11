@@ -135,8 +135,12 @@ services:
       - "3030"
     environment:
       - PORT=3030
+      - BACKEND_HOST=nginx:443
+      - GAMEBACK_HOST=gameback:3010
     depends_on:
       database:
+        condition: service_healthy
+      gameback:
         condition: service_healthy
     healthcheck:
       <<: *healthcheck-wget
