@@ -14,6 +14,41 @@ type LocalGameConfig = {
 	right: { id: string; username: string; selectedSkill?: 'smash' | 'dash' };
 };
 
+class GameStatsMonitor {
+	private fpsFrames: number[] = [];
+	private lastFrameTime: number = performance.now();
+	private pingTimes: number[] = [];
+	
+	updateFPS(): number {
+		const now = performance.now();
+		const delta = now - this.lastFrameTime;
+		this.lastFrameTime = now;
+		
+		const fps = 1000 / delta;
+		this.fpsFrames.push(fps);
+		
+		if (this.fpsFrames.length > 60) {
+			this.fpsFrames.shift();
+		}
+		
+		const avgFps = this.fpsFrames.reduce((a, b) => a + b, 0) / this.fpsFrames.length;
+		return Math.round(avgFps);
+	}
+	
+	addPing(ping: number): void {
+		this.pingTimes.push(ping);
+		if (this.pingTimes.length > 10) {
+			this.pingTimes.shift();
+		}
+	}
+	
+	getAveragePing(): number {
+		if (this.pingTimes.length === 0) return 0;
+		const avg = this.pingTimes.reduce((a, b) => a + b, 0) / this.pingTimes.length;
+		return Math.round(avg);
+	}
+}
+
 export class PongGame implements Component {
 	private el: HTMLElement;
 	private canvas: HTMLCanvasElement;
@@ -24,12 +59,15 @@ export class PongGame implements Component {
 	private input: PongInputHandler;
 	private particles: PongParticleSystem;
 	private assets: PongAssets;
-    private debugPanel?: DebugPanel;
-    private debugContainer?: HTMLDivElement;
+	private debugPanel?: DebugPanel;
+	private debugContainer?: HTMLDivElement;
 	private isLocalMode = false;
 	private localConfig?: LocalGameConfig;
 	private leftController?: WSClient;
 	private rightController?: WSClient;
+	private statsMonitor: GameStatsMonitor;
+	private lastPingTime: number = 0;
+	private statsUpdateInterval: number | null = null;
 
 	private state: PublicState = {
 		leftPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
@@ -61,19 +99,18 @@ export class PongGame implements Component {
 		}
 	};
 
-    private timeoutStatus: TimeoutStatus = {
-        leftActive: false,
-        leftRemainingMs: 0,
-        rightActive: false,
-        rightRemainingMs: 0
-    };
+	private timeoutStatus: TimeoutStatus = {
+		leftActive: false,
+		leftRemainingMs: 0,
+		rightActive: false,
+		rightRemainingMs: 0
+	};
 
 	private animationFrameId: number | null = null;
 	private lastScore = { left: 0, right: 0 };
 	private lastBallPositions: Array<{x: number; y: number; vx: number; vy: number}> = [];
-    private isDebugMode: boolean = false;
+	private isDebugMode: boolean = false;
 	private gameOverHandled: boolean = false;
-
 
 	constructor(element: HTMLElement) {
 		this.el = element;
@@ -81,7 +118,7 @@ export class PongGame implements Component {
 		const canvas = this.el.querySelector('#pong-canvas') as HTMLCanvasElement | null;
 		if (!canvas)
 		{
-			throw new Error('PongGame: canvas or button not found in the component.');
+			throw new Error('PongGame: canvas not found in the component.');
 		}
 		this.canvas = canvas;
 
@@ -96,6 +133,7 @@ export class PongGame implements Component {
 		this.particles = new PongParticleSystem();
 		this.assets = new PongAssets();
 		this.input = new PongInputHandler(this.net, this.secondaryNet);
+		this.statsMonitor = new GameStatsMonitor();
 
 		this.setupNetworkHandlers();
 		if (this.secondaryNet) {
@@ -103,9 +141,65 @@ export class PongGame implements Component {
 		}
 		this.setupEventHandlers();
 		this.connectToServer();
-
 		this.startAnimationLoop();
+		this.startStatsMonitoring();
+	}
 
+	private startStatsMonitoring(): void {
+		// Mettre à jour les stats toutes les 500ms
+		this.statsUpdateInterval = setInterval(() => {
+			this.updateStatsDisplay();
+		}, 500) as unknown as number;
+		
+		// Envoyer des pings toutes les 2 secondes
+		setInterval(() => {
+			this.sendPing();
+		}, 2000);
+	}
+	
+	private sendPing(): void {
+		this.lastPingTime = Date.now();
+		this.net.sendPing();
+	}
+	
+	private updateStatsDisplay(): void {
+		// FPS
+		const fps = this.statsMonitor.updateFPS();
+		const fpsElement = document.getElementById('fps-value');
+		if (fpsElement) {
+			fpsElement.textContent = fps.toString();
+			fpsElement.className = fps >= 55 ? 'stat-good' : fps >= 30 ? 'stat-medium' : 'stat-bad';
+		}
+		
+		// Ping
+		const ping = this.statsMonitor.getAveragePing();
+		const pingElement = document.getElementById('ping-value');
+		if (pingElement) {
+			pingElement.textContent = ping > 0 ? `${ping}ms` : '--ms';
+			pingElement.className = ping < 50 ? 'stat-good' : ping < 100 ? 'stat-medium' : 'stat-bad';
+		}
+		
+		// Connection status
+		const wsState = this.net['ws']?.readyState;
+		const statusElement = document.getElementById('connection-status');
+		const wsIndicator = document.getElementById('ws-indicator');
+		const connectionIndicator = document.getElementById('connection-indicator');
+		
+		if (statusElement && wsIndicator && connectionIndicator) {
+			if (wsState === WebSocket.OPEN) {
+				statusElement.textContent = 'CONNECTION: STABLE';
+				wsIndicator.className = 'w-2 h-2 bg-green-400 rounded-full animate-pulse';
+				connectionIndicator.className = 'status-indicator w-3 h-3 bg-green-400 rounded-full';
+			} else if (wsState === WebSocket.CONNECTING) {
+				statusElement.textContent = 'CONNECTION: CONNECTING...';
+				wsIndicator.className = 'w-2 h-2 bg-yellow-400 rounded-full animate-pulse';
+				connectionIndicator.className = 'status-indicator w-3 h-3 bg-yellow-400 rounded-full';
+			} else {
+				statusElement.textContent = 'CONNECTION: DISCONNECTED';
+				wsIndicator.className = 'w-2 h-2 bg-red-400 rounded-full animate-pulse';
+				connectionIndicator.className = 'status-indicator w-3 h-3 bg-red-400 rounded-full';
+			}
+		}
 	}
 
 	private setupNetworkHandlers(): void {
@@ -152,8 +246,8 @@ export class PongGame implements Component {
 			}
 
 			Object.assign(this.state, s);
-            if (this.debugPanel && this.isDebugMode) 
-            {
+			if (this.debugPanel && this.isDebugMode) 
+			{
 				this.debugPanel.updateStats(s, this.particles.getParticles().length);
 			}
 		};
@@ -202,27 +296,32 @@ export class PongGame implements Component {
 			
 			if (isTournament && tournamentId)
 			{
-                this.handleTournamentGameOver(winner, tournamentId);
-            }
+				this.handleTournamentGameOver(winner, tournamentId);
+			}
 			else
 			{
 				this.handleQuickplayGameOver(winner);
 			}
 		};
-        this.net.onWelcome = this.createWelcomeHandler(this.net);
+
+		this.net.onPong = (serverTime: number) => {
+			const roundTripTime = Date.now() - this.lastPingTime;
+			this.statsMonitor.addPing(roundTripTime);
+		};
+
+		this.net.onWelcome = this.createWelcomeHandler(this.net);
 	}
 
-    private enableDebugMode(): void {
+	private enableDebugMode(): void {
 		this.isDebugMode = true;
 		console.log('Debug Mode Enabled!');
 
-        const container = document.createElement('div');
-        container.id = 'debug-panel-container';
-        container.style.marginTop = '16px';
+		const container = document.createElement('div');
+		container.id = 'debug-panel-container';
+		container.style.marginTop = '16px';
 
-		 this.canvas.insertAdjacentElement('afterend', container);
-         this.debugContainer = container;
-        
+		this.canvas.insertAdjacentElement('afterend', container);
+		this.debugContainer = container;
 
 		const callbacks: DebugPanelCallbacks = {
 			onActivatePowerUp: (type) => this.debugActivatePowerUp(type),
@@ -241,44 +340,44 @@ export class PongGame implements Component {
 		this.debugPanel.open();
 	}
 
-    private debugActivatePowerUp(type: 'split' | 'blackout' | 'blackhole' | 'random'): void {
-        const types = ['split', 'blackout', 'blackhole'] as const;
-        const finalType = type === 'random' ? types[Math.floor(Math.random() * types.length)] : type;
-        this.net.debugActivatePowerUp(finalType);
-    }
+	private debugActivatePowerUp(type: 'split' | 'blackout' | 'blackhole' | 'random'): void {
+		const types = ['split', 'blackout', 'blackhole'] as const;
+		const finalType = type === 'random' ? types[Math.floor(Math.random() * types.length)] : type;
+		this.net.debugActivatePowerUp(finalType);
+	}
 
-    private debugClearPowerUps(): void {
-        this.net.debugClearPowerUps();
-    }
+	private debugClearPowerUps(): void {
+		this.net.debugClearPowerUps();
+	}
 
-    private debugChangeScore(side: 'left' | 'right', amount: number): void {
-        this.net.debugScoreChange(side, amount);
-    }
+	private debugChangeScore(side: 'left' | 'right', amount: number): void {
+		this.net.debugScoreChange(side, amount);
+	}
 
-    private debugResetScore(): void {
-        this.net.debugResetScore();
-    }
+	private debugResetScore(): void {
+		this.net.debugResetScore();
+	}
 
-    private debugSetScore(left: number, right: number): void {
-        this.net.debugSetScore(left, right);
-    }
+	private debugSetScore(left: number, right: number): void {
+		this.net.debugSetScore(left, right);
+	}
 
-    private debugBallControl(action: 'add' | 'remove' | 'reset'): void {
-        this.net.debugBallControl(action);
-    }
+	private debugBallControl(action: 'add' | 'remove' | 'reset'): void {
+		this.net.debugBallControl(action);
+	}
 
-    private debugBallSpeedControl(action: 'multiply' | 'divide' | 'freeze'): void {
-        this.net.debugBallSpeed(action);
-    }
+	private debugBallSpeedControl(action: 'multiply' | 'divide' | 'freeze'): void {
+		this.net.debugBallSpeed(action);
+	}
 
-    private debugTimeControl(action: 'slow' | 'fast' | 'normal'): void {
-        const scale = action === 'slow' ? 0.5 : action === 'fast' ? 2 : 1;
-        this.net.debugTimeScale(scale);
-    }
+	private debugTimeControl(action: 'slow' | 'fast' | 'normal'): void {
+		const scale = action === 'slow' ? 0.5 : action === 'fast' ? 2 : 1;
+		this.net.debugTimeScale(scale);
+	}
 
-    private debugChangeSkill(side: 'left' | 'right', skill: 'smash' | 'dash'): void {
-        this.net.debugChangeSkill(side, skill);
-    }
+	private debugChangeSkill(side: 'left' | 'right', skill: 'smash' | 'dash'): void {
+		this.net.debugChangeSkill(side, skill);
+	}
 
 	private triggerScreenShake(): void 
 	{
@@ -307,24 +406,25 @@ export class PongGame implements Component {
 		
 		shake();
 	}
+
 	private handleTournamentGameOver(winner: 'left' | 'right', tournamentId: string) {
-        const amILeft = this.net.side === 'left';
-        const didIWin = (amILeft && winner === 'left') || (!amILeft && winner === 'right');
+		const amILeft = this.net.side === 'left';
+		const didIWin = (amILeft && winner === 'left') || (!amILeft && winner === 'right');
 
-        this.state.isGameOver = true;
-        this.state.winner = winner;
+		this.state.isGameOver = true;
+		this.state.winner = winner;
 
-        const message = didIWin 
-            ? 'Victoire ! Redirection vers les brackets...' 
-            : 'Défaite... Redirection vers les brackets...';
-        
-        console.log(message);
+		const message = didIWin 
+			? 'Victoire ! Redirection vers les brackets...' 
+			: 'Défaite... Redirection vers les brackets...';
+		
+		console.log(message);
 
-        setTimeout(() => {
+		setTimeout(() => {
 			sessionStorage.removeItem('gameWsURL');
-            window.location.href = `/tournament/${tournamentId}`;
-        }, 3000);
-    }
+			window.location.href = `/tournament/${tournamentId}`;
+		}, 3000);
+	}
 
 	private handleQuickplayGameOver(winner: 'left' | 'right') {
 		const amILeft = this.net.side === 'left';
@@ -374,6 +474,12 @@ export class PongGame implements Component {
 			const forfeitBtn = document.getElementById('forfeit-btn');
 			if (forfeitBtn) {
 				forfeitBtn.addEventListener('click', this.handleForfeit);
+			}
+		} else {
+			// Cacher le bouton forfeit en mode local
+			const forfeitBtn = document.getElementById('forfeit-btn');
+			if (forfeitBtn) {
+				forfeitBtn.style.display = 'none';
 			}
 		}
 
@@ -455,7 +561,7 @@ export class PongGame implements Component {
 					this.enableDebugMode();
 				}
 			}
-        };
+		};
 	}
 
 	private handleResize = (): void => {
@@ -542,6 +648,10 @@ export class PongGame implements Component {
 			cancelAnimationFrame(this.animationFrameId);
 			this.animationFrameId = null;
 		}
+		if (this.statsUpdateInterval !== null) {
+			clearInterval(this.statsUpdateInterval);
+			this.statsUpdateInterval = null;
+		}
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('pong:togglePause', this.handleTogglePause);
 		
@@ -570,25 +680,8 @@ export class PongGame implements Component {
 			this.debugContainer = undefined;
 		}
 	}
-
 }
 
 export function Pong(): string {
-	const isLocal = !!sessionStorage.getItem('localGameConfig');
-	const centerContent = isLocal
-		? '<div class="text-sm font-semibold text-white/60">Partie locale</div>'
-		: `<button id="forfeit-btn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
-			Surrender
-		</button>`;
-
-	return `
-		<div class="container ml-auto mr-auto flex flex-col items-center" data-component="pong-game">
-			<div class="w-full flex justify-between items-center px-8 mb-4">
-				<div id="player-left-name" class="text-xl font-bold">Player 1</div>
-				${centerContent}
-				<div id="player-right-name" class="text-xl font-bold">Player 2</div>
-			</div>
-			<canvas id="pong-canvas"></canvas>
-		</div>
-	`;
+	return '';
 }

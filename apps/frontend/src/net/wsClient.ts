@@ -38,25 +38,27 @@ type ServerMsg =
 	| {type: 'gameover'; winner: 'left' | 'right'; isTournament?: boolean; tournamentId?: string}
 	| {type: 'pong'; t: number};
 
+// apps/frontend/src/net/wsClient.ts
 export class WSClient {
 	private ws?: WebSocket;
 	side: 'left' | 'right' = 'left';
 
 	isTournament: boolean = false;
-    tournamentId?: string;
+	tournamentId?: string;
 	playerNames: {left?: string; right?: string} = {};
 	private playerIdOverride?: string;
 
 	onState?: (s: PublicState) => void;
 	onCountdown?: (v: number) => void;
 	onGameOver?: (w: 'left' | 'right', isTournament?: boolean, tournamentId?: string) => void;
-    onPaused?: () => void;
-    onResumed?: () => void;
-    onTimeoutStatus?: (status: {
-        left: {active: boolean; remainingMs: number};
-        right: {active: boolean; remainingMs: number}
-    }) => void;
-    onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => void;
+	onPaused?: () => void;
+	onResumed?: () => void;
+	onTimeoutStatus?: (status: {
+		left: {active: boolean; remainingMs: number};
+		right: {active: boolean; remainingMs: number}
+	}) => void;
+	onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => void;
+	onPong?: (serverTime: number) => void;
 
 	connect(url?: string, options?: { playerId?: string }) {
 		const host = import.meta.env.VITE_HOST
@@ -65,13 +67,13 @@ export class WSClient {
 					: undefined;
 		const finalUrl = url ?? defaultUrl;
 		this.playerIdOverride = options?.playerId;
-        if (!finalUrl)
-        {
-            console.warn('WSClient: no URL provided and no defaultUrl');
-            return;
-        }
-        console.log('WSClient: connecting to', finalUrl);
-        this.ws = new WebSocket(finalUrl);
+		if (!finalUrl)
+		{
+			console.warn('WSClient: no URL provided and no defaultUrl');
+			return;
+		}
+		console.log('WSClient: connecting to', finalUrl);
+		this.ws = new WebSocket(finalUrl);
 		this.ws.onopen = () => {
 			const playerId = this.playerIdOverride ?? window.simpleAuth.getPlayerId();
 			console.log('WebSocket opened, sending logIn with ID:', playerId);
@@ -92,7 +94,7 @@ export class WSClient {
 					console.log('Welcome from server');
 					this.side = msg.side;
 					this.playerNames = msg.players || {};
-                    this.onWelcome?.(msg.side, msg.players);
+					this.onWelcome?.(msg.side, msg.players);
 					break;
 				case 'state':
 					this.onState?.(msg.state);
@@ -111,6 +113,9 @@ export class WSClient {
 					break;
 				case 'gameover':
 					this.onGameOver?.(msg.winner, msg.isTournament, msg.tournamentId);
+					break;
+				case 'pong':
+					this.onPong?.(msg.t);
 					break;
 			}
 		};
@@ -136,56 +141,60 @@ export class WSClient {
 		this.ws?.send(JSON.stringify({ type: 'forfeit' }));
 	}
 
-    debugActivatePowerUp(kind: 'split' | 'blackout' | 'blackhole') {
-        this.ws?.send(JSON.stringify({ 
-        type: 'debug', 
-        action: 'activate_powerup', 
-        payload: { kind } 
-        }));
-    }
+	sendPing() {
+		this.ws?.send(JSON.stringify({ type: 'ping', t: Date.now() }));
+	}
 
-    debugClearPowerUps() {
-        this.ws?.send(JSON.stringify({ type: 'debug', action: 'clear_powerups' }));
-    }
+	debugActivatePowerUp(kind: 'split' | 'blackout' | 'blackhole') {
+		this.ws?.send(JSON.stringify({ 
+			type: 'debug', 
+			action: 'activate_powerup', 
+			payload: { kind } 
+		}));
+	}
 
-    debugScoreChange(side: 'left' | 'right', amount: number) {
-        this.ws?.send(JSON.stringify({
-            type: 'debug', action: 'score_change', payload: { side, amount }
-        }));
-    }
+	debugClearPowerUps() {
+		this.ws?.send(JSON.stringify({ type: 'debug', action: 'clear_powerups' }));
+	}
 
-    debugResetScore() {
-        this.ws?.send(JSON.stringify({ type: 'debug', action: 'reset_score' }));
-    }
+	debugScoreChange(side: 'left' | 'right', amount: number) {
+		this.ws?.send(JSON.stringify({
+			type: 'debug', action: 'score_change', payload: { side, amount }
+		}));
+	}
 
-    debugSetScore(left: number, right: number) {
-        this.ws?.send(JSON.stringify({
-            type: 'debug', action: 'set_score', payload: { left, right }
-        }));
-    }
+	debugResetScore() {
+		this.ws?.send(JSON.stringify({ type: 'debug', action: 'reset_score' }));
+	}
 
-    debugBallControl(mode: 'add' | 'remove' | 'reset') {
-        this.ws?.send(JSON.stringify({
-            type: 'debug', action: 'ball_control', payload: { mode }
-        }));
-    }
+	debugSetScore(left: number, right: number) {
+		this.ws?.send(JSON.stringify({
+			type: 'debug', action: 'set_score', payload: { left, right }
+		}));
+	}
 
-    debugBallSpeed(mode: 'multiply' | 'divide' | 'freeze') {
-        this.ws?.send(JSON.stringify({
-            type: 'debug', action: 'ball_speed', payload: { mode }
-        }));
-    }
+	debugBallControl(mode: 'add' | 'remove' | 'reset') {
+		this.ws?.send(JSON.stringify({
+			type: 'debug', action: 'ball_control', payload: { mode }
+		}));
+	}
 
-    debugTimeScale(scale: number) {
-        this.ws?.send(JSON.stringify({
-            type: 'debug', action: 'time_scale', payload: { scale }
-        }));
-    }
+	debugBallSpeed(mode: 'multiply' | 'divide' | 'freeze') {
+		this.ws?.send(JSON.stringify({
+			type: 'debug', action: 'ball_speed', payload: { mode }
+		}));
+	}
+
+	debugTimeScale(scale: number) {
+		this.ws?.send(JSON.stringify({
+			type: 'debug', action: 'time_scale', payload: { scale }
+		}));
+	}
 
 	debugChangeSkill(side: 'left' | 'right', skill: 'smash' | 'dash') {
 		this.ws?.send(JSON.stringify({
-            type: 'debug', action: 'change_skill', payload: { side, skill }
-        }));
+			type: 'debug', action: 'change_skill', payload: { side, skill }
+		}));
 	}
 
 	disconnect(): void {
@@ -209,7 +218,6 @@ export class WSClient {
 	cleanup(): void {
 		console.log('WSClient: cleaning up...');
 		
-		// 1. Nettoyer tous les callbacks custom
 		this.onState = undefined;
 		this.onCountdown = undefined;
 		this.onGameOver = undefined;
@@ -217,11 +225,10 @@ export class WSClient {
 		this.onResumed = undefined;
 		this.onTimeoutStatus = undefined;
 		this.onWelcome = undefined;
+		this.onPong = undefined;
 		
-		// 2. Fermer la connexion WebSocket
 		this.disconnect();
 		
-		// 3. Reset les données
 		this.side = 'left';
 		this.isTournament = false;
 		this.tournamentId = undefined;
