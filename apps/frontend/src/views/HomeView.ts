@@ -132,7 +132,8 @@ export const HomeView: ViewFunction = () => {
                     <!-- QuickPlay Card -->
                     <a href="/play" 
                        class="game-card group relative p-8 md:p-12 neon-border hover:cursor-pointer"
-                       id="quickplay-card">
+                       id="quickplay-card"
+                       style="opacity: 0; transform: translateY(100px);">
                         <!-- Icône -->
                         <div class="text-6xl md:text-7xl mb-6 text-center text-blue-500">
                             ⚡
@@ -156,7 +157,8 @@ export const HomeView: ViewFunction = () => {
                     <!-- Tournois Card -->
                     <a href="/tournament" 
                        class="game-card group relative p-8 md:p-12 neon-border hover:cursor-pointer"
-                       id="tournament-card">
+                       id="tournament-card"
+                       style="opacity: 0; transform: translateY(100px);">
                         <!-- Icône -->
                         <div class="text-6xl md:text-7xl mb-6 text-center">
                             🏆
@@ -200,36 +202,39 @@ export const HomeView: ViewFunction = () => {
 };
 
 export const homeLogic = (): CleanupFunction => {
-    // Animation d'entrée avec GSAP
-    gsap.from('#main-title', {
-        scale: 0.5,
-        opacity: 0,
+    // Animation d'entrée du titre
+    gsap.to('#main-title', {
+        scale: 1,
+        opacity: 1,
         duration: 1,
         ease: 'back.out(1.7)'
     });
 
-    gsap.from('#stats-display > div', {
-        y: 50,
-        opacity: 0,
+    // Animation des stats (depuis l'état initial dans le HTML)
+    gsap.to('#stats-display > div', {
+        y: 0,
+        opacity: 1,
         duration: 0.8,
         stagger: 0.2,
         ease: 'power2.out'
     });
 
-    gsap.fromTo('.game-card', 
-        {
-            y: 100,
-            opacity: 0
-        },
-        {
-            y: 0,
-            opacity: 1,
-            duration: 1,
-            stagger: 0.3,
-            ease: 'power3.out',
-            delay: 0.5
-        }
-    );
+    // Animation des cartes de jeu - UNE SEULE FOIS
+    gsap.to('#quickplay-card', {
+        y: 0,
+        opacity: 1,
+        duration: 1,
+        delay: 0.5,
+        ease: 'power3.out'
+    });
+
+    gsap.to('#tournament-card', {
+        y: 0,
+        opacity: 1,
+        duration: 1,
+        delay: 0.8,
+        ease: 'power3.out'
+    });
 
     // Animation des chiffres (compteur)
     const animateCounter = (id: string, target: number) => {

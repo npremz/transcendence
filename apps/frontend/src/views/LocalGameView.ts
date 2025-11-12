@@ -1,4 +1,5 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
+import { gsap } from "gsap";
 
 const makeId = () => {
 	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -9,71 +10,322 @@ const makeId = () => {
 
 export const LocalGameView: ViewFunction = () => {
 	return `
-		<div class="min-h-screen w-full flex items-center justify-center bg-[#04071A] text-white">
-			<div class="w-full max-w-3xl mx-4 p-8 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
-				<h1 class="text-3xl font-bold mb-6 text-center">Partie Locale</h1>
-				<p class="text-white/70 text-center mb-8">
-					Jouez à deux sur le même écran. Choisissez vos pseudos et compétences, puis lancez la partie.
-				</p>
-				<form id="local-game-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<div class="space-y-4">
-						<h2 class="text-xl font-semibold text-white/80">Joueur 1 (gauche)</h2>
-						<div>
-							<label class="block text-sm text-white/60 mb-1" for="local-left-name">Pseudo</label>
-							<input id="local-left-name" name="left-name" type="text" maxlength="24" placeholder="Joueur 1"
-								class="w-full px-4 py-2 rounded bg-white/10 border border-white/10 focus:border-white/40 focus:outline-none" />
-						</div>
-						<div>
-							<label class="block text-sm text-white/60 mb-1" for="local-left-skill">Compétence</label>
-							<select id="local-left-skill" name="left-skill"
-								class="w-full px-4 py-2 rounded bg-white/10 border border-white/10 focus:border-white/40 focus:outline-none">
-								<option value="smash">Smash</option>
-								<option value="dash">Dash</option>
-							</select>
-						</div>
-							<div class="text-sm text-white/50">
-								<span class="font-semibold text-white/70">Contrôles:</span> W / S pour bouger, Espace pour la compétence.
-							</div>
-					</div>
-					<div class="space-y-4">
-						<h2 class="text-xl font-semibold text-white/80">Joueur 2 (droite)</h2>
-						<div>
-							<label class="block text-sm text-white/60 mb-1" for="local-right-name">Pseudo</label>
-							<input id="local-right-name" name="right-name" type="text" maxlength="24" placeholder="Joueur 2"
-								class="w-full px-4 py-2 rounded bg-white/10 border border-white/10 focus:border-white/40 focus:outline-none" />
-						</div>
-						<div>
-							<label class="block text-sm text-white/60 mb-1" for="local-right-skill">Compétence</label>
-							<select id="local-right-skill" name="right-skill"
-								class="w-full px-4 py-2 rounded bg-white/10 border border-white/10 focus:border-white/40 focus:outline-none">
-								<option value="smash">Smash</option>
-								<option value="dash">Dash</option>
-							</select>
-						</div>
-							<div class="text-sm text-white/50">
-								<span class="font-semibold text-white/70">Contrôles:</span> ↑ / ↓ pour bouger, Entrée pour la compétence.
-							</div>
-					</div>
-					<div class="md:col-span-2 flex flex-col gap-3">
-						<button type="submit"
-							class="px-6 py-3 rounded bg-blue-500/80 hover:bg-blue-500 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-							Lancer la partie
-						</button>
-						<button type="button" id="local-back-btn"
-							class="px-6 py-3 rounded border border-white/20 hover:bg-white/10 transition-all font-semibold text-white/80">
-							Retour
-						</button>
-						<p id="local-game-feedback" class="text-sm text-red-400 h-5"></p>
-					</div>
-				</form>
+		<!-- Fond avec grille animée -->
+		<div class="fixed inset-0 bg-black overflow-hidden">
+			<!-- Grille de fond -->
+			<div class="absolute inset-0" style="
+				background-image: 
+					linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+					linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+				background-size: 50px 50px;
+				animation: gridMove 20s linear infinite;
+			"></div>
+			
+			<style>
+				@keyframes gridMove {
+					0% { transform: translateY(0); }
+					100% { transform: translateY(50px); }
+				}
+				
+				@keyframes neonPulse {
+					0%, 100% { 
+						text-shadow: 
+							0 0 10px rgba(59, 130, 246, 0.8),
+							0 0 20px rgba(59, 130, 246, 0.6),
+							0 0 30px rgba(59, 130, 246, 0.4);
+					}
+					50% { 
+						text-shadow: 
+							0 0 20px rgba(59, 130, 246, 1),
+							0 0 30px rgba(59, 130, 246, 0.8),
+							0 0 40px rgba(59, 130, 246, 0.6);
+					}
+				}
+				
+				@keyframes scanline {
+					0% { transform: translateY(-100%); }
+					100% { transform: translateY(100vh); }
+				}
+				
+				.pixel-font {
+					font-family: 'Courier New', monospace;
+					font-weight: bold;
+					letter-spacing: 0.1em;
+				}
+				
+				.neon-border {
+					box-shadow: 
+						0 0 10px rgba(59, 130, 246, 0.5),
+						inset 0 0 10px rgba(59, 130, 246, 0.2);
+					border: 3px solid rgba(59, 130, 246, 0.8);
+				}
+				
+				.neon-border:hover {
+					box-shadow: 
+						0 0 20px rgba(59, 130, 246, 0.8),
+						inset 0 0 20px rgba(59, 130, 246, 0.3);
+					border-color: rgba(59, 130, 246, 1);
+				}
+				
+				.neon-input {
+					background: rgba(15, 23, 42, 0.6);
+					border: 2px solid rgba(59, 130, 246, 0.5);
+					color: #60A5FA;
+					transition: all 0.3s ease;
+				}
+				
+				.neon-input:focus {
+					outline: none;
+					border-color: rgba(59, 130, 246, 1);
+					box-shadow: 
+						0 0 10px rgba(59, 130, 246, 0.5),
+						inset 0 0 10px rgba(59, 130, 246, 0.2);
+					background: rgba(15, 23, 42, 0.8);
+				}
+				
+				.neon-input::placeholder {
+					color: rgba(96, 165, 250, 0.4);
+				}
+
+				.player-card {
+					transition: all 0.3s ease;
+					background: rgba(15, 23, 42, 0.6);
+					backdrop-filter: blur(10px);
+				}
+
+				.player-card:hover {
+					transform: translateY(-5px);
+					background: rgba(30, 41, 59, 0.8);
+				}
+
+				.control-hint {
+					background: rgba(59, 130, 246, 0.1);
+					border: 1px solid rgba(59, 130, 246, 0.3);
+				}
+			</style>
+			
+			<!-- Scanline effect -->
+			<div class="absolute inset-0 pointer-events-none opacity-10">
+				<div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
 			</div>
+		</div>
+
+		<!-- Contenu principal -->
+		<div class="relative z-10 min-h-screen flex flex-col">
+			<!-- Header avec BackButton -->
+			<header class="flex justify-between items-center px-8 py-6">
+				<button 
+					onclick="history.back()" 
+					class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
+					id="back-button"
+				>
+					← BACK
+				</button>
+				
+				<!-- Bouton Sign in -->
+				<a href="/login" 
+				   class="pixel-font bg-blue-500 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
+					<span>SIGN IN</span>
+				</a>
+			</header>
+
+			<!-- Zone centrale -->
+			<div class="flex-1 flex items-center justify-center px-4 py-12">
+				<div class="w-full max-w-6xl">
+					
+					<!-- Titre principal -->
+					<div class="text-center mb-12">
+						<h1 class="pixel-font text-5xl md:text-7xl text-blue-400 mb-4" 
+							style="animation: neonPulse 2s ease-in-out infinite;"
+							id="local-title">
+							🎮 LOCAL GAME 🎮
+						</h1>
+						<p class="pixel-font text-lg text-blue-300 opacity-80">
+							>>> TWO PLAYERS - ONE SCREEN <<<
+						</p>
+					</div>
+
+					<!-- Formulaire -->
+					<form id="local-game-form" class="space-y-8">
+						<!-- Grid pour les deux joueurs -->
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+							
+							<!-- Joueur 1 (Gauche) -->
+							<div class="player-card neon-border rounded-lg p-6" id="player-left-card" style="opacity: 0; transform: translateX(-100px);">
+								<!-- Header -->
+								<div class="flex items-center justify-between mb-6">
+									<h2 class="pixel-font text-2xl text-blue-400 ">PLAYER 1</h2>
+								</div>
+
+								<!-- Username -->
+								<div class="mb-4">
+									<label for="local-left-name" class="block mb-2 pixel-font text-sm text-blue-300">
+										USERNAME:
+									</label>
+									<input 
+										type="text" 
+										id="local-left-name" 
+										name="left-name"
+										placeholder="Player 1"
+										maxlength="24"
+										required
+										class="w-full p-3 rounded pixel-font text-sm neon-input"
+									/>
+								</div>
+
+								<!-- Skill -->
+								<div class="mb-6">
+									<label for="local-left-skill" class="block mb-2 pixel-font text-sm text-blue-300">
+										SKILL:
+									</label>
+									<select 
+										id="local-left-skill" 
+										name="left-skill"
+										class="w-full p-3 rounded pixel-font text-sm neon-input cursor-pointer"
+									>
+										<option value="smash">💥 Smash</option>
+										<option value="dash">⚡ Dash</option>
+									</select>
+								</div>
+
+								<!-- Contrôles -->
+								<div class="control-hint rounded-lg p-4">
+									<div class="pixel-font text-xs text-blue-300 mb-2 font-bold">
+										CONTROLS:
+									</div>
+									<div class="space-y-1 pixel-font text-xs text-blue-300/80">
+										<div>W / S → Move paddle</div>
+										<div>SPACE → Use skill</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- Joueur 2 (Droite) -->
+							<div class="player-card neon-border rounded-lg p-6" id="player-right-card" style="opacity: 0; transform: translateX(100px);">
+								<!-- Header -->
+								<div class="flex items-center justify-between mb-6">
+									<h2 class="pixel-font text-2xl text-red-500">PLAYER 2</h2>
+								</div>
+
+								<!-- Username -->
+								<div class="mb-4">
+									<label for="local-right-name" class="block mb-2 pixel-font text-sm text-red-400">
+										USERNAME:
+									</label>
+									<input 
+										type="text" 
+										id="local-right-name" 
+										name="right-name"
+										placeholder="Player 2"
+										maxlength="24"
+										required
+										class="w-full p-3 rounded pixel-font text-sm neon-input"
+									/>
+								</div>
+
+								<!-- Skill -->
+								<div class="mb-6">
+									<label for="local-right-skill" class="block mb-2 pixel-font text-sm text-red-400">
+										SKILL:
+									</label>
+									<select 
+										id="local-right-skill" 
+										name="right-skill"
+										class="w-full p-3 rounded pixel-font text-sm neon-input cursor-pointer"
+									>
+										<option value="smash">💥 Smash</option>
+										<option value="dash">⚡ Dash</option>
+									</select>
+								</div>
+
+								<!-- Contrôles -->
+								<div class="control-hint rounded-lg p-4">
+									<div class="pixel-font text-xs text-red-400 mb-2 font-bold">
+										CONTROLS:
+									</div>
+									<div class="space-y-1 pixel-font text-xs text-red-400/80">
+										<div>↑ / ↓ → Move paddle</div>
+										<div>ENTER → Use skill</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Message d'erreur -->
+						<div id="local-game-feedback" class="hidden neon-border bg-red-500/10 rounded-lg p-4 text-center">
+							<p class="pixel-font text-sm text-red-400"></p>
+						</div>
+
+						<!-- Boutons d'action -->
+						<div class="flex flex-col gap-4">
+							<!-- Bouton START -->
+							<button 
+								type="submit" 
+								class="w-full py-4 pixel-font text-lg neon-border bg-green-500/20 text-green-400 hover:bg-green-500/40 hover:text-white transition-all relative group"
+								id="start-btn"
+							>
+								<span class="relative z-10">>>> START GAME <<<</span>
+								<div class="absolute inset-0 bg-green-500/0 group-hover:bg-green-500/10 transition-all rounded"></div>
+							</button>
+
+							<!-- Bouton RETOUR -->
+							<button 
+								type="button" 
+								id="local-back-btn"
+								class="w-full py-3 pixel-font text-sm neon-border bg-transparent text-blue-400 hover:bg-blue-500/20 transition-all"
+							>
+								← BACK TO MENU
+							</button>
+						</div>
+					</form>
+
+					<!-- Info supplémentaire -->
+					<div class="mt-8 text-center">
+						<div class="inline-block neon-border bg-blue-500/10 rounded-lg px-6 py-3">
+							<p class="pixel-font text-xs text-blue-300/60">
+								💡 TIP: Choose different skills for more strategic gameplay!
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Footer -->
+			<footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
+				<p>© 2025 PONG - SKILL ISSUE</p>
+			</footer>
 		</div>
 	`;
 };
 
 export const localGameLogic = (): CleanupFunction | void => {
+	// Animations d'entrée - UNE SEULE FOIS
+	gsap.to('#local-title', {
+		scale: 1,
+		opacity: 1,
+		duration: 1,
+		ease: 'back.out(1.7)'
+	});
+
+	gsap.to('#player-left-card', {
+		x: 0,
+		opacity: 1,
+		duration: 0.8,
+		delay: 0.3,
+		ease: 'power2.out'
+	});
+
+	gsap.to('#player-right-card', {
+		x: 0,
+		opacity: 1,
+		duration: 0.8,
+		delay: 0.3,
+		ease: 'power2.out'
+	});
+
 	const form = document.getElementById('local-game-form') as HTMLFormElement | null;
 	const feedbackEl = document.getElementById('local-game-feedback');
+	const feedbackText = feedbackEl?.querySelector('p');
 	const backBtn = document.getElementById('local-back-btn');
 
 	if (!form) {
@@ -84,20 +336,46 @@ export const localGameLogic = (): CleanupFunction | void => {
 	const createEndpoint = import.meta.env.VITE_CREATEGAME_ENDPOINT || '/gameback/create';
 	const gameEndpoint = import.meta.env.VITE_GAME_ENDPOINT || '/gameback/game';
 
+	const showError = (message: string) => {
+		if (feedbackEl && feedbackText) {
+			feedbackText.textContent = message;
+			feedbackEl.classList.remove('hidden');
+			
+			// Animation de l'erreur
+			gsap.fromTo(feedbackEl, 
+				{ scale: 0.8, opacity: 0 },
+				{ scale: 1, opacity: 1, duration: 0.3, ease: 'back.out' }
+			);
+		}
+	};
+
+	const hideError = () => {
+		if (feedbackEl) {
+			feedbackEl.classList.add('hidden');
+		}
+	};
+
 	const backHandler = () => {
-		window.router?.navigateTo('/startgame');
+		window.router?.navigateTo('/play');
 	};
 
 	backBtn?.addEventListener('click', backHandler);
 
 	const submitHandler = async (event: Event) => {
 		event.preventDefault();
+		hideError();
+		
 		const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
 		if (submitBtn) {
 			submitBtn.disabled = true;
-		}
-		if (feedbackEl) {
-			feedbackEl.textContent = '';
+			
+			// Animation du bouton
+			gsap.to(submitBtn, {
+				scale: 0.95,
+				duration: 0.1,
+				yoyo: true,
+				repeat: 1
+			});
 		}
 
 		const leftName = (form.querySelector<HTMLInputElement>('input[name="left-name"]')?.value.trim() || 'Player 1');
@@ -121,7 +399,7 @@ export const localGameLogic = (): CleanupFunction | void => {
 			});
 
 			if (!response.ok) {
-				throw new Error(`Erreur serveur (${response.status})`);
+				throw new Error(`Server error (${response.status})`);
 			}
 
 			const wsUrl = `wss://${host}${gameEndpoint}/${roomId}`;
@@ -132,13 +410,12 @@ export const localGameLogic = (): CleanupFunction | void => {
 				right: { id: rightId, username: rightName, selectedSkill: rightSkill }
 			}));
 
+			// Redirection immédiate
 			window.router?.navigateTo(`/game/${roomId}`);
 		} catch (err) {
 			console.error('Failed to create local game session', err);
-			if (feedbackEl) {
-				feedbackEl.textContent = err instanceof Error ? err.message : 'Impossible de créer la partie locale.';
-			}
-		} finally {
+			showError(err instanceof Error ? err.message : 'Unable to create local game.');
+			
 			if (submitBtn) {
 				submitBtn.disabled = false;
 			}

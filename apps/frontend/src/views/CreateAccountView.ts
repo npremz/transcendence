@@ -1,4 +1,3 @@
-
 import type { ViewFunction } from "../router/types";
 import { gsap } from "gsap";
 

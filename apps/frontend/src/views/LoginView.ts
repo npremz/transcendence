@@ -1,4 +1,3 @@
-// apps/frontend/src/views/LoginView.ts
 import type { ViewFunction } from "../router/types";
 import { gsap } from "gsap";
 

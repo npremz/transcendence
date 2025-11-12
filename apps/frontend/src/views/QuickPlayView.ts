@@ -158,7 +158,7 @@ export const QuickPlayView: ViewFunction = () => {
 								<div class="absolute top-3 right-3 pixel-font text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded border border-green-500/50">
 									✓ SELECTED
 								</div>
-
+							
 								<!-- Icône -->
 								<div class="text-5xl mb-4 text-center">💥</div>
 								
@@ -171,7 +171,7 @@ export const QuickPlayView: ViewFunction = () => {
 								<p class="pixel-font text-sm text-blue-300 opacity-80 text-center leading-relaxed flex-grow">
 									Charge a powerful strike that sends the ball back faster and can surprise your opponent
 								</p>
-
+							
 								<!-- Stats -->
 								<div class="mt-4 pt-4 border-t border-blue-500/30 space-y-2">
 									<div class="flex justify-between pixel-font text-xs text-blue-300">
@@ -183,12 +183,14 @@ export const QuickPlayView: ViewFunction = () => {
 										<span class="text-green-400">★★★★☆</span>
 									</div>
 								</div>
-
-								<!-- Flèches décoratives -->
-								<div class="absolute bottom-3 left-3 text-red-500 text-xl opacity-50">←</div>
-								<div class="absolute bottom-3 right-3 text-red-500 text-xl opacity-50">→</div>
+							
+								<!-- Flèches décoratives MIEUX POSITIONNÉES -->
+								<div class="absolute bottom-2 left-0 right-0 flex justify-between px-3 pointer-events-none">
+									<div class="text-red-500 text-sm opacity-80">←</div>
+									<div class="text-red-500 text-sm opacity-80">→</div>
+								</div>
 							</div>
-
+							
 							<!-- Dash Card -->
 							<div 
 								class="skill-card neon-border rounded-lg p-6 relative" 
@@ -199,9 +201,9 @@ export const QuickPlayView: ViewFunction = () => {
 								<div class="absolute top-3 right-3 pixel-font text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded border border-green-500/50 hidden">
 									✓ SELECTED
 								</div>
-
+							
 								<!-- Icône -->
-								<div class="text-5xl mb-4 text-center">⚡</div>
+								<div class="text-5xl mb-4 text-center text-blue-500">⚡</div>
 								
 								<!-- Titre -->
 								<h3 class="pixel-font text-xl text-blue-400 mb-3 text-center uppercase">
@@ -212,7 +214,7 @@ export const QuickPlayView: ViewFunction = () => {
 								<p class="pixel-font text-sm text-blue-300 opacity-80 text-center leading-relaxed flex-grow">
 									Make a quick move with your paddle to catch difficult balls
 								</p>
-
+							
 								<!-- Stats -->
 								<div class="mt-4 pt-4 border-t border-blue-500/30 space-y-2">
 									<div class="flex justify-between pixel-font text-xs text-blue-300">
@@ -224,10 +226,12 @@ export const QuickPlayView: ViewFunction = () => {
 										<span class="text-green-400">★★★★★</span>
 									</div>
 								</div>
-
-								<!-- Flèches décoratives -->
-								<div class="absolute bottom-3 left-3 text-blue-500 text-xl opacity-50">←</div>
-								<div class="absolute bottom-3 right-3 text-blue-500 text-xl opacity-50">→</div>
+							
+								<!-- Flèches décoratives MIEUX POSITIONNÉES -->
+								<div class="absolute bottom-2 left-0 right-0 flex justify-between px-3 pointer-events-none">
+									<div class="text-blue-500 text-sm opacity-80">←</div>
+									<div class="text-blue-500 text-sm opacity-80">→</div>
+								</div>
 							</div>
 						</div>
 
