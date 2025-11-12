@@ -148,7 +148,18 @@ export const GameView: ViewFunction = () => {
 					position: absolute;
 					width: 20px;
 					height: 20px;
+				}
+
+				.corner-decoration-blue {
 					border: 2px solid rgba(59, 130, 246, 0.5);
+				}
+
+				.corner-decoration-green {
+					border: 2px solid rgba(34, 197, 94, 0.5);
+				}
+
+				.corner-decoration-red {
+					border: 2px solid rgba(239, 68, 68, 0.5);
 				}
 
 				.corner-tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
@@ -234,9 +245,9 @@ export const GameView: ViewFunction = () => {
 					<div class="mb-6 grid grid-cols-3 gap-4 items-center">
 						
 						<!-- Player Left -->
-						<div class="player-info neon-border-green bg-blue-500/5 backdrop-blur-sm rounded-lg p-4 relative">
-							<div class="corner-decoration corner-tl"></div>
-							<div class="corner-decoration corner-bl"></div>
+						<div class="player-info neon-border bg-blue-500/5 backdrop-blur-sm rounded-lg p-4 relative">
+							<div class="corner-decoration corner-decoration-blue corner-tl"></div>
+							<div class="corner-decoration corner-decoration-blue corner-bl"></div>
 							
 							<div class="flex items-center gap-3">
 								<div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center border-2 border-blue-500/50">
@@ -265,8 +276,8 @@ export const GameView: ViewFunction = () => {
 
 						<!-- Player Right -->
 						<div class="player-info neon-border-red bg-red-500/5 backdrop-blur-sm rounded-lg p-4 relative">
-							<div class="corner-decoration corner-tr"></div>
-							<div class="corner-decoration corner-br"></div>
+							<div class="corner-decoration corner-decoration-red corner-tr"></div>
+							<div class="corner-decoration corner-decoration-red corner-br"></div>
 							
 							<div class="flex items-center gap-3 justify-end">
 								<div class="flex-1 text-right">
