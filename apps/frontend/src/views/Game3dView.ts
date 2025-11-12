@@ -1,12 +1,16 @@
 import type { ViewFunction } from "../router/types";
-import { Game3d, initGame3d } from "../components/Game3d/Game3d";
+import { Game3dComponent, Game3D } from "../components/Game3d/Game3d";
 import { gsap } from "gsap";
 import { BackButton } from "../components/Button";
 
  export const Game3dView: ViewFunction = () => {
 	setTimeout(() => {
-		initGame3d();
-	}, 0);
+		const gameContainer = document.getElementById('game-content');
+		if (gameContainer) {
+			new Game3D(gameContainer);
+		} else
+			console.error('Game container not found');
+	}, 100);
 	// // Animation d'entrée
 	// setTimeout(() => {
 	// 	initGame3d();
@@ -106,7 +110,7 @@ import { BackButton } from "../components/Button";
 		</div>
 		<div id="game-content">
 			${BackButton()}
-			${Game3d()}
+			${Game3dComponent()}
 		</div>
 	`
 
