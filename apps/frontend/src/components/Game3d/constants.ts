@@ -34,20 +34,51 @@ export const WORLD_3D = {
 } as const;
 
 export const PADDLE_3D = {
-	WIDTH: 15,
-	HEIGHT: 100,
-	DEPTH: 15,
+	START_POSX: 900,
+	START_POSY: 15,
+	START_POSZ: 0,
+	X: 15,
+	Y: 15,
+	Z: 100,
 	MARGIN: 30,
-	SPEED: 800
+	SPEED: 800,
+	SCALE_3D: 0.01
 } as const;
 
 export const BALL_3D = {
+	START_POSX: 0,
+	START_POSY: 15,
+	START_POSZ: 0,
+	DIAMETER: 30,
+	SCALE_3D: 0.01,
 } as const;
 
 export const MATERIALS = {
-	PADDLE_COLOR: '#00FFFF',
+	PADDLE_COLOR: '#FFFFFF',
 	BALL_COLOR: '#FFFFFF',
 	POWERUP_SPLIT: '#FFD700',
 	POWERUP_BLACKOUT: '#1522daff',
 	POWERUP_BLACKHOLE: '#12012eff'
+} as const;
+
+export const CAMERA = {
+	INITIAL_ALPHA: -Math.PI / 2,
+	INITIAL_BETA: Math.PI / 3,
+	INITIAL_RADIUS: 30,
+	TARGET: {
+		x: 0,
+		y: 0,
+		z: 0
+	},
+	MIN_RADIUS: 10,
+	MAX_RADIUS: 400,
+	ANIMATION : {
+		START_ALPHA: Math.PI / 2,
+		END_ALPHA: -Math.PI / 2,
+		START_BETA: Math.PI / 6,
+		END_BETA: Math.PI / 3,
+		START_RADIUS: 8,
+		END_RADIUS: 30,
+		DURATION_FRAMES: 180
+	}
 } as const;

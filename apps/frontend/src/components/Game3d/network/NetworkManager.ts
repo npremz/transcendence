@@ -1,0 +1,83 @@
+import { WSClient, type PublicState } from "../../../net/wsClient";
+import type { InputState } from "../types";
+
+export class NetworkManager  {
+	private wsClient: WSClient;
+	private roomId: string;
+	private isConnected: boolean = false;
+
+	// callbacks
+	public onStateUpdate?: (state: PublicState) => void;
+	public onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: any) => void;
+	public onGameOver?: (winner: string, isTournament?: boolean, tournamentId?: string) => void;
+	public onDisconnect?: () => void;
+
+	constructor(roomId: string) {
+		this.roomId = roomId;
+		this.wsClient = new WSClient();
+		this.setupNetworkHandlers();
+	}
+
+	private setupNetworkHandlers() {
+		this.wsClient.onState = (state) => {
+			if (this.onStateUpdate) {
+				this.onStateUpdate(state);
+			}
+		}
+		this.wsClient.onWelcome = (side, playerNames) => {
+			this.isConnected = true;
+			if (this.onWelcome) {
+				this.onWelcome(side, playerNames);
+			}
+		}
+		this.wsClient.onGameOver = (winner, isTournament, tournamentId) => {
+			if (this.onGameOver) {
+				this.onGameOver(winner, isTournament, tournamentId);
+			}
+		}
+	}
+
+	public connect(): void {
+		const storedUrl = sessionStorage.getItem('gameServerURL') || undefined;
+		if (storedUrl) {
+			this.wsClient.connect(storedUrl);
+		} else {
+			const host = import.meta.env.VITE_HOST;
+			const endpoint = import.meta.env.VITE_GAME_ENDPOINT;
+			const fallbackUrl = host && endpoint && this.roomId
+				? `wss://${host}${endpoint}/${this.roomId}`
+				: undefined;
+			this.wsClient.connect(fallbackUrl);
+		}
+	}
+
+	public sendInput(input: InputState): void {
+		if (!this.isConnected) return;
+		const up = input.up;
+		const down = input.down;
+		this.wsClient.sendInput(up, down);
+	}
+
+	public useSkill(): void {
+		if (!this.isConnected) return;
+		this.wsClient.useSkill();
+	}
+
+	public forfeit(): void {
+		if (!this.isConnected) return;
+		const confirmed = confirm('Are you sure you want to forfeit the game?');
+		if (confirmed) this.wsClient.forfeit();
+	}
+
+	public getSide(): 'left' | 'right' | 'spectator' {
+		return this.wsClient.side;
+	}
+
+	public disconnect(): void {
+		this.wsClient.disconnect();
+		this.isConnected = false;
+		if (this.onDisconnect) {
+			this.onDisconnect();
+		}
+	}
+}

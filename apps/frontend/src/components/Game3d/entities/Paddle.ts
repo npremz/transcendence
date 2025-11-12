@@ -1,42 +1,59 @@
-import { Meshbuilder, Vector3, StandardMaterial, Color3, Scene } from '@babylonjs/core';
-import type { Mesh } from '@babylonjs/core';
+// todo: update needed (3d client side)
+// todo: add updateFromState method (server state sync)
+import { MeshBuilder, Vector3, StandardMaterial, Color3, Scene } from '@babylonjs/core';
 import { PADDLE_3D, MATERIALS } from '../constants';
+import { Entity } from './Entity';
+import type { PaddleState } from '../types';
 
-export class Paddle {
-	private mesh: Mesh;
-	private scene: Scene;
-	public y: number = 0;
-	public speed: number = 0;
-	
+export class Paddle extends Entity {
+	private side: 'left' | 'right'; 
+	private targetY: number = 0;
+	private currentZ: number = 0;
+
 	constructor(scene: Scene, side: 'left' | 'right') {
-		this.scene = scene;
-		this.mesh = Meshbuilder.CreateBox(`paddle-${side}`, {
-			width: PADDLE_3D.WIDTH,
-			height: PADDLE_3D.HEIGHT,
-			depth: PADDLE_3D.DEPTH
-		}, scene);
+		super(scene, `paddle-${side}`);
+		this.side = side;
+		this.createMesh();
+	}
+	
+	private createMesh(): void {
+		this.mesh = MeshBuilder.CreateBox(
+			this.id, {
+				width: PADDLE_3D.X * PADDLE_3D.SCALE_3D,
+				height: PADDLE_3D.Y * PADDLE_3D.SCALE_3D,
+				depth: PADDLE_3D.Z * PADDLE_3D.SCALE_3D
+			}, this.scene);
 
-		const xPos = side === 'left' ? -900 : 900;
-		this.mesh.position = new Vector3(xPos, 0, 0);
+		const xPos = this.side === 'left' ? (-PADDLE_3D.START_POSX - PADDLE_3D.MARGIN) * PADDLE_3D.SCALE_3D  : (PADDLE_3D.START_POSX + PADDLE_3D.MARGIN) * PADDLE_3D.SCALE_3D 
+		this.mesh.position = new Vector3(xPos, PADDLE_3D.START_POSY * PADDLE_3D.SCALE_3D, PADDLE_3D.START_POSZ * PADDLE_3D.SCALE_3D);
 
-		const material = new StandardMaterial(`paddle-mat-${side}`, scene);
-		material.diffuseColor = Color3.FromHexString(MATERIALS.PADDLE_COLOR	);
+		const material = new StandardMaterial(`paddle-mat-${this.side}`, this.scene);
+		material.diffuseColor = Color3.FromHexString(MATERIALS.PADDLE_COLOR);
 		this.mesh.material = material;
 	}
 
-	update(newY: number, speed: number): void {
-		this.y = newY;
-		this.speed = speed;
-		this.mesh.position.y = newY;
+	public updateFromState(state: PaddleState): void {
+		this.targetY = state.y;
+		this.currentZ = state.z || 0;
 	}
-	getMesh(): Mesh {
-		return this.mesh;
+
+	public update(): void {
+		// Update logic for the paddle
+		if (!this.mesh) return;
 	}
-	
-	dispose(): void {
-		if (this.mesh) {
-			this.mesh.material.dispose();
+
+	public static getPaddleIntention(keys: { [key: string]: boolean }, side: 'left' | 'right'): number {
+		if (side === 'left') {
+			if (keys['w'] || keys['a']) return 1;
+			if (keys['s'] || keys['d']) return -1;
+		} else {
+			if (keys['w'] || keys['d']) return 1;
+			if (keys['s'] || keys['a']) return -1;
 		}
-		this.mesh.dispose();
+		return 0;
+	}
+
+	public dispose(): void {
+		super.dispose();
 	}
 }
