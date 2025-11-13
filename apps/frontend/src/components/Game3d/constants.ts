@@ -77,8 +77,11 @@ export const CAMERA = {
 		END_ALPHA: -Math.PI / 2,
 		START_BETA: Math.PI / 6,
 		END_BETA: Math.PI / 3,
-		START_RADIUS: 8,
+		START_RADIUS: 80,
 		END_RADIUS: 30,
 		DURATION_FRAMES: 180
-	}
+	},
+	FPS_ALPHA: 0,
+	FPS_BETA: Math.PI / 2.5,
+	FPS_RADIUS: 20
 } as const;

@@ -1,5 +1,7 @@
 import { Paddle } from "../entities/Paddle";
 import { Ball } from "../entities/Ball";
+import { Scoreboard } from "../entities/Scoreboard";
+import { CelebrationSphere } from "../entities/CelebrationSphere";
 import type { Scene } from "@babylonjs/core";
 import type { Game3DState } from "../types";
 
@@ -10,7 +12,12 @@ export class Renderer3D {
 	private paddleLeft!: Paddle;
 	private paddleRight!: Paddle;
 	private balls: Map<string, Ball> = new Map();
-
+	private scoreboard!: Scoreboard;
+	private celebrationSphere!: CelebrationSphere;
+	
+	// Track last score to avoid unnecessary updates
+	private lastScore = { left: 0, right: 0 };
+	
 	constructor(scene: Scene) {
 		this.scene = scene;
 
@@ -18,9 +25,10 @@ export class Renderer3D {
 	}
 
 	private createInitialEntities(): void {
-
 		this.paddleLeft = new Paddle(this.scene, 'left');
 		this.paddleRight = new Paddle(this.scene, 'right');
+		this.scoreboard = new Scoreboard(this.scene);
+		this.celebrationSphere = new CelebrationSphere(this.scene);
 	}
 
 
@@ -33,6 +41,22 @@ export class Renderer3D {
 		}
 
 		this.updateBalls(state.balls);
+
+		// Update scoreboard only if score changed
+		if (this.scoreboard && state.score) {
+			if (state.score.left !== this.lastScore.left || state.score.right !== this.lastScore.right) {
+				// Detect who scored
+				if (state.score.left > this.lastScore.left) {
+					this.celebrationSphere.update();
+				} else if (state.score.right > this.lastScore.right) {
+					this.celebrationSphere.update();
+				}
+				
+				this.scoreboard.updateScore(state.score.left, state.score.right);
+				this.lastScore.left = state.score.left;
+				this.lastScore.right = state.score.right;
+			}
+		}
 	}
 
 	private updateBalls(ballStates: any[]): void {
@@ -65,6 +89,8 @@ export class Renderer3D {
 	public dispose(): void {
 		this.paddleLeft?.dispose();
 		this.paddleRight?.dispose();
+		this.scoreboard?.dispose();
+		this.celebrationSphere?.dispose();
 		this.balls.forEach(ball => ball.dispose());
 		this.balls.clear();
 	}

@@ -48,11 +48,7 @@ export function loadBackgroundSphere(scene: Scene): Mesh {
 
 export function loadCelebrationSphere(scene: Scene): Mesh {
 	// Geometry
-	const sphereCelebration = MeshBuilder.CreateSphere('sphereCelebration', { diameter: 149, sideOrientation: Mesh.BACKSIDE }, scene);
-	const sphereCelebrationMaterial = new StandardMaterial('sphereCelebrationMat', scene);
-	sphereCelebrationMaterial.alpha = 0;
-	sphereCelebrationMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
-	sphereCelebration.material = sphereCelebrationMaterial;
+
 	return sphereCelebration;
 }
 

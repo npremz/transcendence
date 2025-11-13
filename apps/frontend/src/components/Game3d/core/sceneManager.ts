@@ -5,12 +5,13 @@
 // todo: add stadium loading error handling
 // todo: maybe add more types for environment
 
-import { ArcRotateCamera, AxesViewer, Color3, DirectionalLight, Engine, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
+import { Animation, ArcRotateCamera, AxesViewer, Color3, CubicEase, DirectionalLight, EasingFunction, Engine, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
 import { CAMERA } from '../constants';
 
 export class SceneManager {
 	private scene: Scene;
 	private camera: ArcRotateCamera;
+	private cameraViewMode: 'overhead' | 'fps' = 'overhead';
 	private environment: {
 		skybox: Mesh;
 		stadium: {
@@ -153,10 +154,86 @@ export class SceneManager {
 	}
 
 	public playCameraIntro(): void {
-		//todo create animation
-		// const startHorizontalRotation = CAMERA.
+		const startHorizontalRotation = CAMERA.ANIMATION.START_ALPHA;
+		const startVerticalAngle = CAMERA.ANIMATION.START_BETA;
+		const startDistance = CAMERA.ANIMATION.START_RADIUS;
+
+		const finalHorizontalRotation = CAMERA.ANIMATION.END_ALPHA;
+		const finalVerticalAngle = CAMERA.ANIMATION.END_BETA;
+		const finalDistance = CAMERA.ANIMATION.END_RADIUS;
+
+		this.camera.alpha = startHorizontalRotation;
+		this.camera.beta = startVerticalAngle;
+		this.camera.radius = startDistance;
+
+		// CREATE ANIMATIONS
+		const horizontalRotationAnimation = new Animation(
+			'cameraHorizontalRotation',
+			'alpha',
+			60,  //fps
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		const verticalAngleAnimation = new Animation(
+			'cameraVerticalAngle',
+			'beta',
+			60,
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		const distanceAnimation = new Animation(
+			'cameraDistance',
+			'radius',
+			60,
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CONSTANT
+		);
+		
+		// KEYFRAMES
+		const horizontalRotationKeys = [
+			{ frame: 0, value: startHorizontalRotation },
+			{ frame: CAMERA.ANIMATION.DURATION_FRAMES, value: finalHorizontalRotation }
+		];
+		const verticalAngleKeys = [
+			{ frame: 0, value: startVerticalAngle },
+			{ frame: CAMERA.ANIMATION.DURATION_FRAMES, value: finalVerticalAngle }
+		];
+		const distanceKeys = [
+			{ frame: 0, value: startDistance },
+			{ frame: CAMERA.ANIMATION.DURATION_FRAMES, value: finalDistance }
+		];
+		
+		horizontalRotationAnimation.setKeys(horizontalRotationKeys);
+		verticalAngleAnimation.setKeys(verticalAngleKeys);
+		distanceAnimation.setKeys(distanceKeys);
+		
+		// EASING
+		const easingFunction = new CubicEase();
+		easingFunction.setEasingMode(EasingFunction.EASINGMODE_EASEOUT);
+		horizontalRotationAnimation.setEasingFunction(easingFunction);
+		verticalAngleAnimation.setEasingFunction(easingFunction);
+		distanceAnimation.setEasingFunction(easingFunction);
+		
+		// START ANIMATION
+		this.camera.animations = [horizontalRotationAnimation, verticalAngleAnimation, distanceAnimation];
+		this.scene.beginAnimation(this.camera, 0, CAMERA.ANIMATION.DURATION_FRAMES, false);
 	}
-	
+
+	// add the toggle of the camera view (fps or overhead) that will be called from the game engine when the user press V
+	public toggleCameraView(playerSide: 'left' | 'right' | 'spectator'): void {
+		if (this.cameraViewMode === 'overhead') {
+			this.cameraViewMode = 'fps';
+			this.camera.alpha = playerSide === 'left' ? CAMERA.FPS_ALPHA + Math.PI : CAMERA.FPS_ALPHA;
+			this.camera.beta = CAMERA.FPS_BETA;
+			this.camera.radius = CAMERA.FPS_RADIUS;
+		} else {
+			this.cameraViewMode = 'overhead';
+			this.camera.alpha = CAMERA.INITIAL_ALPHA;
+			this.camera.beta = CAMERA.INITIAL_BETA;
+			this.camera.radius = CAMERA.INITIAL_RADIUS;
+		}
+	}
+
 	public getCamera(): ArcRotateCamera {
 		return this.camera;
 	}

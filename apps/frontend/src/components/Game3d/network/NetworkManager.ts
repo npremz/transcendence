@@ -53,8 +53,18 @@ export class NetworkManager  {
 
 	public sendInput(input: InputState): void {
 		if (!this.isConnected) return;
-		const up = input.up;
-		const down = input.down;
+		const side = this.wsClient.side;
+
+		let up = false;
+		let down = false;
+
+		if (side === 'left') {
+			up = input.up || input.left;
+			down = input.down || input.right;
+		} else {
+			up = input.up || input.right;
+			down = input.down || input.left;
+		}
 		this.wsClient.sendInput(up, down);
 	}
 
@@ -65,8 +75,7 @@ export class NetworkManager  {
 
 	public forfeit(): void {
 		if (!this.isConnected) return;
-		const confirmed = confirm('Are you sure you want to forfeit the game?');
-		if (confirmed) this.wsClient.forfeit();
+		this.wsClient.forfeit();
 	}
 
 	public getSide(): 'left' | 'right' | 'spectator' {
@@ -74,10 +83,11 @@ export class NetworkManager  {
 	}
 
 	public disconnect(): void {
-		this.wsClient.disconnect();
+		this.wsClient.cleanup();
 		this.isConnected = false;
-		if (this.onDisconnect) {
-			this.onDisconnect();
-		}
+		this.onStateUpdate = undefined;
+		this.onWelcome = undefined;
+		this.onGameOver = undefined;
+		this.onDisconnect = undefined;
 	}
 }

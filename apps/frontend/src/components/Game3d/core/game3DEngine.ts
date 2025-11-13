@@ -3,7 +3,9 @@ import { SceneManager } from './sceneManager';
 import { Renderer3D } from './renderer3D';
 import { InputSystem } from '../systems/InputSystem';
 import { NetworkManager } from '../network/NetworkManager';
-// import type { ISystem } from '../types';
+import { UIManager } from '../ui/UIManager';
+import { StateAdapter } from '../utils/StateAdapter';
+
 export class Game3DEngine {
 	private engine: Engine;
 	private sceneManager: SceneManager;
@@ -17,11 +19,20 @@ export class Game3DEngine {
 	// systems
 	private inputSystem!: InputSystem;
 	private networkManager!: NetworkManager;
+	private uiManager!: UIManager;
 
 	constructor(canvas: HTMLCanvasElement) {
 		this.canvas = canvas;
 		this.roomId = this.getRoomIdFromURL();
-		this.engine = new Engine(canvas, true);
+		
+		// Create engine with performance optimizations
+		this.engine = new Engine(canvas, true, {
+			preserveDrawingBuffer: false,
+			stencil: false,
+			antialias: true,
+			powerPreference: 'high-performance'
+		});
+		
 		this.sceneManager = new SceneManager(this.engine, canvas);
 		this.renderer = new Renderer3D(this.sceneManager.getScene());
 		this.initializeSystems();
@@ -34,30 +45,55 @@ export class Game3DEngine {
 	private initializeSystems(): void {
 		this.inputSystem = new InputSystem(this.canvas);
 		this.networkManager = new NetworkManager(this.roomId);
-
-		this.inputSystem.initialize();
+		this.uiManager = new UIManager();
 		
+		this.inputSystem.initialize();
 		this.setupNetworkCallbacks();
 	}
-
 	private setupNetworkCallbacks(): void {
-		this.networkManager.onStateUpdate = (state) => {
-			this.renderer.updateFromState(state); // wip: arrived here
+		// Update game state every frame
+		this.networkManager.onStateUpdate = (serverState) => {
+			const game3DState = StateAdapter.toGame3DState(serverState);
+			this.renderer.updateFromState(game3DState);
 		};
 
+		// Handle initial connection
 		this.networkManager.onWelcome = (side, playerNames) => {
-			// Handle UI updates for welcome message
-			console.log(`You are playing as ${side}. Players: ${playerNames.join(', ')}`);
+			this.uiManager.updatePlayerNames(side, playerNames);
 		};
 
 		this.networkManager.onGameOver = (winner, isTournament, tournamentId) => {
-			// Handle game over message from the network
-			console.log(`Game Over! Winner: ${winner}. Tournament: ${isTournament}, ID: ${tournamentId}`);
+			this.pause();
+			
+			const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement;
+			if (forfeitBtn) {
+				forfeitBtn.disabled = true;
+			}
+			
+			const side = this.networkManager.getSide();
+			const overlay = this.uiManager.showGameOver(winner as 'left' | 'right', side);
+
+			overlay.querySelector('#game-over-return-btn')?.addEventListener('click', () => {
+				sessionStorage.removeItem('gameWsURL');
+				this.uiManager.removeOverlay(overlay);
+				window.router?.navigateTo('/play');
+			});
+			// todo check for tournament
 		};
 
+		// Handle disconnection
 		this.networkManager.onDisconnect = () => {
 			this.pause();
-			console.log('Disconnected from server.');
+			console.error('[Game3D] Disconnected from server');
+			
+			const overlay = this.uiManager.showDisconnect();
+			
+			// Add click handler
+			overlay.querySelector('#disconnect-return-btn')?.addEventListener('click', () => {
+				sessionStorage.removeItem('gameWsURL');
+				this.uiManager.removeOverlay(overlay);
+				window.router?.navigateTo('/');
+			});
 		};
 	}
 
@@ -71,22 +107,47 @@ export class Game3DEngine {
 			this.update();
 			this.render();
 		});
-
+		this.sceneManager.playCameraIntro();
 		this.networkManager.connect();
+		this.setupForfeitButton();
 
 		window.addEventListener('resize', this.handleResize);
 	}
+	
+	private setupForfeitButton(): void {
+		const forfeitBtn = document.getElementById('forfeit-btn');
+		if (forfeitBtn) {
+			forfeitBtn.addEventListener('click', this.handleForfeit);
+		}
+	}
 
 	private update(): void {
-		// const input = this.inputSystem.getInput(); //todo
-		// this.networkManager.sendInput(input); //todo
+		// Get player input
+		const input = this.inputSystem.getInput();
+		
+		// Send input to server
+		this.networkManager.sendInput(input);
 
+		// Handle skill activation (Space key)
+		if (this.inputSystem.isSkillKeyPressed()) {
+			this.networkManager.useSkill();
+		}
+
+		// Handle camera toggle (V key)
+		if (this.inputSystem.isCameraToggleKeyPressed()) {
+			this.sceneManager.toggleCameraView(this.networkManager.getSide());
+		}
 	}
 
 	private handleResize = (): void => {
 		this.engine.resize();
 	}
 
+	private handleForfeit = (): void => {
+		const confirmed = confirm('Are you sure you want to forfeit the game?');
+		if (confirmed)
+			this.networkManager.forfeit();
+	}
 	private render(): void {
 		this.renderer.render();
 	}
@@ -103,10 +164,22 @@ export class Game3DEngine {
 	public dispose(): void {
 		this.isRunning = false;
 		this.engine.stopRenderLoop();
-		this.sceneManager.dispose();
-		this.engine.dispose();
+		
+		// Clean up forfeit button
+		const forfeitBtn = document.getElementById('forfeit-btn');
+		if (forfeitBtn) {
+			forfeitBtn.removeEventListener('click', this.handleForfeit);
+		}
+		
+		// Dispose all systems
 		this.inputSystem.dispose();
 		this.networkManager.disconnect();
+		this.uiManager.dispose();
+		
+		// Dispose rendering
+		this.renderer.dispose();
+		this.sceneManager.dispose();
+		this.engine.dispose();
 		
 		window.removeEventListener('resize', this.handleResize);
 	}
