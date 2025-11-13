@@ -7,8 +7,6 @@ import type { PaddleState } from '../types';
 
 export class Paddle extends Entity {
 	private side: 'left' | 'right'; 
-	private targetY: number = 0;
-	private currentZ: number = 0;
 
 	constructor(scene: Scene, side: 'left' | 'right') {
 		super(scene, `paddle-${side}`);
@@ -33,8 +31,9 @@ export class Paddle extends Entity {
 	}
 
 	public updateFromState(state: PaddleState): void {
-		this.targetY = state.y;
-		this.currentZ = state.z || 0;
+		if (!this.mesh) return;
+		
+		this.mesh.position.z = -(state.y - 540) * 0.01;
 	}
 
 	public update(): void {

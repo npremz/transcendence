@@ -1,15 +1,12 @@
 import type { Scene } from "@babylonjs/core/scene";
 import { Entity } from "./Entity";
-import { Color3, Mesh, MeshBuilder, StandardMaterial, Vector3 } from "@babylonjs/core";
+import { Color3, MeshBuilder, StandardMaterial } from "@babylonjs/core";
 import type { BallState } from "../types";
 import { BALL_3D } from "../constants";
 
 export class Ball extends Entity {
-	private targetPosition: Vector3;
 	constructor(scene: Scene, id: string) {
 		super(scene, id);
-		this.targetPosition = new Vector3(0, 0, 0);
-		// this.targetPosition = new Vector3(BALL_3D.START_POSX, BALL_3D.START_POSY, BALL_3D.START_POSZ);
 		this.createMesh();
 	}
 
@@ -21,11 +18,24 @@ export class Ball extends Entity {
 	}
 
 	public updateFromState(state: BallState): void {
-		this.targetPosition.set(state.x, state.y, state.z);
+		if (!this.mesh) return;
+		const x3d = this.converter2DXto3DX(state.x);
+		const z3d = this.converter2DYto3DZ(state.y);
+
+		this.mesh.position.x = x3d;
+		this.mesh.position.y = BALL_3D.START_POSY * BALL_3D.SCALE_3D;
+		this.mesh.position.z = z3d;
+	}
+	
+	private converter2DXto3DX(x2d: number): number {
+		return (x2d - 1920 / 2) * BALL_3D.SCALE_3D;
+	}
+
+	private converter2DYto3DZ(y2d: number): number {
+		return -(y2d - 1080 / 2) * BALL_3D.SCALE_3D;
 	}
 
 	public update(): void {
-		// Update logic for the ball
 		if (!this.mesh) return;
 	}
 

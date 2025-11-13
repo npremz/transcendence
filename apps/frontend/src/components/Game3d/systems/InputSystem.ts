@@ -3,6 +3,7 @@ import type { ISystem, InputState } from '../types';
 export class InputSystem implements ISystem {
 	private keys: Map<string, boolean> = new Map();
 	private canvas: HTMLCanvasElement;
+	private vKeyWasPressed: boolean = false;
 
 	constructor(canvas: HTMLCanvasElement) {
 		this.canvas = canvas;
@@ -41,7 +42,18 @@ export class InputSystem implements ISystem {
 	}
 
 	public isCameraToggleKeyPressed(): boolean {
-		return this.isKeyPressed('v');
+		const isVPressed = this.isKeyPressed('v');
+		
+		if (isVPressed && !this.vKeyWasPressed) {
+			this.vKeyWasPressed = true;
+			return true;
+		}
+		
+		if (!isVPressed) {
+			this.vKeyWasPressed = false;
+		}
+		
+		return false;
 	}
 
 	public update(): void {

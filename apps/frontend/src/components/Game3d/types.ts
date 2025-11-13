@@ -4,6 +4,10 @@ export interface Game3DState {
 	paddleLeft: PaddleState;
 	paddleRight: PaddleState;
 	balls: BallState[];
+	score: {
+		left: number;
+		right: number;
+	};
 }
 
 export interface IEntity {

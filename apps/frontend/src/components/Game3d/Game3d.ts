@@ -1,10 +1,3 @@
-import '@babylonjs/loaders'; // for gltf
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight, ShadowGenerator, Mesh, AxesViewer, Animation, CubicEase, EasingFunction, ParticleSystem } from '@babylonjs/core';
-import { WSClient, type PublicState } from '../../net/wsClient';
-import { WORLD_HEIGHT } from "../PongGame/constants";
-import { Game3dConnector, type Game3dMeshes } from './Game3dConnector';
-import { loadBall, loadBackgroundSphere, loadCelebrationSphere, loadStadium, type StadiumMeshes , loadScoreboard, type ScoreboardMeshes, updateScoreTexture, createGoalCelebrationParticles, triggerGoalCelebration} from './AssetLoader';
-
 import { Game3DEngine } from './core/game3DEngine';
 
 interface Game3DConfig {
