@@ -8,6 +8,15 @@ export interface Game3DState {
 		left: number;
 		right: number;
 	};
+	selectedSkills: {
+		left: 'smash' | 'dash';
+		right: 'smash' | 'dash';
+	};
+	skillStates: {
+		left: {cooldownRemaining: number; lastActivationAt: number};
+		right: {cooldownRemaining: number; lastActivationAt: number};
+	};
+	clock: number;
 }
 
 export interface IEntity {
@@ -40,6 +49,12 @@ export interface BallState {
 	vy: number;
 	vz: number;
 	speed: number;
+}
+
+export interface PowerUpState {
+	id: string;
+	type: 'blackout' | 'split' | 'blackhole';
+	position: Vector3;
 }
 
 export interface ISystem {

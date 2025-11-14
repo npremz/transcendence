@@ -7,7 +7,10 @@ export class StateAdapter {
 			paddleLeft: this.convertPaddle(serverState.leftPaddle),
 			paddleRight: this.convertPaddle(serverState.rightPaddle),
 			balls: this.convertBalls(serverState.balls),
-			score: serverState.score
+			score: serverState.score,
+			selectedSkills: serverState.selectedSkills,
+			skillStates: serverState.skillStates,
+			clock: serverState.clock
 		};
 	}
 

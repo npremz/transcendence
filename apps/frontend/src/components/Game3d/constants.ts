@@ -53,6 +53,12 @@ export const BALL_3D = {
 	SCALE_3D: 0.01,
 } as const;
 
+export const POWERUP_3D = {
+	// cylinder
+	RADIUS: 10,
+	HEIGHT: 5,
+} as const;
+
 export const MATERIALS = {
 	PADDLE_COLOR: '#FFFFFF',
 	BALL_COLOR: '#FFFFFF',
