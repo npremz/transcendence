@@ -17,6 +17,7 @@ export interface Game3DState {
 		right: {cooldownRemaining: number; lastActivationAt: number};
 	};
 	clock: number;
+	powerUpState: PowerUpsState;
 }
 
 export interface IEntity {
@@ -51,10 +52,18 @@ export interface BallState {
 	speed: number;
 }
 
-export interface PowerUpState {
-	id: string;
-	type: 'blackout' | 'split' | 'blackhole';
-	position: Vector3;
+export interface PowerUpsState {
+	allPowerUps: {x: number, y: number, radius: number, type: string}[];
+	splitActive: boolean;
+	clock: number;
+	blackoutLeft: boolean;
+	blackoutRight: boolean;
+	blackoutLeftIntensity: number;
+	blackoutRightIntensity: number;
+	blackholeActive: boolean;
+	blackholeProgress: number;
+	blackholeCenterX: number;
+	blackholeCenterY: number;
 }
 
 export interface ISystem {

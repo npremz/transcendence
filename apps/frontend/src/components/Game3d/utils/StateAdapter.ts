@@ -10,7 +10,8 @@ export class StateAdapter {
 			score: serverState.score,
 			selectedSkills: serverState.selectedSkills,
 			skillStates: serverState.skillStates,
-			clock: serverState.clock
+			clock: serverState.clock,
+			powerUpState: this.convertPowerUps(serverState)
 		};
 	}
 
@@ -33,6 +34,22 @@ export class StateAdapter {
 			vz: 0,
 			speed: Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy),
 		}));
+	}
+
+	private static convertPowerUps(serverState: PublicState) {
+		return {
+			allPowerUps: serverState.powerUps,
+			splitActive: serverState.splitActive,
+			clock: serverState.clock,
+			blackoutLeft: serverState.blackoutLeft,
+			blackoutRight: serverState.blackoutRight,
+			blackoutLeftIntensity: serverState.blackoutLeftIntensity,
+			blackoutRightIntensity: serverState.blackoutRightIntensity,
+			blackholeActive: serverState.blackholeActive,
+			blackholeProgress: serverState.blackholeProgress,
+			blackholeCenterX: serverState.blackholeCenterX,
+			blackholeCenterY: serverState.blackholeCenterY
+		}
 	}
 
 	public static getExtendedInfo(serverState: PublicState) {

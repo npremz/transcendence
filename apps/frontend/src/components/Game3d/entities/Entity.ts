@@ -41,6 +41,9 @@ export abstract class Entity implements IEntity, IRenderable {
 		if (this.isDisposed) return;
 		this.isDisposed = true;
 		if (this.mesh) {
+			if (this.mesh.material) {
+				this.mesh.material.dispose();
+			}
 			this.mesh.dispose();
 			this.mesh = undefined;
 		}
