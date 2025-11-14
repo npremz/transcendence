@@ -14,7 +14,8 @@ export class Renderer3D {
 	private balls: Map<string, Ball> = new Map();
 	private scoreboard!: Scoreboard;
 	private celebrationSphere!: CelebrationSphere;
-	
+	private currentState!: Game3DState;
+
 	// Track last score to avoid unnecessary updates
 	private lastScore = { left: 0, right: 0 };
 	
@@ -33,11 +34,12 @@ export class Renderer3D {
 
 
 	public updateFromState(state: Game3DState): void {
+		this.currentState = state;
 		if (this.paddleLeft) {
-			this.paddleLeft.updateFromState(state.paddleLeft);
+			this.paddleLeft.updateFromState(state.paddleLeft, this.smashOffsetX?.('left'));
 		}
 		if (this.paddleRight) {
-			this.paddleRight.updateFromState(state.paddleRight);
+			this.paddleRight.updateFromState(state.paddleRight, this.smashOffsetX?.('right'));
 		}
 
 		this.updateBalls(state.balls);
@@ -58,6 +60,27 @@ export class Renderer3D {
 			}
 		}
 	}
+
+	private smashOffsetX = (side: 'left' | 'right'): number => {
+		const skillType = side === 'left' ? this.currentState.selectedSkills.left : this.currentState.selectedSkills.right;
+		if (skillType !== 'smash') 
+		{
+			return 0;
+		}
+
+		const skillState = side === 'left' ? this.currentState.skillStates.left : this.currentState.skillStates.right;
+		const dur = 0.12;
+		const dt = Math.max(0, this.currentState.clock - skillState.lastActivationAt);
+
+		if (dt <= 0 || dt > dur) 
+		{
+			return 0;
+		}
+		const t = dt / dur;
+		const amp = 0.5;
+		const dir = side === 'left' ? 1 : -1;
+		return dir * amp * Math.sin(Math.PI * t);
+	};
 
 	private updateBalls(ballStates: any[]): void {
 		const currentBallIds = new Set(ballStates.map(b => b.id) || 'main');

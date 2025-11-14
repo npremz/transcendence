@@ -30,10 +30,14 @@ export class Paddle extends Entity {
 		this.mesh.material = material;
 	}
 
-	public updateFromState(state: PaddleState): void {
+	public updateFromState(state: PaddleState, smashOffsetX?: number): void {
 		if (!this.mesh) return;
 		
 		this.mesh.position.z = -(state.y - 540) * 0.01;
+
+		// SMASH OFFSET
+		const xPos = this.side === 'left' ? (-PADDLE_3D.START_POSX - PADDLE_3D.MARGIN) * PADDLE_3D.SCALE_3D  : (PADDLE_3D.START_POSX + PADDLE_3D.MARGIN) * PADDLE_3D.SCALE_3D 
+		this.mesh.position.x = xPos + (smashOffsetX || 0);
 	}
 
 	public update(): void {
