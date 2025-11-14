@@ -1,19 +1,20 @@
 import { Color3, MeshBuilder, Scene, StandardMaterial } from "@babylonjs/core";
 import { Entity } from "./Entity";
-import { POWERUP_3D } from "../constants";
-import type { PowerUpState } from "../types";
+import { powerUpConverter2DXto3DX, powerUpConverter2DYto3DZ } from "../utils/mathHelper";
 
-export class PowerUps extends Entity {
+export class PowerUp extends Entity {
 	private type: 'blackout' | 'split' | 'blackhole';
+	private state: {x: number; y: number; radius: number; type: string};
 
-	constructor(scene: Scene, id: string, type: 'blackout' | 'split' | 'blackhole') {
+	constructor(scene: Scene, id: string, state: {x: number; y: number; radius: number; type: string}) {
 		super(scene, id);
-		this.type = type;
+		this.state = state;
+		this.type = state.type as 'blackout' | 'split' | 'blackhole';
 		this.createMesh();
 	}
 	private createMesh(): void {
-		// create a cylinder
-		this.mesh = MeshBuilder.CreateCylinder(this.id, { diameter: POWERUP_3D.RADIUS * 2, height: POWERUP_3D.HEIGHT }, this.scene);
+		// create a cylinder - use BALL_3D.SCALE_3D to match coordinate system
+		this.mesh = MeshBuilder.CreateCylinder(this.id, { diameter: this.state.radius * 2 * 0.01, height: 1 }, this.scene);
 		const material = new StandardMaterial(`powerup-mat-${this.id}`, this.scene);
 
 		switch (this.type) {
@@ -31,5 +32,23 @@ export class PowerUps extends Entity {
 				break;
 		}
 		this.mesh.material = material;
+	}
+
+	public updateState(state: {x: number; y: number; radius: number; type: string}): void {
+		this.state = state;
+	}
+
+	public update(): void {
+		// maybe for the animation
+		if (!this.mesh) return;
+		this.mesh.position.x = powerUpConverter2DXto3DX(this.state.x);
+		this.mesh.position.z = powerUpConverter2DYto3DZ(this.state.y);
+		this.mesh.position.y = 1;
+		// float
+		this.mesh.position.y += Math.sin(Date.now() * 0.003) * 0.2;
+	}
+
+	public dispose(): void {
+		super.dispose();
 	}
 }

@@ -3,7 +3,8 @@ import { Ball } from "../entities/Ball";
 import { Scoreboard } from "../entities/Scoreboard";
 import { CelebrationSphere } from "../entities/CelebrationSphere";
 import type { Scene } from "@babylonjs/core";
-import type { Game3DState } from "../types";
+import type { Game3DState, PowerUpsState } from "../types";
+import { PowerUp } from "../entities/powerUp";
 
 export class Renderer3D {
 	private scene: Scene;
@@ -15,6 +16,7 @@ export class Renderer3D {
 	private scoreboard!: Scoreboard;
 	private celebrationSphere!: CelebrationSphere;
 	private currentState!: Game3DState;
+	private powerUpMeshes: Map<string, PowerUp> = new Map(); //todo add !
 
 	// Track last score to avoid unnecessary updates
 	private lastScore = { left: 0, right: 0 };
@@ -41,9 +43,8 @@ export class Renderer3D {
 		if (this.paddleRight) {
 			this.paddleRight.updateFromState(state.paddleRight, this.smashOffsetX?.('right'));
 		}
-
 		this.updateBalls(state.balls);
-
+		this.updatePowerUps(state.powerUpState);
 		// Update scoreboard only if score changed
 		if (this.scoreboard && state.score) {
 			if (state.score.left !== this.lastScore.left || state.score.right !== this.lastScore.right) {
@@ -105,6 +106,33 @@ export class Renderer3D {
 		});
 	}
 
+	private updatePowerUps(state: PowerUpsState): void {
+		const currentPowerUpIds = new Set<string>();
+
+		for (let i = 0; i < state.allPowerUps.length; i++) {
+			const powerUp = state.allPowerUps[i];
+			const id = `powerup-${powerUp.type}-${Math.round(powerUp.x * 100)}-${Math.round(powerUp.y * 100)}`;;
+			currentPowerUpIds.add(id);
+
+			let mesh = this.powerUpMeshes.get(id);
+
+			if (!mesh) {
+				mesh = new PowerUp(this.scene, id, powerUp);
+				this.powerUpMeshes.set(id, mesh);
+			}
+			// Update the powerup's state, then call update to apply position
+			mesh.updateState(powerUp);
+			mesh.update();
+		}
+
+		for (const [id, mesh] of this.powerUpMeshes.entries()) {
+			if (!currentPowerUpIds.has(id)) {
+				mesh.dispose();
+				this.powerUpMeshes.delete(id);
+			}
+		}
+	}
+
 	public render(): void {
 		this.scene.render();
 	}
@@ -116,5 +144,7 @@ export class Renderer3D {
 		this.celebrationSphere?.dispose();
 		this.balls.forEach(ball => ball.dispose());
 		this.balls.clear();
+		this.powerUpMeshes.forEach(p => p.dispose());
+		this.powerUpMeshes.clear();
 	}
 }
