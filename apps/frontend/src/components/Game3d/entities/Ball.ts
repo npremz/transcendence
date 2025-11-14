@@ -3,6 +3,7 @@ import { Entity } from "./Entity";
 import { Color3, MeshBuilder, StandardMaterial } from "@babylonjs/core";
 import type { BallState } from "../types";
 import { BALL_3D } from "../constants";
+import { ballConverter2DXto3DX, ballConverter2DYto3DZ } from "../utils/mathHelper";
 
 export class Ball extends Entity {
 	constructor(scene: Scene, id: string) {
@@ -19,20 +20,12 @@ export class Ball extends Entity {
 
 	public updateFromState(state: BallState): void {
 		if (!this.mesh) return;
-		const x3d = this.converter2DXto3DX(state.x);
-		const z3d = this.converter2DYto3DZ(state.y);
+		const x3d = ballConverter2DXto3DX(state.x);
+		const z3d = ballConverter2DYto3DZ(state.y);
 
 		this.mesh.position.x = x3d;
 		this.mesh.position.y = BALL_3D.START_POSY * BALL_3D.SCALE_3D;
 		this.mesh.position.z = z3d;
-	}
-	
-	private converter2DXto3DX(x2d: number): number {
-		return (x2d - 1920 / 2) * BALL_3D.SCALE_3D;
-	}
-
-	private converter2DYto3DZ(y2d: number): number {
-		return -(y2d - 1080 / 2) * BALL_3D.SCALE_3D;
 	}
 
 	public update(): void {
