@@ -5,7 +5,7 @@
 // todo: add stadium loading error handling
 // todo: maybe add more types for environment
 
-import { Animation, ArcRotateCamera, AxesViewer, Color3, CubicEase, DirectionalLight, DynamicTexture, EasingFunction, Engine, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
+import { Animation, ArcRotateCamera, AxesViewer, Color3, Color4, CubicEase, DirectionalLight, EasingFunction, Engine, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
 import { CAMERA } from '../constants';
 
 export class SceneManager {
@@ -83,6 +83,7 @@ export class SceneManager {
 				ground: Mesh | null;
 				group_border: Mesh | null;
 				gates: Mesh | null;
+				groundTexture: Mesh[] | null;
 			} | null
 		};
 
@@ -115,7 +116,7 @@ export class SceneManager {
 		return skybox;
 	}
 
-	private async createStadium(): Promise<{ ground: Mesh | null; group_border: Mesh | null; gates: Mesh | null}> {
+	private async createStadium(): Promise<{ ground: Mesh | null; group_border: Mesh | null; gates: Mesh | null; groundTexture: Mesh[] | null }> {
 		await SceneLoader.ImportMeshAsync('', '/assets/models/', 'stadium.gltf', this.scene);
 
 		const ground = this.scene.getMeshByName('ground') as Mesh | null;
@@ -130,9 +131,6 @@ export class SceneManager {
 			groundMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
 			ground.material = groundMaterial;
 			ground.receiveShadows = true; // Enable shadow receiving
-			const groundTexture = this.createStadiumGroundTexture();
-			groundMaterial.diffuseTexture = groundTexture;
-			groundMaterial.emissiveTexture = groundTexture;
 		}
 
 		// Border material
@@ -148,47 +146,28 @@ export class SceneManager {
 		// 	gatesMaterial.diffuseColor = Color3.FromHexString('#FFFFFF');
 		// 	gates.material = gatesMaterial;
 		// }
-		return { ground, group_border, gates};
+
+		const groundTexture = this.createGroundTexture();
+
+		return { ground, group_border, gates, groundTexture };
 	}
 
-	private createStadiumGroundTexture(): DynamicTexture {
-		const texture = new DynamicTexture ("groundTexture", {width: 1920, height: 1080}, this.scene, false);
-		const ctx = texture.getContext();
-		
-		// Draw center circle
-		const centerX = 960;
-		const centerY = 540;
-		const circleRadius = 50; // You can modify this value to shrink/grow
+	private createGroundTexture(): Mesh[] {
+		const textures: Mesh[] = [];
+		const textureElements = ['centerCircle', 'lineMidBot', 'lineMidUp', 'lineBorderLeft', 'lineBorderRight', 'lineBorderTop', 'lineBorderBot'];
+		// applied the same white texture to all lines and center circle
+		const whiteTexture = new StandardMaterial('whiteLineMat', this.scene);
+		whiteTexture.diffuseColor = Color3.FromHexString('#FFFFFF');
+		for (const element of textureElements) {
+			const texture = this.scene.getMeshByName(element) as Mesh | null;
+			if (texture) {
+				texture.material = whiteTexture;
+				textures.push(texture);
+			}
+		}
 
-		// Clear canvas
-		ctx.clearRect(0, 0, 1920, 1080);
-		
-		// Draw middle line (vertical)
-		ctx.strokeStyle = 'white';
-		ctx.lineWidth = 10;
-		ctx.beginPath();
-		ctx.moveTo(960, 1080/2 + (circleRadius));      // Center X, top
-		ctx.lineTo(960, 1080);   // Center X, bottom
-		ctx.stroke();
-		
-		ctx.beginPath();
-		ctx.moveTo(960, 1080/2 - (circleRadius));
-		ctx.lineTo(960, 0);
-		ctx.stroke();
-		
-		
-		ctx.strokeStyle = 'white';
-		ctx.lineWidth = 10;
-		ctx.beginPath();
-		ctx.arc(centerX, centerY, circleRadius, 0, 2 * Math.PI);
-		ctx.stroke();
-		
-		// Update texture
-		texture.update();
-		return texture;
+		return textures;
 	}
-
-	// todo: create texture update for circle and stroke
 
 	private setupAxisHelper(): AxesViewer { //dev
 		const axisHelper = new AxesViewer(this.scene, 1);
