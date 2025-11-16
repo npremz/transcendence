@@ -279,22 +279,20 @@ export const QuickPlayView: ViewFunction = () => {
 							</div>
 						</button>
 
-						<!-- Play vs AI (Coming Soon) -->
+						<!-- Play vs AI -->
 						<button 
-							disabled
-							class="mode-button w-full p-6 neon-border rounded-lg pixel-font text-lg text-blue-400/40 relative"
+							id="play-vs-ai"
+							class="mode-button w-full p-6 neon-border rounded-lg pixel-font text-lg text-blue-400 hover:text-white transition-all relative group"
 						>
 							<div class="flex items-center justify-between">
 								<div class="flex items-center gap-4">
-									<span class="text-3xl opacity-40">🤖</span>
+									<span class="text-3xl">🤖</span>
 									<div class="text-left">
 										<div class="text-xl">PLAY VS AI</div>
-										<div class="text-xs opacity-60 font-normal">Coming soon...</div>
+										<div class="text-xs opacity-60 font-normal">Let the AI control your paddle</div>
 									</div>
 								</div>
-								<span class="pixel-font text-xs bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded border border-yellow-500/50">
-									SOON
-								</span>
+								<span class="text-2xl group-hover:translate-x-2 transition-transform">→</span>
 							</div>
 						</button>
 					</div>
@@ -339,6 +337,7 @@ export const quickPlayLogic = (): CleanupFunction => {
 		document.querySelectorAll<HTMLButtonElement>('[data-skill-option]')
 	);
 	const playButton = document.getElementById('play-online') as HTMLButtonElement | null;
+	const playVsAIButton = document.getElementById('play-vs-ai') as HTMLButtonElement | null;
 	const localButton = document.getElementById('play-local') as HTMLButtonElement | null;
 	const label = document.getElementById('selected-skill-label');
 
@@ -417,6 +416,70 @@ export const quickPlayLogic = (): CleanupFunction => {
 		};
 		playButton.addEventListener('click', playHandler);
 		listeners.push({ element: playButton, handler: playHandler as unknown as (e: Event) => void });
+	}
+
+	if (playVsAIButton) {
+		const playAIHandler = async (event: MouseEvent) => {
+			event.preventDefault();
+			if (!selectedSkill) {
+				selectedSkill = 'smash';
+				sessionStorage.setItem('selectedSkill', selectedSkill);
+			}
+
+			const host = import.meta.env.VITE_HOST || 'localhost:8443';
+			const createEndpoint = import.meta.env.VITE_CREATEGAME_ENDPOINT || '/gameback/create';
+			const gameEndpoint = import.meta.env.VITE_GAME_ENDPOINT || '/gameback/game';
+			const makeId = () => {
+				if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+					return crypto.randomUUID();
+				}
+				return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+			};
+
+			const roomId = makeId();
+			const aiId = `ai-${makeId()}`;
+			const username = window.simpleAuth.getUsername?.() || 'Player';
+			const playerId = window.simpleAuth.getPlayerId?.();
+			if (!playerId) {
+				console.warn('QuickPlay: no playerId, redirecting to login');
+				window.router.navigate('/login');
+				return;
+			}
+
+			try {
+				const response = await fetch(`https://${host}${createEndpoint}`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						roomId,
+						player1: { id: playerId, username, selectedSkill },
+						player2: { id: aiId, username: 'AI', selectedSkill: 'smash' }
+					})
+				});
+				if (!response.ok) {
+					throw new Error(`Server error (${response.status})`);
+				}
+
+				const wsUrl = `wss://${host}${gameEndpoint}/${roomId}`;
+				sessionStorage.setItem('gameWsURL', wsUrl);
+				sessionStorage.setItem('aiPlayerId', aiId);
+				sessionStorage.setItem('aiSide', 'right');
+
+				gsap.to(playVsAIButton, {
+					scale: 0.95,
+					duration: 0.1,
+					yoyo: true,
+					repeat: 1,
+					onComplete: () => {
+						window.router.navigate(`/game/${roomId}`);
+					}
+				});
+			} catch (err) {
+				console.error('QuickPlay: failed to create AI match', err);
+			}
+		};
+		playVsAIButton.addEventListener('click', playAIHandler);
+		listeners.push({ element: playVsAIButton, handler: playAIHandler as unknown as (e: Event) => void });
 	}
 
 	if (localButton) {

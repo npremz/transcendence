@@ -7,6 +7,7 @@ import { PongParticleSystem } from "./PongParticles";
 import { PongAssets } from "./PongAssets";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
 import { DebugPanel, type DebugPanelCallbacks } from "../DebugPanel";
+import { PongAI } from "./PongAI";
 
 type LocalGameConfig = {
 	roomId: string;
@@ -72,10 +73,11 @@ export class PongGame implements Component {
 	private localConfig?: LocalGameConfig;
 	private leftController?: WSClient;
 	private rightController?: WSClient;
+	private aiNet?: WSClient;
 	private statsMonitor: GameStatsMonitor;
 	private lastPingTime: number = 0;
 	private statsUpdateInterval: number | null = null;
-	private pingInterval: number | null = null;
+    private aiControllers: { left?: PongAI; right?: PongAI } = {};
 
 	private state: PublicState = {
 		leftPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
@@ -150,7 +152,9 @@ export class PongGame implements Component {
 		this.setupEventHandlers();
 		this.connectToServer();
 		this.startAnimationLoop();
-		this.startStatsMonitoring();
+        this.startStatsMonitoring();
+
+		this.setupAIHooks();
 	}
 
 	private startStatsMonitoring(): void {
@@ -517,13 +521,30 @@ export class PongGame implements Component {
 				console.warn('PongGame: missing URL or right player ID for local secondary controller');
 			}
 		}
+
+		// If an AI opponent was requested (QuickPlay vs AI), connect AI WebSocket directly and start AI
+		try {
+			const aiPlayerId = sessionStorage.getItem('aiPlayerId');
+			const aiSide = (sessionStorage.getItem('aiSide') as 'left' | 'right' | null) || null;
+			if (urlToUse && aiPlayerId && aiSide) {
+				this.aiNet = new WSClient();
+				this.aiNet.onWelcome = this.createWelcomeHandler(this.aiNet);
+				this.aiNet.connect(urlToUse, { playerId: aiPlayerId });
+				this.enableAI(aiSide, this.aiNet, 1);
+				// Clear once consumed
+				sessionStorage.removeItem('aiPlayerId');
+				sessionStorage.removeItem('aiSide');
+			}
+		} catch (e) {
+			console.warn('PongGame: failed to setup AI opponent', e);
+		}
 	}
 
 	private setupSecondaryNetworkHandlers(): void {
 		if (!this.secondaryNet) {
 			return;
 		}
-		this.secondaryNet.onWelcome = this.createWelcomeHandler(this.secondaryNet);
+    this.secondaryNet.onWelcome = this.createWelcomeHandler(this.secondaryNet);
 	}
 
 	private createWelcomeHandler(client: WSClient) {
@@ -569,6 +590,8 @@ export class PongGame implements Component {
 					this.enableDebugMode();
 				}
 			}
+
+
 		};
 	}
 
@@ -597,6 +620,52 @@ export class PongGame implements Component {
 			this.net.forfeit();
 		}
 	};
+
+	private enableAI(side: 'left' | 'right', ws: WSClient, hz?: number): void {
+		if (this.aiControllers[side]) {
+			this.aiControllers[side]?.stop();
+		}
+		const ai = new PongAI(() => this.state, side, ws, { hz: hz ?? 1, deadZone: 24, hysteresis: 10, minHoldTicks: 0 });
+		ai.start();
+		this.aiControllers[side] = ai;
+		console.log(`Pong AI enabled for ${side} at ${hz ?? 1} Hz`);
+	}
+
+	private disableAI(side?: 'left' | 'right'): void {
+		if (side) {
+			this.aiControllers[side]?.stop();
+			this.aiControllers[side] = undefined;
+			console.log(`Pong AI disabled for ${side}`);
+			return;
+		}
+		// disable both
+		this.aiControllers.left?.stop();
+		this.aiControllers.right?.stop();
+		this.aiControllers = {};
+		console.log('Pong AI disabled for both sides');
+	}
+
+	private setupAIHooks(): void {
+		try {
+			// Support toggling via custom events (for debugging/tools)
+			window.addEventListener('pong:enableAI', ((ev: Event) => {
+				const detail = (ev as CustomEvent<{ side: 'left' | 'right' | 'both'; hz?: number }>).detail;
+				if (!detail) return;
+				const hz = detail.hz ?? 1;
+				const ws = this.aiNet ?? this.net;
+				if (detail.side === 'both') {
+					this.enableAI('left', ws, hz);
+					this.enableAI('right', ws, hz);
+				} else {
+					this.enableAI(detail.side, ws, hz);
+				}
+			}) as EventListener);
+			window.addEventListener('pong:disableAI', ((ev: Event) => {
+				const detail = (ev as CustomEvent<{ side?: 'left' | 'right' }>).detail;
+				this.disableAI(detail?.side);
+			}) as EventListener);
+		} catch {}
+	}
 
 	private smashOffsetX = (side: 'left' | 'right'): number => {
 		const skillType = side === 'left' ? this.state.selectedSkills.left : this.state.selectedSkills.right;
@@ -676,6 +745,7 @@ export class PongGame implements Component {
 		}
 		this.input.detach();
 		this.particles.clear();
+		this.disableAI();
 		this.net.cleanup();
 		if (this.debugPanel) {
 			this.debugPanel.cleanup();
@@ -684,6 +754,10 @@ export class PongGame implements Component {
 		if (this.secondaryNet) {
 			this.secondaryNet.cleanup();
 			this.secondaryNet = undefined;
+		}
+		if (this.aiNet) {
+			this.aiNet.cleanup();
+			this.aiNet = undefined;
 		}
 		if (this.isLocalMode) {
 			sessionStorage.removeItem('localGameConfig');
