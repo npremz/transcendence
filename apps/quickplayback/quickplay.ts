@@ -85,9 +85,8 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 		
 		if (room.players.length === 2)
 		{
-			// Use internal Docker service name for backend-to-backend communication
-			const gamebackHost = process.env.GAMEBACK_HOST || 'gameback:3010';
-			const fetchURL = `http://${gamebackHost}/create`;
+			const backendHost = process.env.BACKEND_HOST || process.env.VITE_HOST || 'localhost:8443';
+			const fetchURL = `https://${backendHost}/gameback/create`;
 
 			const gameId = uuidv4();
 
@@ -119,7 +118,9 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 							username: rightPlayer.username,
 							selectedSkill: rightPlayer.selectedSkill || 'smash'
 						},
-					})
+					}),
+					// @ts-ignore
+					agent
 				});
 
 				if (!gameResponse.ok) {

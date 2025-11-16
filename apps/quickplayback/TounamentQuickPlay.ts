@@ -35,9 +35,9 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
                 matchId
             );
 
-			// Use internal Docker service name for backend-to-backend communication
-			const gamebackHost = process.env.GAMEBACK_HOST || 'gameback:3010';
-			const fetchURL = `http://${gamebackHost}/create`;
+			// Use HTTPS via nginx for backend-to-backend communication
+			const backendHost = process.env.BACKEND_HOST || process.env.VITE_HOST || 'localhost:8443';
+			const fetchURL = `https://${backendHost}/gameback/create`;
 
 			const gameResponse = await fetch(fetchURL, {
 				method: 'POST',
@@ -49,7 +49,9 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
 					isTournament: true,
 					tournamentId,
 					matchId
-				})
+				}),
+				// @ts-ignore
+				agent
 			});
 
 			if (!gameResponse.ok) {

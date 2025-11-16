@@ -90,8 +90,10 @@ export const BracketView: ViewFunction = () => {
                 
                 .match-card {
                     transition: all 0.3s ease;
-                    background: rgba(15, 23, 42, 0.6);
+                    background: rgba(15, 23, 42, 0.8);
                     backdrop-filter: blur(10px);
+                    position: relative;
+                    min-width: 200px;
                 }
 
                 .match-card.finished {
@@ -124,6 +126,66 @@ export const BracketView: ViewFunction = () => {
                 .player-slot.loser {
                     opacity: 0.5;
                 }
+
+                /* Tree connections */
+                .bracket-tree {
+                    display: flex;
+                    gap: 80px;
+                    padding: 40px;
+                    overflow-x: auto;
+                    min-height: 600px;
+                }
+
+                .round-column {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-around;
+                    min-width: 220px;
+                    position: relative;
+                }
+
+                .round-header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    position: sticky;
+                    top: 0;
+                    background: rgba(4, 7, 26, 0.9);
+                    padding: 10px;
+                    border-radius: 8px;
+                    z-index: 10;
+                }
+
+                /* Lignes de connexion */
+                .connector-line {
+                    position: absolute;
+                    background: rgba(59, 130, 246, 0.4);
+                    z-index: 0;
+                }
+
+                .connector-horizontal {
+                    height: 2px;
+                }
+
+                .connector-vertical {
+                    width: 2px;
+                }
+
+                /* Animation des connexions */
+                @keyframes flowRight {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+
+                .connector-line.active::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 20px;
+                    height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent);
+                    animation: flowRight 2s ease-in-out infinite;
+                }
             </style>
             
             <!-- Scanline effect -->
@@ -152,7 +214,7 @@ export const BracketView: ViewFunction = () => {
             </header>
 
             <!-- Container principal -->
-            <div class="flex-1 container mx-auto px-4 py-8">
+            <div class="flex-1 px-4 py-8">
                 <!-- Loading state -->
                 <div id="tournament-loading" class="text-center py-12">
                     <div class="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-400 border-t-transparent"></div>
@@ -164,8 +226,8 @@ export const BracketView: ViewFunction = () => {
                     <!-- Header du tournoi -->
                     <div id="tournament-header" class="mb-8"></div>
                     
-                    <!-- Brackets -->
-                    <div id="tournament-brackets"></div>
+                    <!-- Brackets en arbre -->
+                    <div id="tournament-brackets" class="bracket-tree"></div>
                 </div>
 
                 <!-- Error state -->
@@ -195,7 +257,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     let displayedMatchIds = new Set<string>();
     let currentTournamentState: Tournament | null = null;
 
-    // ✅ Fonction de cleanup des intervals
     const cleanupIntervals = () => {
         if (pollInterval) {
             clearInterval(pollInterval);
@@ -238,7 +299,7 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         if (myMatch && myMatch.roomId) {
             console.log('Mon match est prêt ! Redirection...');
             
-            cleanupIntervals(); // ✅ Nettoyer avant redirect
+            cleanupIntervals();
             
             const host = import.meta.env.VITE_HOST;
             const endpoint = import.meta.env.VITE_GAME_ENDPOINT;
@@ -253,7 +314,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         hideLoading();
         showContent();
 
-        // Update header only if tournament state changed
         const headerNeedsUpdate = !currentTournamentState || 
             currentTournamentState.status !== tournament.status ||
             currentTournamentState.currentRound !== tournament.currentRound ||
@@ -263,7 +323,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
             updateHeader(tournament);
         }
 
-        // Update brackets with diff detection
         updateBrackets(tournament);
 
         currentTournamentState = tournament;
@@ -275,7 +334,7 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
             headerElement.innerHTML = `
                 <div class="neon-border bg-black/50 backdrop-blur-sm rounded-lg p-6 mb-6">
                     <div class="text-center">
-                        <h2 class="pixel-font text-4xl text-pink-500 mb-4" style="animation: neonPulse 2s ease-in-out infinite;">
+                        <h2 class="pixel-font text-4xl text-red-500 mb-4" style="animation: neonPulse 2s ease-in-out infinite;">
                             🏆 TOURNAMENT ${tournament.name.toUpperCase()} 🏆
                         </h2>
                         <div class="flex justify-center gap-8 pixel-font text-sm text-blue-300">
@@ -287,7 +346,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                 </div>
             `;
 
-            // Animation du header seulement au premier render
             if (isFirstRender) {
                 gsap.from(headerElement.querySelector('.neon-border'), {
                     scale: 0.9,
@@ -304,67 +362,40 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         if (!bracketsElement) return;
 
         if (isFirstRender) {
-            // Premier rendu : tout afficher avec animation
-            bracketsElement.innerHTML = generateBracketsHTML(tournament.bracket);
+            bracketsElement.innerHTML = generateTreeBrackets(tournament.bracket);
             tournament.bracket.forEach(match => displayedMatchIds.add(match.id));
 
-            gsap.from('.round', {
-                y: 50,
+            gsap.from('.round-column', {
+                x: -50,
                 opacity: 0,
                 duration: 0.8,
                 stagger: 0.2,
                 ease: 'power2.out'
             });
 
+            // Dessiner les connexions après l'animation
+            setTimeout(() => drawConnections(tournament.bracket), 1000);
+
             isFirstRender = false;
         } else {
-            // Updates suivants : détecter les nouveaux matches et les changements
             const newMatches = tournament.bracket.filter(match => !displayedMatchIds.has(match.id));
             
             if (newMatches.length > 0) {
-                // Ajouter les nouveaux matches
                 newMatches.forEach(match => {
                     displayedMatchIds.add(match.id);
-                    const roundElement = bracketsElement.querySelector(`[data-round="${match.round}"]`);
-                    
-                    if (roundElement) {
-                        // Round existe déjà, ajouter le match
-                        const matchesGrid = roundElement.querySelector('.matches-grid');
-                        if (matchesGrid) {
-                            const matchDiv = document.createElement('div');
-                            matchDiv.innerHTML = generateMatchHTML(match);
-                            matchDiv.classList.add('new-match');
-                            matchesGrid.appendChild(matchDiv.firstElementChild as HTMLElement);
-                        }
-                    } else {
-                        // Nouveau round
-                        const newRoundHTML = generateRoundHTML(match.round, [match]);
-                        bracketsElement.insertAdjacentHTML('beforeend', newRoundHTML);
-                    }
                 });
-
-                // Animer uniquement les nouveaux matches
-                gsap.from('.new-match', {
-                    y: 30,
-                    opacity: 0,
-                    duration: 0.5,
-                    ease: 'power2.out',
-                    onComplete: () => {
-                        document.querySelectorAll('.new-match').forEach(el => {
-                            el.classList.remove('new-match');
-                        });
-                    }
-                });
+                
+                bracketsElement.innerHTML = generateTreeBrackets(tournament.bracket);
+                drawConnections(tournament.bracket);
             }
 
-            // Mettre à jour les matches existants (status, winner, etc.)
             tournament.bracket.forEach(match => {
                 updateMatchElement(match);
             });
         }
     };
 
-    const generateBracketsHTML = (matches: Match[]): string => {
+    const generateTreeBrackets = (matches: Match[]): string => {
         if (matches.length === 0) {
             return '<div class="text-center p-8 pixel-font text-blue-300/60">No matches available</div>';
         }
@@ -377,31 +408,36 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
             return acc;
         }, {} as Record<number, Match[]>);
 
-        let html = '<div class="space-y-8">';
+        const maxRound = Math.max(...Object.keys(matchesByRound).map(Number));
+
+        let html = '';
         
-        Object.keys(matchesByRound).sort((a, b) => parseInt(a) - parseInt(b)).forEach(round => {
-            const roundMatches = matchesByRound[parseInt(round)];
-            html += generateRoundHTML(parseInt(round), roundMatches);
-        });
+        for (let round = 1; round <= maxRound; round++) {
+            const roundMatches = matchesByRound[round] || [];
+            html += generateRoundColumn(round, roundMatches, round === maxRound);
+        }
         
-        html += '</div>';
         return html;
     };
 
-    const generateRoundHTML = (round: number, matches: Match[]): string => {
+    const generateRoundColumn = (round: number, matches: Match[], isFinal: boolean): string => {
+        const roundTitle = isFinal ? 'FINAL' : `ROUND ${round}`;
+        
         return `
-            <div class="round" data-round="${round}">
-                <h3 class="pixel-font text-2xl text-blue-400 mb-4 text-center">
-                    >>> ROUND ${round} <<<
-                </h3>
-                <div class="matches-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    ${matches.map(match => generateMatchHTML(match)).join('')}
+            <div class="round-column" data-round="${round}">
+                <div class="round-header">
+                    <h3 class="pixel-font text-xl text-blue-400">
+                        ${roundTitle}
+                    </h3>
+                </div>
+                <div class="matches-container flex flex-col justify-around gap-8 flex-1">
+                    ${matches.map(match => generateMatchCard(match)).join('')}
                 </div>
             </div>
         `;
     };
 
-    const generateMatchHTML = (match: Match): string => {
+    const generateMatchCard = (match: Match): string => {
         const getStatusColor = (status: string): string => {
             switch (status) {
                 case 'ready': return 'bg-blue-500/20 border-blue-500/50 text-blue-400';
@@ -414,22 +450,27 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         const isMyMatch = match.player1?.id === myPlayerId || match.player2?.id === myPlayerId;
 
         return `
-            <div class="match-card neon-border rounded-lg p-4 ${match.status} ${isMyMatch ? 'ring-2 ring-pink-500/50' : ''}" data-match-id="${match.id}">
+            <div class="match-card neon-border rounded-lg p-4 ${match.status} ${isMyMatch ? 'ring-2 ring-red-500/50' : ''}" 
+                 data-match-id="${match.id}"
+                 data-round="${match.round}"
+                 data-position="${match.position}">
+                
                 <!-- Header du match -->
                 <div class="flex justify-between items-center mb-3">
                     <span class="match-status pixel-font text-xs ${getStatusColor(match.status)} px-2 py-1 rounded border">
                         ${getStatusText(match.status)}
                     </span>
-                    ${isMyMatch ? '<span class="pixel-font text-xs text-pink-400">← YOU</span>' : ''}
+                    ${isMyMatch ? '<span class="pixel-font text-xs text-red-400">← YOU</span>' : ''}
                 </div>
 
                 <!-- Players -->
                 <div class="space-y-2">
                     <!-- Player 1 -->
-                    <div class="player-slot player-1 neon-border p-3 rounded ${match.winner?.id === match.player1?.id ? 'winner' : match.winner ? 'loser' : ''}" data-player-id="${match.player1?.id || ''}">
+                    <div class="player-slot player-1 neon-border p-3 rounded ${match.winner?.id === match.player1?.id ? 'winner' : match.winner ? 'loser' : ''}" 
+                         data-player-id="${match.player1?.id || ''}">
                         <div class="flex items-center justify-between">
                             <span class="pixel-font text-sm text-blue-300">
-                                ${match.player1?.username || 'Waiting...'}
+                                ${match.player1?.username || 'TBD'}
                             </span>
                             ${match.winner?.id === match.player1?.id ? '<span class="text-xl winner-crown">👑</span>' : ''}
                         </div>
@@ -439,10 +480,11 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                     <div class="text-center pixel-font text-xs text-blue-400/40">VS</div>
 
                     <!-- Player 2 -->
-                    <div class="player-slot player-2 neon-border p-3 rounded ${match.winner?.id === match.player2?.id ? 'winner' : match.winner ? 'loser' : ''}" data-player-id="${match.player2?.id || ''}">
+                    <div class="player-slot player-2 neon-border p-3 rounded ${match.winner?.id === match.player2?.id ? 'winner' : match.winner ? 'loser' : ''}" 
+                         data-player-id="${match.player2?.id || ''}">
                         <div class="flex items-center justify-between">
                             <span class="pixel-font text-sm text-blue-300">
-                                ${match.player2?.username || 'Waiting...'}
+                                ${match.player2?.username || 'TBD'}
                             </span>
                             ${match.winner?.id === match.player2?.id ? '<span class="text-xl winner-crown">👑</span>' : ''}
                         </div>
@@ -452,28 +494,115 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         `;
     };
 
+    const drawConnections = (matches: Match[]): void => {
+        // Supprimer les anciennes connexions
+        document.querySelectorAll('.connector-line').forEach(el => el.remove());
+
+        const matchesByRound = matches.reduce((acc, match) => {
+            if (!acc[match.round]) {
+                acc[match.round] = [];
+            }
+            acc[match.round].push(match);
+            return acc;
+        }, {} as Record<number, Match[]>);
+
+        const maxRound = Math.max(...Object.keys(matchesByRound).map(Number));
+
+        for (let round = 1; round < maxRound; round++) {
+            const currentRoundMatches = matchesByRound[round] || [];
+            const nextRoundMatches = matchesByRound[round + 1] || [];
+
+            currentRoundMatches.forEach((match, index) => {
+                const nextMatchIndex = Math.floor(index / 2);
+                const nextMatch = nextRoundMatches[nextMatchIndex];
+
+                if (nextMatch) {
+                    const currentCard = document.querySelector(`[data-match-id="${match.id}"]`) as HTMLElement;
+                    const nextCard = document.querySelector(`[data-match-id="${nextMatch.id}"]`) as HTMLElement;
+
+                    if (currentCard && nextCard) {
+                        const currentRect = currentCard.getBoundingClientRect();
+                        const nextRect = nextCard.getBoundingClientRect();
+                        const container = document.getElementById('tournament-brackets');
+                        
+                        if (container) {
+                            const containerRect = container.getBoundingClientRect();
+
+                            // Ligne horizontale depuis le match actuel
+                            const horizontalLine = document.createElement('div');
+                            horizontalLine.className = 'connector-line connector-horizontal';
+                            if (match.status === 'finished') {
+                                horizontalLine.classList.add('active');
+                            }
+                            horizontalLine.style.left = `${currentRect.right - containerRect.left}px`;
+                            horizontalLine.style.top = `${currentRect.top + currentRect.height / 2 - containerRect.top}px`;
+                            horizontalLine.style.width = '40px';
+                            container.appendChild(horizontalLine);
+
+                            // Point de jonction
+                            const junctionX = currentRect.right - containerRect.left + 40;
+                            const junctionY = currentRect.top + currentRect.height / 2 - containerRect.top;
+                            const nextJunctionY = nextRect.top + nextRect.height / 2 - containerRect.top;
+
+                            // Ligne verticale vers le point de jonction commun
+                            if (index % 2 === 1) {
+                                const verticalLine = document.createElement('div');
+                                verticalLine.className = 'connector-line connector-vertical';
+                                const prevMatch = currentRoundMatches[index - 1];
+                                const prevCard = document.querySelector(`[data-match-id="${prevMatch.id}"]`) as HTMLElement;
+                                
+                                if (prevCard) {
+                                    const prevRect = prevCard.getBoundingClientRect();
+                                    const prevY = prevRect.top + prevRect.height / 2 - containerRect.top;
+                                    
+                                    verticalLine.style.left = `${junctionX}px`;
+                                    verticalLine.style.top = `${Math.min(prevY, junctionY)}px`;
+                                    verticalLine.style.height = `${Math.abs(junctionY - prevY)}px`;
+                                    container.appendChild(verticalLine);
+                                }
+
+                                // Ligne horizontale finale vers le prochain match
+                                const finalHorizontal = document.createElement('div');
+                                finalHorizontal.className = 'connector-line connector-horizontal';
+                                finalHorizontal.style.left = `${junctionX}px`;
+                                finalHorizontal.style.top = `${nextJunctionY}px`;
+                                finalHorizontal.style.width = `${nextRect.left - containerRect.left - junctionX}px`;
+                                container.appendChild(finalHorizontal);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    };
+
     const updateMatchElement = (match: Match): void => {
         const matchElement = document.querySelector(`[data-match-id="${match.id}"]`);
         if (!matchElement) return;
 
-        // Update status
         const statusEl = matchElement.querySelector('.match-status');
         if (statusEl) {
             const newStatus = getStatusText(match.status);
             if (statusEl.textContent !== newStatus) {
                 statusEl.textContent = newStatus;
                 
-                // Update status color classes
+                const getStatusColor = (status: string): string => {
+                    switch (status) {
+                        case 'ready': return 'bg-blue-500/20 border-blue-500/50 text-blue-400';
+                        case 'in_progress': return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400';
+                        case 'finished': return 'bg-green-500/20 border-green-500/50 text-green-400';
+                        default: return 'bg-gray-500/20 border-gray-500/50 text-gray-400';
+                    }
+                };
+                
                 statusEl.className = `match-status pixel-font text-xs px-2 py-1 rounded border ${getStatusColor(match.status)}`;
                 
-                // Update match card classes
                 matchElement.className = `match-card neon-border rounded-lg p-4 ${match.status} ${
-                    match.player1?.id === myPlayerId || match.player2?.id === myPlayerId ? 'ring-2 ring-pink-500/50' : ''
+                    match.player1?.id === myPlayerId || match.player2?.id === myPlayerId ? 'ring-2 ring-red-500/50' : ''
                 }`;
             }
         }
 
-        // Update winner if changed
         if (match.winner) {
             const player1Slot = matchElement.querySelector('.player-1');
             const player2Slot = matchElement.querySelector('.player-2');
@@ -482,7 +611,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                 const isPlayer1Winner = match.winner.id === match.player1?.id;
                 const isPlayer2Winner = match.winner.id === match.player2?.id;
 
-                // Update player 1
                 const p1Classes = `player-slot player-1 neon-border p-3 rounded ${isPlayer1Winner ? 'winner' : 'loser'}`;
                 if (player1Slot.className !== p1Classes) {
                     player1Slot.className = p1Classes;
@@ -494,7 +622,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                     }
                 }
 
-                // Update player 2
                 const p2Classes = `player-slot player-2 neon-border p-3 rounded ${isPlayer2Winner ? 'winner' : 'loser'}`;
                 if (player2Slot.className !== p2Classes) {
                     player2Slot.className = p2Classes;
@@ -506,15 +633,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                     }
                 }
             }
-        }
-    };
-
-    const getStatusColor = (status: string): string => {
-        switch (status) {
-            case 'ready': return 'bg-blue-500/20 border-blue-500/50 text-blue-400';
-            case 'in_progress': return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400';
-            case 'finished': return 'bg-green-500/20 border-green-500/50 text-green-400';
-            default: return 'bg-gray-500/20 border-gray-500/50 text-gray-400';
         }
     };
 
@@ -545,14 +663,17 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         if (error) error.style.display = 'block';
     };
 
-    // Charger les données initiales
     fetchTournamentData();
 
-    // Polling toutes les 2 secondes
-    pollInterval = setInterval(fetchTournamentData, 2000);
+    pollInterval = setInterval(() => {
+        fetchTournamentData();
+        // Redessiner les connexions à chaque update
+        if (currentTournamentState) {
+            setTimeout(() => drawConnections(currentTournamentState!.bracket), 100);
+        }
+    }, 2000);
     console.log('🔄 Started bracket polling');
 
-    // ✅ FONCTION DE CLEANUP COMPLÈTE
     return (): void => {
         console.log('🧹 BracketView: Cleaning up...');
         
