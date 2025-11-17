@@ -12,23 +12,35 @@ export class PowerUp extends Entity {
 		this.type = state.type as 'blackout' | 'split' | 'blackhole';
 		this.createMesh();
 	}
+
 	private createMesh(): void {
-		// create a cylinder - use BALL_3D.SCALE_3D to match coordinate system
-		this.mesh = MeshBuilder.CreateCylinder(this.id, { diameter: this.state.radius * 2 * 0.01, height: 1 }, this.scene);
+		// Simple glowy transparent cylinder
+		this.mesh = MeshBuilder.CreateCylinder(this.id, { 
+			diameter: this.state.radius * 2 * 0.01, 
+			height: 1, 
+			tessellation: 32
+		}, this.scene);
+		
 		const material = new StandardMaterial(`powerup-mat-${this.id}`, this.scene);
+		material.alpha = 0.35; // Transparent
+		material.specularPower = 128;
+		material.backFaceCulling = false;
 
 		switch (this.type) {
 			case 'split':
-				material.diffuseColor = Color3.FromHexString('#FFD700'); // Gold
-				material.emissiveColor = Color3.FromHexString('#FFD700').scale(0.3);
+				material.diffuseColor = Color3.FromHexString('#FFD700');
+				material.emissiveColor = Color3.FromHexString('#FFD700').scale(0.6);
+				material.specularColor = Color3.FromHexString('#FFEA00');
 				break;
 			case 'blackout':
-				material.diffuseColor = Color3.FromHexString('#9B59B6'); // Purple
-				material.emissiveColor = Color3.FromHexString('#9B59B6').scale(0.3);
+				material.diffuseColor = Color3.FromHexString('#9B59B6');
+				material.emissiveColor = Color3.FromHexString('#9B59B6').scale(0.7);
+				material.specularColor = Color3.FromHexString('#E74FF0');
 				break;
 			case 'blackhole':
-				material.diffuseColor = Color3.FromHexString('#20054b'); // Dark blue
-				material.emissiveColor = Color3.FromHexString('#0ea5e9').scale(0.5);
+				material.diffuseColor = Color3.FromHexString('#1e3a8a');
+				material.emissiveColor = Color3.FromHexString('#0ea5e9').scale(0.8);
+				material.specularColor = Color3.FromHexString('#38bdf8');
 				break;
 		}
 		this.mesh.material = material;
@@ -39,13 +51,22 @@ export class PowerUp extends Entity {
 	}
 
 	public update(): void {
-		// maybe for the animation
 		if (!this.mesh) return;
+		
+		const time = Date.now() * 0.001;
+		
+		// Float and position
+		const floatOffset = Math.sin(time * 3) * 0.15;
 		this.mesh.position.x = powerUpConverter2DXto3DX(this.state.x);
 		this.mesh.position.z = powerUpConverter2DYto3DZ(this.state.y);
-		this.mesh.position.y = 1;
-		// float
-		this.mesh.position.y += Math.sin(Date.now() * 0.003) * 0.2;
+		this.mesh.position.y = 0.9 + floatOffset;
+		
+		// Rotate slowly
+		this.mesh.rotation.y += 0.015;
+		
+		// Subtle pulsing
+		const pulse = 1 + Math.sin(time * 4) * 0.05;
+		this.mesh.scaling.set(pulse, 1, pulse);
 	}
 
 	public dispose(): void {

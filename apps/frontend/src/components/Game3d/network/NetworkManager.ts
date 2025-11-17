@@ -54,6 +54,7 @@ export class NetworkManager  {
 	public sendInput(input: InputState): void {
 		if (!this.isConnected) return;
 		const side = this.wsClient.side;
+		console.log('Sending input for side:', side, input);
 
 		let up = false;
 		let down = false;
