@@ -5,7 +5,7 @@
 // todo: add stadium loading error handling
 // todo: maybe add more types for environment
 
-import { Animation, ArcRotateCamera, AxesViewer, Color3, Color4, CubicEase, DirectionalLight, EasingFunction, Engine, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
+import { Animation, ArcRotateCamera, AxesViewer, Color3, Color4, CubicEase, DirectionalLight, EasingFunction, Engine, GlowLayer, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
 import { CAMERA } from '../constants';
 
 export class SceneManager {
@@ -18,6 +18,12 @@ export class SceneManager {
 			ground: Mesh | null;
 			group_border: Mesh | null;
 			gates?: Mesh | null;
+			groundTexture: Mesh[] | null;
+		} | null;
+	};
+	private powerUps: {
+		blackhole: {
+			helix: Mesh | null;
 		} | null;
 	};
 	private lights: {
@@ -35,6 +41,7 @@ export class SceneManager {
 		this.camera = this.setupCamera();
 		this.lights = this.setupLights();
 		this.environment = this.setupEnvironment();
+		this.powerUps = this.setupPowerUps();
 		this.axisHelper = this.setupAxisHelper(); // dev
 	}
 	
@@ -71,6 +78,22 @@ export class SceneManager {
 		return {
 			ambient: ambientLight,
 			main: mainLight
+		};
+	}
+
+	private setupPowerUps(): typeof this.powerUps {
+		const blackhole = this.scene.getMeshByName('blacholeHelix');
+		const blackholeMaterial = new StandardMaterial('blackholeHelixMat', this.scene);
+		blackholeMaterial.diffuseColor = Color3.FromHexString('#0ea5e9');
+		blackholeMaterial.emissiveColor = Color3.FromHexString('#0ea5e9').scale(0.8);
+		blackholeMaterial.specularColor = Color3.FromHexString('#38bdf8');
+		if (blackhole) {
+			blackhole.material = blackholeMaterial;
+		}
+		return {
+			blackhole: {
+				helix: blackhole || null
+			}
 		};
 	}
 
@@ -154,14 +177,22 @@ export class SceneManager {
 
 	private createGroundTexture(): Mesh[] {
 		const textures: Mesh[] = [];
-		const textureElements = ['centerCircle', 'lineMidBot', 'lineMidUp', 'lineBorderLeft', 'lineBorderRight', 'lineBorderTop', 'lineBorderBot'];
+		const textureElements = ['centerCircle', 'centerCircleInner', 'lineMid', 'lineBorderLeft', 'lineBorderRight', 'lineBorderTop', 'lineBorderBot'];
 		// applied the same white texture to all lines and center circle
 		const whiteTexture = new StandardMaterial('whiteLineMat', this.scene);
 		whiteTexture.diffuseColor = Color3.FromHexString('#FFFFFF');
+		// now black without any reflections
+		const centerInnerColorBlack = new StandardMaterial('centerInnerBlackMat', this.scene);
+		centerInnerColorBlack.diffuseColor = Color3.Black();
+		centerInnerColorBlack.specularColor = Color3.Black();
+		centerInnerColorBlack.emissiveColor = Color3.Black();
+		centerInnerColorBlack.disableLighting = true;
+		centerInnerColorBlack.alpha = 0;
+
 		for (const element of textureElements) {
 			const texture = this.scene.getMeshByName(element) as Mesh | null;
 			if (texture) {
-				texture.material = whiteTexture;
+				texture.material = texture.name === 'centerCircleInner' ? centerInnerColorBlack : whiteTexture;
 				textures.push(texture);
 			}
 		}
@@ -257,6 +288,10 @@ export class SceneManager {
 
 	public getCamera(): ArcRotateCamera {
 		return this.camera;
+	}
+
+	public getEnvironment(): typeof this.environment {
+		return this.environment;
 	}
 
 	public getScene(): Scene {

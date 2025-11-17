@@ -9,10 +9,11 @@ import { StateAdapter } from '../utils/StateAdapter';
 export class Game3DEngine {
 	private engine: Engine;
 	private sceneManager: SceneManager;
-	private renderer: Renderer3D;
+	private renderer!: Renderer3D;
 	private canvas: HTMLCanvasElement;
 	private roomId: string;
 	private isRunning: boolean = false;
+	private mySide: 'left' | 'right' | 'spectator' = 'spectator';
 
 	// private systems: ISystem[] = [];
 
@@ -34,7 +35,6 @@ export class Game3DEngine {
 		});
 		
 		this.sceneManager = new SceneManager(this.engine, canvas);
-		this.renderer = new Renderer3D(this.sceneManager.getScene());
 		this.initializeSystems();
 	}
 
@@ -46,9 +46,9 @@ export class Game3DEngine {
 		this.inputSystem = new InputSystem(this.canvas);
 		this.networkManager = new NetworkManager(this.roomId);
 		this.uiManager = new UIManager();
-		
 		this.inputSystem.initialize();
 		this.setupNetworkCallbacks();
+		this.renderer = new Renderer3D(this.sceneManager.getScene(), this.networkManager);
 	}
 	private setupNetworkCallbacks(): void {
 		// Update game state every frame
