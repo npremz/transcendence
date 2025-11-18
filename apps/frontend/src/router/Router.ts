@@ -13,7 +13,6 @@ import { LocalGameView, localGameLogic } from '../views/LocalGameView';
 import { HistoryView, historyLogic } from '../views/HistoryView';
 import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
 import { Game3dView } from '../views/Game3dView.ts';
-import { Game3dView_old } from '../views/Game3dView_old.ts';
 import type { NavigationGuard } from './types';
 import {
     logGuard,
