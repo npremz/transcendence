@@ -150,12 +150,6 @@ export class Router {
 			title: 'game 3D'
 		});
 
-		this.routes.push({
-			path: '/dev3d_old',
-			view: Game3dView_old,
-			title: 'game 3D old'
-		});
-
         this.compileRoutes();
     }
 
