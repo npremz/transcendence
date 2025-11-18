@@ -5,6 +5,7 @@ import { InputSystem } from '../systems/InputSystem';
 import { NetworkManager } from '../network/NetworkManager';
 import { UIManager } from '../ui/UIManager';
 import { StateAdapter } from '../utils/StateAdapter';
+import type { TimeoutStatus, GameStatusInfo } from '../types';
 
 export class Game3DEngine {
 	private engine: Engine;
@@ -13,7 +14,23 @@ export class Game3DEngine {
 	private canvas: HTMLCanvasElement;
 	private roomId: string;
 	private isRunning: boolean = false;
-	private mySide: 'left' | 'right' | 'spectator' = 'spectator';
+
+	public gameStatusInfo: GameStatusInfo = {
+		isPaused: false,
+		isGameOver: false,
+		winner: '',
+		countdownValue: 0,
+		score: { left: 0, right: 0 }
+	};
+
+	private timeoutStatus: TimeoutStatus = {
+		leftActive: false,
+		leftRemainingMs: 0,
+		rightActive: false,
+		rightRemainingMs: 0
+	};
+
+	private gameOverHandled: boolean = false;
 
 	// systems
 	private inputSystem!: InputSystem;
@@ -47,45 +64,91 @@ export class Game3DEngine {
 		this.setupNetworkCallbacks();
 		this.renderer = new Renderer3D(this.sceneManager.getScene(), this.networkManager);
 	}
+
 	private setupNetworkCallbacks(): void {
 		this.networkManager.onStateUpdate = (serverState) => {
+			this.gameStatusInfo = StateAdapter.getStatusInfo(serverState);
 			const game3DState = StateAdapter.toGame3DState(serverState);
 			this.renderer.updateFromState(game3DState);
 		};
 
+		this.networkManager.onPaused = () => {
+			this.gameStatusInfo.isPaused = true;
+			this.timeoutStatus = {
+				leftActive: false,
+				leftRemainingMs: 0,
+				rightActive: false,
+				rightRemainingMs: 0
+			};
+		};
+
+		this.networkManager.onResumed = () => {
+			this.gameStatusInfo.isPaused = false;
+		};
+
+		this.networkManager.onTimeoutStatus = (status) => {
+			this.timeoutStatus = {
+				leftActive: status.left.active,
+				leftRemainingMs: status.left.remainingMs,
+				rightActive: status.right.active,
+				rightRemainingMs: status.right.remainingMs
+			};
+		};
+
+		this.networkManager.onCountdown = (v) => {
+			this.gameStatusInfo.countdownValue = v;
+		};
+
 		this.networkManager.onWelcome = (side, playerNames) => {
 			this.uiManager.updatePlayerNames(side, playerNames);
+			this.timeoutStatus = {
+				leftActive: false,
+				leftRemainingMs: 0,
+				rightActive: false,
+				rightRemainingMs: 0
+			};
 		};
 
 		this.networkManager.onGameOver = (winner, isTournament, tournamentId) => {
-			this.pause();
+			if (this.gameOverHandled) return;
+			this.gameOverHandled = true;
+			// Make sure internal status reflects game over so UIManager.render won't show pause overlays
+			this.gameStatusInfo.isGameOver = true;
+			this.gameStatusInfo.isPaused = false;
+			this.gameStatusInfo.countdownValue = 0;
 			
 			const forfeitBtn = document.getElementById('forfeit-btn') as HTMLButtonElement;
 			if (forfeitBtn) {
 				forfeitBtn.disabled = true;
 			}
 			
-			const side = this.networkManager.getSide();
-			const overlay = this.uiManager.showGameOver(winner as 'left' | 'right', side);
+			const amILeft = this.networkManager.getSide() === 'left';
+			const didIWin = (winner === 'left' && amILeft) || (winner === 'right' && !amILeft);
 
-			overlay.querySelector('#game-over-return-btn')?.addEventListener('click', () => {
-				sessionStorage.removeItem('gameWsURL');
-				this.uiManager.removeOverlay(overlay);
-				window.router?.navigateTo('/play');
-			});
-			// todo check for tournament
-		};
-
-		this.networkManager.onDisconnect = () => {
-			this.pause();
-			console.error('[Game3D] Disconnected from server');
-			
-			const overlay = this.uiManager.showDisconnect();
-			
-			overlay.querySelector('#disconnect-return-btn')?.addEventListener('click', () => {
-				sessionStorage.removeItem('gameWsURL');
-				this.uiManager.removeOverlay(overlay);
-				window.router?.navigateTo('/');
+			if (isTournament && tournamentId) {
+				// ensure any generic pause/countdown overlay is removed so tournament overlay is visible
+				this.uiManager.clearOverlayById('generic-overlay');
+				const overlay = this.uiManager.handleTournamentGameOver(didIWin, this.gameStatusInfo.score!);
+				document.body.appendChild(overlay);
+				setTimeout(() => {
+					sessionStorage.removeItem('gameWsURL');
+					window.location.href = `/tournament/${tournamentId}`; // wip redirection to 3D tournament
+					document.body.removeChild(overlay);
+				}, 3000);
+				return;
+			}
+			// ensure any generic pause/countdown overlay is removed so game-over overlay is visible
+			this.uiManager.clearOverlayById('generic-overlay');
+			const overlay = this.uiManager.showGameOver(didIWin, this.gameStatusInfo.score!);
+			document.body.appendChild(overlay);
+			overlay.addEventListener('click', (e) => {
+				const target = e.target as HTMLElement;
+				if (target.id === 'return-to-lobby' || target.closest('#return-to-lobby')) {
+					e.stopPropagation();
+					sessionStorage.removeItem('gameWsURL');
+					document.body.removeChild(overlay);
+					window.router?.navigateTo('/play');
+				}
 			});
 		};
 	}
@@ -139,7 +202,12 @@ export class Game3DEngine {
 		if (confirmed)
 			this.networkManager.forfeit();
 	}
+
 	private render(): void {
+		this.uiManager.render(
+			this.gameStatusInfo,
+			this.timeoutStatus,
+			this.networkManager.getSide());
 		this.renderer.render();
 	}
 
@@ -155,6 +223,7 @@ export class Game3DEngine {
 	public dispose(): void {
 		this.isRunning = false;
 		this.engine.stopRenderLoop();
+		this.uiManager.dispose();
 		
 		const forfeitBtn = document.getElementById('forfeit-btn');
 		if (forfeitBtn) {
@@ -163,7 +232,6 @@ export class Game3DEngine {
 		
 		this.inputSystem.dispose();
 		this.networkManager.disconnect();
-		this.uiManager.dispose();
 		
 		this.renderer.dispose();
 		this.sceneManager.dispose();
