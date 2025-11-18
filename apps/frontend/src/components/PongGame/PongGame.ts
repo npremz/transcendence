@@ -19,21 +19,28 @@ class GameStatsMonitor {
 	private fpsFrames: number[] = [];
 	private lastFrameTime: number = performance.now();
 	private pingTimes: number[] = [];
+	private currentFPS: number = 0;
 	
-	updateFPS(): number {
+	recordFrame(): void {
 		const now = performance.now();
 		const delta = now - this.lastFrameTime;
 		this.lastFrameTime = now;
 		
-		const fps = 1000 / delta;
-		this.fpsFrames.push(fps);
-		
-		if (this.fpsFrames.length > 60) {
-			this.fpsFrames.shift();
+		if (delta > 0) {
+			const fps = 1000 / delta;
+			this.fpsFrames.push(fps);
+			
+			if (this.fpsFrames.length > 60) {
+				this.fpsFrames.shift();
+			}
+			
+			const avgFps = this.fpsFrames.reduce((a, b) => a + b, 0) / this.fpsFrames.length;
+			this.currentFPS = Math.round(avgFps);
 		}
-		
-		const avgFps = this.fpsFrames.reduce((a, b) => a + b, 0) / this.fpsFrames.length;
-		return Math.round(avgFps);
+	}
+	
+	getCurrentFPS(): number {
+		return this.currentFPS;
 	}
 	
 	addPing(ping: number): void {
@@ -151,25 +158,25 @@ export class PongGame implements Component {
 	}
 
 	private startStatsMonitoring(): void {
-		// Mettre à jour les stats toutes les 500ms
+		// Mettre à jour l'affichage des stats toutes les 500ms
 		this.statsUpdateInterval = setInterval(() => {
 			this.updateStatsDisplay();
 		}, 500) as unknown as number;
 		
 		// Envoyer des pings toutes les 2 secondes
-		setInterval(() => {
+		this.pingInterval = setInterval(() => {
 			this.sendPing();
-		}, 2000);
+		}, 2000) as unknown as number;
 	}
 	
 	private sendPing(): void {
-		this.lastPingTime = Date.now();
+		this.lastPingTime = performance.now();
 		this.net.sendPing();
 	}
 	
 	private updateStatsDisplay(): void {
 		// FPS
-		const fps = this.statsMonitor.updateFPS();
+		const fps = this.statsMonitor.getCurrentFPS();
 		const fpsElement = document.getElementById('fps-value');
 		if (fpsElement) {
 			fpsElement.textContent = fps.toString();
@@ -310,7 +317,7 @@ export class PongGame implements Component {
 		};
 
 		this.net.onPong = (serverTime: number) => {
-			const roundTripTime = Date.now() - this.lastPingTime;
+			const roundTripTime = performance.now() - this.lastPingTime;
 			this.statsMonitor.addPing(roundTripTime);
 		};
 
@@ -685,6 +692,7 @@ export class PongGame implements Component {
 
 	private startAnimationLoop(): void {
 		const animate = (): void => {
+			this.statsMonitor.recordFrame();
 			this.particles.update();
 			this.renderer.render(
 				this.state,
@@ -721,6 +729,10 @@ export class PongGame implements Component {
 		if (this.statsUpdateInterval !== null) {
 			clearInterval(this.statsUpdateInterval);
 			this.statsUpdateInterval = null;
+		}
+		if (this.pingInterval !== null) {
+			clearInterval(this.pingInterval);
+			this.pingInterval = null;
 		}
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('pong:togglePause', this.handleTogglePause);
