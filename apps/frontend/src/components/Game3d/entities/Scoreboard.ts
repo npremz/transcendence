@@ -13,27 +13,23 @@ export class Scoreboard extends Entity {
 	}
 
 	private createMesh(): void {
-		// Parent container
 		const centerPoint = new Vector3(0, 7, 0);
 		this.parentMesh = MeshBuilder.CreateBox('scoreBoardParent', { size: 0.1 }, this.scene);
 		this.parentMesh.position = centerPoint;
 		this.parentMesh.isVisible = false;
 		this.mesh = this.parentMesh;
 
-		// Create panels and cylinder
 		this.createPanels();
 		this.createCylinder();
 	}
 
 	private createPanels(): void {
-		// Dimensions
 		const panelWidth = 4;
 		const panelHeight = panelWidth * (9 / 16);
 		const panelDepth = 0.03;
 		const distanceFromCenter = 3;
 		const panelInclinement = -0.3;
 
-		// Panel configurations
 		const panelConfigs = [
 			{ name: 'scorePanel1', position: new Vector3(0, 0, distanceFromCenter), rotation: 0 },
 			{ name: 'scorePanel2', position: new Vector3(distanceFromCenter, 0, 0), rotation: Math.PI / 2 },
@@ -41,7 +37,6 @@ export class Scoreboard extends Entity {
 			{ name: 'scorePanel4', position: new Vector3(-distanceFromCenter, 0, 0), rotation: -Math.PI / 2 }
 		];
 
-		// Create each panel
 		for (const config of panelConfigs) {
 			const panel = this.createPanel(config, panelWidth, panelHeight, panelDepth, panelInclinement);
 			this.panels.push(panel);
@@ -55,20 +50,18 @@ export class Scoreboard extends Entity {
 		depth: number,
 		inclinement: number
 	): Mesh {
-		// Create panel geometry
 		const panel = MeshBuilder.CreateBox(config.name, { width, height, depth }, this.scene);
 
-		// Create holographic material
 		const holographicMaterial = new StandardMaterial(`${config.name}_holographicMat`, this.scene);
 		const panelTexture = this.panelTextures.length === 0 
 			? this.createScoreTexture(0, 0) 
 			: this.panelTextures[0];
 
-		// Configure texture
+		// TEXTURE PROPERTIES
 		panelTexture.vScale = 1;
 		panelTexture.uScale = 1;
 
-		// Configure material
+		// MAT
 		holographicMaterial.diffuseTexture = panelTexture;
 		holographicMaterial.diffuseColor = Color3.FromHexString('#0fb3ff');
 		holographicMaterial.emissiveColor = Color3.FromHexString('#00d4ff');
@@ -77,35 +70,34 @@ export class Scoreboard extends Entity {
 		holographicMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
 		holographicMaterial.backFaceCulling = true;
 
-		// Apply transforms
+		// APPLY
 		panel.material = holographicMaterial;
 		panel.position = config.position;
 		panel.rotation.y = config.rotation + Math.PI;
 		panel.rotation.x = inclinement;
 		panel.parent = this.parentMesh;
 
-		// Store texture reference (only once since we share it)
+		// OPTI (ONE TEXTURE FOR ALL PANELS)
 		if (this.panelTextures.length === 0) {
 			this.panelTextures.push(panelTexture);
 		}
 
-		// Create panel borders
 		this.createPanelBorders(panel, width, height, depth);
 
 		return panel;
 	}
 
 	private createPanelBorders(panel: Mesh, panelWidth: number, panelHeight: number, panelDepth: number): void {
-		// Border material
+		// MAT
 		const borderMaterial = new StandardMaterial(`${panel.name}_borderMat`, this.scene);
 		borderMaterial.diffuseColor = Color3.FromHexString('#192e38');
 		borderMaterial.emissiveColor = new Color3(0.05, 0.05, 0.05);
 
-		// Border dimensions
+		// PROPERTIES
 		const borderThickness = 0.08;
 		const borderDepth = panelDepth + 0.01;
 
-		// Border configurations
+		// CONFIG
 		const borders = [
 			{ name: 'Top', width: panelWidth + borderThickness * 2, height: borderThickness, x: 0, y: panelHeight / 2 + borderThickness / 2 },
 			{ name: 'Bottom', width: panelWidth + borderThickness * 2, height: borderThickness, x: 0, y: -panelHeight / 2 - borderThickness / 2 },
@@ -113,7 +105,6 @@ export class Scoreboard extends Entity {
 			{ name: 'Right', width: borderThickness, height: panelHeight, x: panelWidth / 2 + borderThickness / 2, y: 0 }
 		];
 
-		// Create each border
 		for (const border of borders) {
 			const borderMesh = MeshBuilder.CreateBox(
 				`${panel.name}_border${border.name}`,
@@ -127,7 +118,6 @@ export class Scoreboard extends Entity {
 	}
 
 	private createCylinder(): void {
-		// Glass material
 		const cylinderMidMaterial = new StandardMaterial('cylinderMidMat', this.scene);
 		cylinderMidMaterial.diffuseColor = Color3.FromHexString('#0fb3ff');
 		cylinderMidMaterial.specularColor = Color3.White();
@@ -135,12 +125,10 @@ export class Scoreboard extends Entity {
 		cylinderMidMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
 		cylinderMidMaterial.backFaceCulling = false;
 
-		// Inner material
 		const cylinderMidInnerMaterial = new StandardMaterial('cylinderMidInnerMat', this.scene);
 		cylinderMidInnerMaterial.diffuseColor = Color3.Black();
 		cylinderMidInnerMaterial.specularColor = new Color3(0.1, 0.1, 0.1);
 
-		// Border materials
 		const cylinderTopBorderMaterial = new StandardMaterial('cylinderTopBorderMat', this.scene);
 		const cylinderBottomBorderMaterial = new StandardMaterial('cylinderBottomBorderMat', this.scene);
 		cylinderTopBorderMaterial.diffuseColor = Color3.FromHexString('#8fdbff');
@@ -150,23 +138,19 @@ export class Scoreboard extends Entity {
 		cylinderBottomBorderMaterial.emissiveColor = Color3.FromHexString('#0fb3ff');
 		cylinderBottomBorderMaterial.specularColor = Color3.White();
 
-		// Create geometry
 		const cylinderMid = MeshBuilder.CreateCylinder('cylinderMid', { diameterTop: 3, diameterBottom: 2.5, height: 0.5, tessellation: 32 }, this.scene);
 		const cylinderMidInner = MeshBuilder.CreateCylinder('cylinderMidInner', { diameterTop: 2.5, diameterBottom: 2., height: 0.5, tessellation: 32 }, this.scene);
 		const cylinderTopBorder = MeshBuilder.CreateCylinder('cylinderTopBorder', { diameter: 3.1, height: 0.04, tessellation: 32 }, this.scene);
 		const cylinderBottomBorder = MeshBuilder.CreateCylinder('cylinderBottomBorder', { diameter: 2.6, height: 0.04, tessellation: 32 }, this.scene);
 
-		// Apply materials
 		cylinderMid.material = cylinderMidMaterial;
 		cylinderMidInner.material = cylinderMidInnerMaterial;
 		cylinderTopBorder.material = cylinderTopBorderMaterial;
 		cylinderBottomBorder.material = cylinderBottomBorderMaterial;
 
-		// Set positions
 		cylinderTopBorder.position = new Vector3(0, 0.25, 0);
 		cylinderBottomBorder.position = new Vector3(0, -0.25, 0);
 
-		// Parent to scoreboard
 		cylinderMid.parent = this.parentMesh;
 		cylinderMidInner.parent = this.parentMesh;
 		cylinderTopBorder.parent = this.parentMesh;
@@ -182,11 +166,9 @@ export class Scoreboard extends Entity {
 	private updateScoreTexture(texture: DynamicTexture, scoreLeft: number, scoreRight: number): void {
 		const ctx = texture.getContext() as CanvasRenderingContext2D;
 
-		// Background
 		ctx.fillStyle = '#0a4d66';
 		ctx.fillRect(0, 0, 1024, 1024);
 
-		// Stripes
 		ctx.fillStyle = '#083d52';
 		for (let i = 0; i < 1024; i += 8) {
 			ctx.fillRect(0, i, 1024, 4);
@@ -194,23 +176,19 @@ export class Scoreboard extends Entity {
 
 		const scoreText = `${scoreLeft} - ${scoreRight}`;
 
-		// Text properties
 		ctx.font = 'bold 480px Arial';
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
 
-		// Black outline
 		ctx.strokeStyle = '#000000';
 		ctx.lineWidth = 16;
 		ctx.strokeText(scoreText, 512, 512);
 
-		// Cyan glow
 		ctx.shadowColor = '#00ffff';
 		ctx.shadowBlur = 40;
 		ctx.fillStyle = '#00d4ff';
 		ctx.fillText(scoreText, 512, 512);
 
-		// White text
 		ctx.shadowBlur = 0;
 		ctx.fillStyle = '#FFFFFF';
 		ctx.fillText(scoreText, 512, 512);
@@ -224,23 +202,16 @@ export class Scoreboard extends Entity {
 		}
 	}
 
-	/**
-	 * Required by Entity abstract class
-	 */
 	public update(): void {
-		// Scoreboard doesn't need per-frame updates
-		// Score updates are handled via updateScore() method
 	}
 
 	public dispose(): void {
-		// Dispose textures
 		for (const texture of this.panelTextures) {
 			texture.dispose();
 		}
 		this.panelTextures = [];
 		this.panels = [];
-
-		// Call parent dispose
+		this.parentMesh.dispose();
 		super.dispose();
 	}
 }

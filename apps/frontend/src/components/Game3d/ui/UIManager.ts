@@ -5,9 +5,6 @@ export class UIManager {
 		this.injectStyles();
 	}
 
-	/**
-	 * Inject CSS animations
-	 */
 	private injectStyles(): void {
 		if (document.getElementById('game3d-ui-styles')) return;
 
@@ -163,7 +160,6 @@ export class UIManager {
 		
 		document.body.appendChild(overlay);
 
-		// Auto-remove after animation
 		setTimeout(() => {
 			overlay.remove();
 		}, 1000);

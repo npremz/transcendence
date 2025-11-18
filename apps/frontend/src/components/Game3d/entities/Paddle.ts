@@ -1,5 +1,3 @@
-// todo: update needed (3d client side)
-// todo: add updateFromState method (server state sync)
 import { MeshBuilder, Vector3, StandardMaterial, Color3, Scene } from '@babylonjs/core';
 import { PADDLE_3D, MATERIALS } from '../constants';
 import { Entity } from './Entity';
@@ -35,13 +33,12 @@ export class Paddle extends Entity {
 		
 		this.mesh.position.z = -(state.y - 540) * 0.01;
 
-		// SMASH OFFSET
+		// SMASH OFFSET de l'enfer
 		const xPos = this.side === 'left' ? (-PADDLE_3D.START_POSX - PADDLE_3D.MARGIN) * PADDLE_3D.SCALE_3D  : (PADDLE_3D.START_POSX + PADDLE_3D.MARGIN) * PADDLE_3D.SCALE_3D 
 		this.mesh.position.x = xPos + (smashOffsetX || 0);
 	}
 
 	public update(): void {
-		// Update logic for the paddle
 		if (!this.mesh) return;
 	}
 
