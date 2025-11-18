@@ -34,9 +34,6 @@ logs-tournament:
 logs-db:
 	$(DC) logs -f database
 
-logs-authback:
-	$(DC) logs -f authback
-
 logs-blockchain:
 	$(DC) logs -f blockchainback
 
@@ -52,9 +49,6 @@ clean:
 	$(DC) down -v --rmi local --remove-orphans
 
 re: clean up
-
-check-jwt:
-	@./scripts/check-jwt.sh
 
 test-blockchain:
 	@./scripts/test-blockchain.sh

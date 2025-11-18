@@ -237,8 +237,6 @@ services:
         condition: service_healthy
       tournamentback:
         condition: service_healthy
-      authback:
-        condition: service_healthy
       blockchainback:
         condition: service_healthy
     restart: unless-stopped
@@ -259,7 +257,6 @@ volumes:
   game3dback_node_modules:
   quickplayback_node_modules:
   tournamentback_node_modules:
-  authback_node_modules:
   blockchainback_node_modules:
   database_node_modules:
   db_data:
