@@ -10,7 +10,10 @@ export class NetworkManager  {
 	public onStateUpdate?: (state: PublicState) => void;
 	public onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: any) => void;
 	public onGameOver?: (winner: string, isTournament?: boolean, tournamentId?: string) => void;
-	public onDisconnect?: () => void;
+	public onPaused?: () => void;
+	public onResumed?: () => void;
+	public onCountdown?: (value: number) => void;
+	public onTimeoutStatus?: (status: { left: { active: boolean; remainingMs: number }; right: { active: boolean; remainingMs: number } }) => void;
 
 	constructor(roomId: string) {
 		this.roomId = roomId;
@@ -35,6 +38,23 @@ export class NetworkManager  {
 				this.onGameOver(winner, isTournament, tournamentId);
 			}
 		}
+		this.wsClient.onPaused = () => {
+			if (this.onPaused) {
+				this.onPaused();
+			}
+		}
+
+		this.wsClient.onResumed = () => {
+			if (this.onResumed) this.onResumed();
+		};
+
+		this.wsClient.onCountdown = (v) => {
+			if (this.onCountdown) this.onCountdown(v);
+		};
+
+		this.wsClient.onTimeoutStatus = (s) => {
+			if (this.onTimeoutStatus) this.onTimeoutStatus(s);
+		};
 	}
 
 	public connect(): void {
@@ -88,6 +108,5 @@ export class NetworkManager  {
 		this.onStateUpdate = undefined;
 		this.onWelcome = undefined;
 		this.onGameOver = undefined;
-		this.onDisconnect = undefined;
 	}
 }
