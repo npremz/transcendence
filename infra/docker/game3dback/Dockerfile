@@ -1,8 +1,9 @@
 FROM transcendence-base:latest
 
-WORKDIR /authback
+WORKDIR /game3dback
 
 COPY package*.json ./
+
 RUN npm ci
 
 COPY . .

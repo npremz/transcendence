@@ -416,7 +416,7 @@ export const waitingRoomLogic = (): CleanupFunction => {
                     
                     setTimeout(() => {
                         window.router.navigate(`/game/${roomId}`);
-                    }, 1500);
+                    }, 1000);
                 }
             } catch (err) {
                 console.error('Polling error:', err);

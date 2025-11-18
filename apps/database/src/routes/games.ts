@@ -4,6 +4,7 @@ interface Game {
 	id: string;
 	room_id: string;
 	game_type: 'quickplay' | 'tournament';
+	is_3d?: boolean;
 	tournament_id?: string;
 	tournament_round?: number;
 	match_position?: number;
@@ -27,6 +28,7 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 		id: string;
 		room_id: string;
 		game_type: 'quickplay' | 'tournament';
+		is_3d?: boolean;
 		player_left_id: string;
 		player_right_id: string;
 		tournament_id?: string;
@@ -39,6 +41,7 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 				id,
 				room_id,
 				game_type,
+				is_3d,
 				player_left_id,
 				player_right_id,
 				tournament_id,
@@ -57,11 +60,11 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 			return new Promise((resolve) => {
 				fastify.db.run(
 					`INSERT INTO games (
-						id, room_id, game_type, player_left_id, player_right_id,
+						id, room_id, game_type, is_3d, player_left_id, player_right_id,
 						tournament_id, tournament_round, match_position, status
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting')`,
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting')`,
 					[
-						id, room_id, game_type, player_left_id, player_right_id,
+						id, room_id, game_type, is_3d ? 1 : 0, player_left_id, player_right_id,
 						tournament_id || null, tournament_round || null, match_position || null
 					],
 					function(err)
