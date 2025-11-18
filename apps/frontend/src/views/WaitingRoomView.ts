@@ -82,10 +82,9 @@ export const waitingRoomLogic = (): CleanupFunction => {
                     stopPolling();
                     sessionStorage.setItem('gameWsURL', data.gameServerURL);
                     
-                    setTimeout(() => {
-                        const gamePath = skill === 'smash' ? `/game3d/${roomId}` : `/game/${roomId}`;
-                        window.router.navigate(gamePath);
-                    }, 1000);
+					setTimeout(() => {
+						window.router.navigate(`/game/${roomId}`);
+					}, 1000);
                 }
             } catch (err) {
                 console.error('Polling error:', err);

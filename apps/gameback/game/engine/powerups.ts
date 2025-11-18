@@ -18,13 +18,8 @@ export const spawnPowerUp = (state: GameState) => {
 	{
 		return;
 	}
-	// const types: Array<'split' | 'blackout' | 'blackhole'> = ['split', 'blackout', 'blackhole'];
-	// const type = types[Math.floor(Math.random() * types.length)];
-	const rand = Math.random(); // dev
-	let type: 'split' | 'blackout' | 'blackhole'; // dev
-	if (rand < 0.70) type = 'blackhole'; // dev
-	else if (rand < 0.85) type = 'blackhole'; // dev
-	else type = 'blackhole'; // dev
+	const types: Array<'split' | 'blackout' | 'blackhole'> = ['split', 'blackout', 'blackhole'];
+	const type = types[Math.floor(Math.random() * types.length)];
 	const margin = 150;
 	state.powerUps.push({
 		id: PU_ID++,

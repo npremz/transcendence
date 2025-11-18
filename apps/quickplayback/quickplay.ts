@@ -96,14 +96,10 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 				const leftPlayer = room.players[0];
 				const rightPlayer = room.players[1];
 
-				// Determine if this should be a 3D game (if either player selected smash)
-				const is3d = leftPlayer.selectedSkill === 'smash' || rightPlayer.selectedSkill === 'smash';
-
 				await callDatabase('/games', 'POST', {
 					id: gameId,
 					room_id: room.id,
 					game_type: 'quickplay',
-					is_3d: is3d,
 					player_left_id: room.players[0].id,
 					player_right_id: room.players[1].id
 				});
