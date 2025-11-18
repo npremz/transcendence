@@ -5,6 +5,7 @@
 // todo: add stadium loading error handling
 // todo: maybe add more types for environment
 
+import '@babylonjs/loaders';
 import { Animation, ArcRotateCamera, AxesViewer, Color3, CubicEase, DirectionalLight, EasingFunction, Engine, GlowLayer, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
 import { CAMERA } from '../constants';
 
