@@ -12,6 +12,7 @@ import { BracketView, bracketLogic } from '../views/BracketView';
 import { LocalGameView, localGameLogic } from '../views/LocalGameView';
 import { HistoryView, historyLogic } from '../views/HistoryView';
 import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
+import { Game3dView } from '../views/Game3dView.ts';
 import type { NavigationGuard } from './types';
 import {
     logGuard,
@@ -77,6 +78,15 @@ export class Router {
             },
         });
 
+		this.routes.push({
+            path: '/game3d/:roomId',
+            view: Game3dView,
+            title: 'Pong 3D gaming',
+            beforeEnter: async (to, from, params) => {
+                return await roomExistsGuard(to, from, params);
+            },
+        });
+
         this.routes.push({
             path: '/tournament',
             view: TournamentView,
@@ -132,6 +142,12 @@ export class Router {
             view: CreateAccountView,
             title: 'Test'
         });
+		//wip temp road to work on the visual
+		this.routes.push({
+			path: '/dev3d',
+			view: Game3dView,
+			title: 'game 3D'
+		});
 
         this.compileRoutes();
     }
