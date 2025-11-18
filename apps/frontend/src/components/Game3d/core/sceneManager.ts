@@ -5,7 +5,7 @@
 // todo: add stadium loading error handling
 // todo: maybe add more types for environment
 
-import { Animation, ArcRotateCamera, AxesViewer, Color3, Color4, CubicEase, DirectionalLight, EasingFunction, Engine, GlowLayer, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
+import { Animation, ArcRotateCamera, AxesViewer, Color3, CubicEase, DirectionalLight, EasingFunction, Engine, GlowLayer, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
 import { CAMERA } from '../constants';
 
 export class SceneManager {
@@ -21,18 +21,13 @@ export class SceneManager {
 			groundTexture: Mesh[] | null;
 		} | null;
 	};
-	private powerUps: {
-		blackhole: {
-			helix: Mesh | null;
-		} | null;
-	};
 	private lights: {
 		ambient: HemisphericLight;
 		main: DirectionalLight;
 	};
 	private engine: Engine;
 	private canvas: HTMLCanvasElement;
-	private axisHelper: AxesViewer; // dev
+	// private axisHelper: AxesViewer; // dev
 
 	constructor(engine: Engine, canvas: HTMLCanvasElement) {
 		this.engine = engine;
@@ -41,8 +36,7 @@ export class SceneManager {
 		this.camera = this.setupCamera();
 		this.lights = this.setupLights();
 		this.environment = this.setupEnvironment();
-		this.powerUps = this.setupPowerUps();
-		this.axisHelper = this.setupAxisHelper(); // dev
+		// this.axisHelper = this.setupAxisHelper(); // dev
 	}
 	
 	private createScene(): Scene {
@@ -81,24 +75,7 @@ export class SceneManager {
 		};
 	}
 
-	private setupPowerUps(): typeof this.powerUps {
-		const blackhole = this.scene.getMeshByName('blacholeHelix');
-		const blackholeMaterial = new StandardMaterial('blackholeHelixMat', this.scene);
-		blackholeMaterial.diffuseColor = Color3.FromHexString('#0ea5e9');
-		blackholeMaterial.emissiveColor = Color3.FromHexString('#0ea5e9').scale(0.8);
-		blackholeMaterial.specularColor = Color3.FromHexString('#38bdf8');
-		if (blackhole) {
-			blackhole.material = blackholeMaterial;
-		}
-		return {
-			blackhole: {
-				helix: blackhole || null
-			}
-		};
-	}
-
 	private setupEnvironment(): typeof this.environment {
-		// skybox and stadium
 		const skybox = this.createSkybox();
 		const environment = {
 			skybox: skybox,
@@ -145,6 +122,7 @@ export class SceneManager {
 		const ground = this.scene.getMeshByName('ground') as Mesh | null;
 		const group_border = this.scene.getMeshByName('group_border') as Mesh | null;
 		const gates = this.scene.getMeshByName('gates') as Mesh | null;
+		const blackholeHelix = this.scene.getMeshByName('blacholeHelix') as Mesh | null;
 
 		// Ground material
 		if (ground) {
@@ -153,7 +131,7 @@ export class SceneManager {
 			groundMaterial.alpha = 0.7;
 			groundMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
 			ground.material = groundMaterial;
-			ground.receiveShadows = true; // Enable shadow receiving
+			ground.receiveShadows = true;
 		}
 
 		// Border material
@@ -163,7 +141,7 @@ export class SceneManager {
 			group_border.material = borderGroundMaterial;
 		}
 
-		// Gates material
+		// Gates material // wip
 		// if (gates) {
 		// 	const gatesMaterial = new StandardMaterial('gatesMat', this.scene);
 		// 	gatesMaterial.diffuseColor = Color3.FromHexString('#FFFFFF');
@@ -172,16 +150,22 @@ export class SceneManager {
 
 		const groundTexture = this.createGroundTexture();
 
+		if (blackholeHelix) {
+			const helixMaterial = new StandardMaterial('blackholeHelixMat', this.scene);
+			helixMaterial.diffuseColor = Color3.FromHexString('#000000');
+			helixMaterial.emissiveColor = Color3.FromHexString('#000000').scale(0.8);
+			helixMaterial.specularColor = Color3.FromHexString('#000000');
+			helixMaterial.alpha = 0;
+			blackholeHelix.material = helixMaterial;
+		}
 		return { ground, group_border, gates, groundTexture };
 	}
 
 	private createGroundTexture(): Mesh[] {
 		const textures: Mesh[] = [];
 		const textureElements = ['centerCircle', 'centerCircleInner', 'lineMid', 'lineBorderLeft', 'lineBorderRight', 'lineBorderTop', 'lineBorderBot'];
-		// applied the same white texture to all lines and center circle
 		const whiteTexture = new StandardMaterial('whiteLineMat', this.scene);
 		whiteTexture.diffuseColor = Color3.FromHexString('#FFFFFF');
-		// now black without any reflections
 		const centerInnerColorBlack = new StandardMaterial('centerInnerBlackMat', this.scene);
 		centerInnerColorBlack.diffuseColor = Color3.Black();
 		centerInnerColorBlack.specularColor = Color3.Black();
@@ -200,10 +184,10 @@ export class SceneManager {
 		return textures;
 	}
 
-	private setupAxisHelper(): AxesViewer { //dev
-		const axisHelper = new AxesViewer(this.scene, 1);
-		return axisHelper;
-	}
+	// private setupAxisHelper(): AxesViewer { //dev
+	// 	const axisHelper = new AxesViewer(this.scene, 1);
+	// 	return axisHelper;
+	// }
 
 	public playCameraIntro(): void {
 		const startHorizontalRotation = CAMERA.ANIMATION.START_ALPHA;
@@ -222,7 +206,7 @@ export class SceneManager {
 		const horizontalRotationAnimation = new Animation(
 			'cameraHorizontalRotation',
 			'alpha',
-			60,  //fps
+			60,//fps
 			Animation.ANIMATIONTYPE_FLOAT,
 			Animation.ANIMATIONLOOPMODE_CONSTANT
 		);
@@ -271,7 +255,6 @@ export class SceneManager {
 		this.scene.beginAnimation(this.camera, 0, CAMERA.ANIMATION.DURATION_FRAMES, false);
 	}
 
-	// add the toggle of the camera view (fps or overhead) that will be called from the game engine when the user press V
 	public toggleCameraView(playerSide: 'left' | 'right' | 'spectator'): void {
 		if (this.cameraViewMode === 'overhead') {
 			this.cameraViewMode = 'fps';
@@ -303,7 +286,7 @@ export class SceneManager {
 		this.environment.stadium?.group_border?.dispose();
 		this.environment.stadium?.gates?.dispose();
 		this.environment.skybox.dispose();
-		this.axisHelper.dispose(); // dev
+		// this.axisHelper.dispose(); // dev
 		this.lights.main.dispose();
 		this.lights.ambient.dispose();
 		this.camera.dispose();

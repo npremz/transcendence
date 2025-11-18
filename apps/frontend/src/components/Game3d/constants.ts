@@ -60,11 +60,11 @@ export const POWERUP_3D = {
 } as const;
 
 export const MATERIALS = {
-	PADDLE_COLOR: '#FFFFFF',
+	PADDLE_COLOR: '#5a5a5a',
 	BALL_COLOR: '#FFFFFF',
 	POWERUP_SPLIT: '#FFD700',
-	POWERUP_BLACKOUT: '#1522daff',
-	POWERUP_BLACKHOLE: '#12012eff'
+	POWERUP_BLACKOUT: '#1522da',
+	POWERUP_BLACKHOLE: '#12012e'
 } as const;
 
 export const CAMERA = {

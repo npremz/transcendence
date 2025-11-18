@@ -4,7 +4,6 @@ import { Scoreboard } from "../entities/Scoreboard";
 import { CelebrationSphere } from "../entities/CelebrationSphere";
 import { PowerUpEffects } from "../entities/PowerUpEffects";
 import type { Scene } from "@babylonjs/core";
-import { Tags } from "@babylonjs/core";
 import type { Game3DState, PowerUpsState } from "../types";
 import { PowerUp } from "../entities/powerUp";
 import { NetworkManager } from "../network/NetworkManager";
@@ -17,16 +16,15 @@ export class Renderer3D {
 	private balls: Map<string, Ball> = new Map();
 	private scoreboard!: Scoreboard;
 	private celebrationSphere!: CelebrationSphere;
-	private currentState!: Game3DState;
 	private powerUpMeshes: Map<string, PowerUp> = new Map(); //todo add !
+	
+	
+	private currentState!: Game3DState;
 	private powerUpEffects!: PowerUpEffects;
 	private networkManager: NetworkManager;
-	// private mySide: 'left' | 'right' | 'spectator';
-
-	// Track last score to avoid unnecessary updates
+	
 	private lastScore = { left: 0, right: 0 };
 	
-	// Track power-up states to detect activation
 	private lastBlackholeActive = false;
 	private lastBlackoutLeft = false;
 	private lastBlackoutRight = false;
@@ -56,10 +54,9 @@ export class Renderer3D {
 		}
 		this.updateBalls(state.balls);
 		this.updatePowerUps(state.powerUpState);
-		// Update scoreboard only if score changed
+		// update scoreboard
 		if (this.scoreboard && state.score) {
 			if (state.score.left !== this.lastScore.left || state.score.right !== this.lastScore.right) {
-				// Detect who scored
 				if (state.score.left > this.lastScore.left) {
 					this.celebrationSphere.update();
 				} else if (state.score.right > this.lastScore.right) {
@@ -120,7 +117,6 @@ export class Renderer3D {
 	private updatePowerUps(state: PowerUpsState): void {
 		const currentPowerUpIds = new Set<string>();
 
-		// Update power-up pickups (cylinders)
 		for (let i = 0; i < state.allPowerUps.length; i++) {
 			const powerUp = state.allPowerUps[i];
 			const id = `powerup-${powerUp.type}-${Math.round(powerUp.x * 100)}-${Math.round(powerUp.y * 100)}`;;
@@ -130,11 +126,8 @@ export class Renderer3D {
 
 			if (!mesh) {
 				mesh = new PowerUp(this.scene, id, powerUp);
-				// put in tags
-				Tags.AddTagsTo(mesh, "powerup");
 				this.powerUpMeshes.set(id, mesh);
 			}
-			// Update the powerup's state, then call update to apply position
 			mesh.updateState(powerUp);
 			mesh.update();
 		}
@@ -146,19 +139,19 @@ export class Renderer3D {
 			}
 		}
 
-		// Handle blackhole activation
+		// Blackhole activation
 		if (state.blackholeActive && !this.lastBlackholeActive) {
 			this.powerUpEffects.triggerBlackholeEffect();
 		}
-		
-		// Dispose blackhole when it becomes inactive
+
+		// Blackhole deactivation
 		if (!state.blackholeActive && this.lastBlackholeActive) {
 			this.powerUpEffects.resetBlackholeEffect();
 		}
 		
 		this.lastBlackholeActive = state.blackholeActive;
 		
-		// Handle blackout effects (only penalized player is blinded)
+		// Blackout activation
 		if (state.blackoutLeft && this.networkManager.getSide() === 'left' && !this.lastBlackoutLeft) {
 			this.powerUpEffects.activateBlackoutEffect('left');
 		}
@@ -168,7 +161,7 @@ export class Renderer3D {
 		this.lastBlackoutLeft = state.blackoutLeft;
 		this.lastBlackoutRight = state.blackoutRight;
 
-		// Disable blackout effects when it ends
+		// Blackout deactivation
 		if (!state.blackoutLeft && this.networkManager.getSide() === 'left') {
 			this.powerUpEffects.restoreVisibilityAfterBlackout();
 		}
@@ -176,7 +169,7 @@ export class Renderer3D {
 			this.powerUpEffects.restoreVisibilityAfterBlackout();
 		}
 
-		// Update effects every frame
+		// Per frame update (only helix now)
 		this.powerUpEffects.update();
 	}
 

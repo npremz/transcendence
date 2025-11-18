@@ -15,8 +15,6 @@ export class Game3DEngine {
 	private isRunning: boolean = false;
 	private mySide: 'left' | 'right' | 'spectator' = 'spectator';
 
-	// private systems: ISystem[] = [];
-
 	// systems
 	private inputSystem!: InputSystem;
 	private networkManager!: NetworkManager;
@@ -26,7 +24,6 @@ export class Game3DEngine {
 		this.canvas = canvas;
 		this.roomId = this.getRoomIdFromURL();
 		
-		// Create engine with performance optimizations
 		this.engine = new Engine(canvas, true, {
 			preserveDrawingBuffer: false,
 			stencil: false,
@@ -51,13 +48,11 @@ export class Game3DEngine {
 		this.renderer = new Renderer3D(this.sceneManager.getScene(), this.networkManager);
 	}
 	private setupNetworkCallbacks(): void {
-		// Update game state every frame
 		this.networkManager.onStateUpdate = (serverState) => {
 			const game3DState = StateAdapter.toGame3DState(serverState);
 			this.renderer.updateFromState(game3DState);
 		};
 
-		// Handle initial connection
 		this.networkManager.onWelcome = (side, playerNames) => {
 			this.uiManager.updatePlayerNames(side, playerNames);
 		};
@@ -81,14 +76,12 @@ export class Game3DEngine {
 			// todo check for tournament
 		};
 
-		// Handle disconnection
 		this.networkManager.onDisconnect = () => {
 			this.pause();
 			console.error('[Game3D] Disconnected from server');
 			
 			const overlay = this.uiManager.showDisconnect();
 			
-			// Add click handler
 			overlay.querySelector('#disconnect-return-btn')?.addEventListener('click', () => {
 				sessionStorage.removeItem('gameWsURL');
 				this.uiManager.removeOverlay(overlay);
@@ -122,18 +115,16 @@ export class Game3DEngine {
 	}
 
 	private update(): void {
-		// Get player input
 		const input = this.inputSystem.getInput();
 		
-		// Send input to server
 		this.networkManager.sendInput(input);
 
-		// Handle skill activation (Space key)
+		// SPACE KEY
 		if (this.inputSystem.isSkillKeyPressed()) {
 			this.networkManager.useSkill();
 		}
 
-		// Handle camera toggle (V key)
+		// V KEY
 		if (this.inputSystem.isCameraToggleKeyPressed()) {
 			this.sceneManager.toggleCameraView(this.networkManager.getSide());
 		}
@@ -165,18 +156,15 @@ export class Game3DEngine {
 		this.isRunning = false;
 		this.engine.stopRenderLoop();
 		
-		// Clean up forfeit button
 		const forfeitBtn = document.getElementById('forfeit-btn');
 		if (forfeitBtn) {
 			forfeitBtn.removeEventListener('click', this.handleForfeit);
 		}
 		
-		// Dispose all systems
 		this.inputSystem.dispose();
 		this.networkManager.disconnect();
 		this.uiManager.dispose();
 		
-		// Dispose rendering
 		this.renderer.dispose();
 		this.sceneManager.dispose();
 		this.engine.dispose();

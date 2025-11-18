@@ -1,40 +1,14 @@
-import { 
-	Scene, Mesh, MeshBuilder, StandardMaterial, Color3, 
-	ParticleSystem, Vector3, Color4, Animation
-} from "@babylonjs/core";
-import { Paddle } from "./Paddle";
+import { Scene, Mesh, MeshBuilder, StandardMaterial, Color3, ParticleSystem, Quaternion, Vector3, Color4, Animation} from "@babylonjs/core";
 
-/**
- * Manages spectacular visual effects when power-ups are activated
- */
 export class PowerUpEffects {
 	private scene: Scene;
-	private blackholeEffect?: {
-		borderMesh: Mesh;
-		innerMesh: Mesh;
-		helixMesh: Mesh;
-	};
 
 	constructor(scene: Scene) {
 		this.scene = scene;
-		this.blackholeEffect = {
-			borderMesh: this.scene.getMeshByName("centerCircle") as Mesh,
-			innerMesh: this.scene.getMeshByName("centerCircleInner") as Mesh,
-			helixMesh: this.scene.getMeshByName("blacholeHelix") as Mesh,
-		};
-		// // lit
-		const helix = this.blackholeEffect.helixMesh;
-		const helixMaterial = new StandardMaterial("helix-mat", this.scene);
-		helixMaterial.diffuseColor = Color3.FromHexString('#0ea5e9');
-		helixMaterial.emissiveColor = Color3.FromHexString('#0ea5e9').scale(0.8);
-		helixMaterial.specularColor = Color3.FromHexString('#38bdf8');
-		helix.material = helixMaterial;
-
 	}
 
 	public activateBlackoutEffect(side: 'left' | 'right'): void {
 		this.scene.meshes.forEach(mesh => {
-			// keep balls and opposite paddle visible
 			if (mesh.name.startsWith('ball')) return;
 			if (side === 'right' && mesh.name === 'paddle-right') return;
 			if (side === 'left' && mesh.name === 'paddle-left') return;
@@ -55,10 +29,9 @@ export class PowerUpEffects {
 	}
 
 	public triggerBlackholeEffect(): void {
-		if (!this.blackholeEffect) return;
-		const inner = this.blackholeEffect.innerMesh;
-		const border = this.blackholeEffect.borderMesh;
-		const helix = this.blackholeEffect.helixMesh;
+		const inner = this.scene.getMeshByName('centerCircleInner') as Mesh;
+		const border = this.scene.getMeshByName('centerCircle') as Mesh;
+		const helix = this.scene.getMeshByName('blacholeHelix') as Mesh;
 
 		if (inner.material && inner.material instanceof StandardMaterial) {
 			const alphaAnim = new Animation("blackhole-inner-alpha-in", "alpha", 30, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
@@ -74,7 +47,7 @@ export class PowerUpEffects {
 			const alphaAnim = new Animation("blackhole-helix-alpha-in", "alpha", 30, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
 			alphaAnim.setKeys([
 				{ frame: 0, value: helix.material.alpha },
-				{ frame: 30, value: 1 }
+				{ frame: 30, value: 0.5 }
 			]);
 			helix.material.animations = [alphaAnim];
 			this.scene.beginAnimation(helix.material, 0, 30, false);
@@ -102,10 +75,10 @@ export class PowerUpEffects {
 	}
 
 	public resetBlackholeEffect(): void {
-		if (!this.blackholeEffect) return;
-		const inner = this.blackholeEffect.innerMesh;
-		const border = this.blackholeEffect.borderMesh;
-		const helix = this.blackholeEffect.helixMesh;
+
+		const inner = this.scene.getMeshByName('centerCircleInner') as Mesh;
+		const border = this.scene.getMeshByName('centerCircle') as Mesh;
+		const helix = this.scene.getMeshByName('blacholeHelix') as Mesh;
 
 		const scaleAnim = new Animation("blackhole-scale-down", "scaling", 30, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CONSTANT);
 		scaleAnim.setKeys([
@@ -149,10 +122,8 @@ export class PowerUpEffects {
 	}
 
 	private updateBlackholeEffect(): void {
-		const helix = this.blackholeEffect?.helixMesh;
-		if (helix) {
-			helix.rotation.y += 0.02;
-		}
+		const helix = this.scene.getMeshByName('blacholeHelix') as Mesh | null;
+		if (helix) helix.rotate(Vector3.Up(), 0.1);
 	}
 
 	public update(): void {

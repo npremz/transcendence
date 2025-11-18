@@ -57,7 +57,6 @@ export class InputSystem implements ISystem {
 	}
 
 	public update(): void {
-		// No continuous update needed for input system
 	}
 
 	public dispose(): void {
