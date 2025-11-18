@@ -1,6 +1,6 @@
 DC ?= docker compose
 
-.PHONY: up build down logs restart ps health clean re check-jwt test-blockchain
+.PHONY: up build down logs restart ps health clean re test-blockchain
 
 up:
 	./infra/docker/base/build.sh
