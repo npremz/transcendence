@@ -93,6 +93,43 @@ const initServer = async () => {
 		}
 	})
 
+	fastify.get('/tournaments/all', async (request, reply) => {
+        try {
+            const dbResponse = await fetch('http://database:3020/tournaments');
+            const dbData = await dbResponse.json();
+
+            if (!dbData.success || !Array.isArray(dbData.tournaments)) {
+                throw new Error('Failed to fetch tournaments from DB');
+            }
+
+            const finishedTournamentIds = dbData.tournaments
+                .filter((t: any) => t.status === 'finished')
+                .map((t: any) => t.id);
+
+            if (finishedTournamentIds.length === 0) {
+                return { success: true, tournaments: [] };
+            }
+
+            const blockchainTournaments = await blockchainService.getManyTournaments(finishedTournamentIds);
+
+            blockchainTournaments.sort((a, b) => {
+                return Number(b.data.timestamp) - Number(a.data.timestamp);
+            });
+
+            return {
+                success: true,
+                tournaments: blockchainTournaments
+            };
+
+        } catch (error) {
+            fastify.log.error('Error fetching all tournaments:', error);
+            return reply.status(500).send({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    });
+
 	fastify.get('/health', async (request, reply) => {
 		const isConnected = blockchainService.isConnected()
 		return {

@@ -191,6 +191,11 @@ export const HomeView: ViewFunction = () => {
                         <p class="pixel-font text-sm text-blue-300 text-center py-4">Loading...</p>
                     </div>
                 </div>
+				<div class="mt-8">
+					<a href="/blockchain" class="pixel-font text-purple-400 hover:text-purple-300 text-sm flex items-center justify-center gap-2 transition-colors">
+						<span>VIEW BLOCKCHAIN REGISTRY</span>
+					</a>
+				</div>
             </div>
 
             <!-- Footer -->

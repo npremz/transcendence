@@ -12,6 +12,7 @@ import { BracketView, bracketLogic } from '../views/BracketView';
 import { LocalGameView, localGameLogic } from '../views/LocalGameView';
 import { HistoryView, historyLogic } from '../views/HistoryView';
 import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
+import { BlockchainView, blockchainLogic } from '../views/BlockchainView';
 import { Game3dView } from '../views/Game3dView.ts';
 import type { NavigationGuard } from './types';
 import {
@@ -147,6 +148,13 @@ export class Router {
 			path: '/dev3d',
 			view: Game3dView,
 			title: 'game 3D'
+		});
+
+		this.routes.push({
+			path: '/blockchain',
+			view: BlockchainView,
+			onMount: blockchainLogic,
+			title: 'Blockchain Registry'
 		});
 
         this.compileRoutes();
