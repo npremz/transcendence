@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { RoomManager } from './RoomManager'
-import { Player, ClientMessage, ServerMessage } from './types'
+import { Player } from './types'
 import type { RoomFinishedPayload } from './types'
 import { v4 as uuidv4 } from 'uuid'
 

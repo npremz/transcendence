@@ -373,7 +373,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                 ease: 'power2.out'
             });
 
-            // Dessiner les connexions après l'animation
             setTimeout(() => drawConnections(tournament.bracket), 1000);
 
             isFirstRender = false;
@@ -495,7 +494,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     };
 
     const drawConnections = (matches: Match[]): void => {
-        // Supprimer les anciennes connexions
         document.querySelectorAll('.connector-line').forEach(el => el.remove());
 
         const matchesByRound = matches.reduce((acc, match) => {
@@ -528,7 +526,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                         if (container) {
                             const containerRect = container.getBoundingClientRect();
 
-                            // Ligne horizontale depuis le match actuel
                             const horizontalLine = document.createElement('div');
                             horizontalLine.className = 'connector-line connector-horizontal';
                             if (match.status === 'finished') {
@@ -539,12 +536,10 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                             horizontalLine.style.width = '40px';
                             container.appendChild(horizontalLine);
 
-                            // Point de jonction
                             const junctionX = currentRect.right - containerRect.left + 40;
                             const junctionY = currentRect.top + currentRect.height / 2 - containerRect.top;
                             const nextJunctionY = nextRect.top + nextRect.height / 2 - containerRect.top;
 
-                            // Ligne verticale vers le point de jonction commun
                             if (index % 2 === 1) {
                                 const verticalLine = document.createElement('div');
                                 verticalLine.className = 'connector-line connector-vertical';
@@ -561,7 +556,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                                     container.appendChild(verticalLine);
                                 }
 
-                                // Ligne horizontale finale vers le prochain match
                                 const finalHorizontal = document.createElement('div');
                                 finalHorizontal.className = 'connector-line connector-horizontal';
                                 finalHorizontal.style.left = `${junctionX}px`;
@@ -667,7 +661,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
 
     pollInterval = setInterval(() => {
         fetchTournamentData();
-        // Redessiner les connexions à chaque update
         if (currentTournamentState) {
             setTimeout(() => drawConnections(currentTournamentState!.bracket), 100);
         }

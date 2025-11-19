@@ -231,7 +231,6 @@ export const CreateAccountView: ViewFunction = () => {
 };
 
 export const createAccountLogic = (): (() => void) => {
-    // Animations d'entrée avec GSAP
     gsap.from('#create-title', {
         scale: 0.5,
         opacity: 0,

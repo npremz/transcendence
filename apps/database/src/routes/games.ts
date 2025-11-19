@@ -332,7 +332,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 			const { id } = request.params;
 
 			return new Promise((resolve) => {
-				// Récupérer les infos de base de la partie
 				fastify.db.get(
 					`SELECT g.*,
 						u1.username as player_left_username,
@@ -358,7 +357,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 							}));
 						}
 
-						// Récupérer les stats des joueurs
 						fastify.db.all(
 							`SELECT gs.*, u.username
 							FROM game_stats gs
@@ -373,7 +371,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 									}));
 								}
 
-								// Récupérer les skills utilisés
 								fastify.db.all(
 									`SELECT su.*, u.username
 									FROM skills_used su
@@ -389,7 +386,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 											}));
 										}
 
-										// Récupérer les power-ups utilisés
 										fastify.db.all(
 											`SELECT pu.*, u.username
 											FROM power_ups_used pu
@@ -405,7 +401,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 													}));
 												}
 
-												// Récupérer les goals marqués
 												fastify.db.all(
 													`SELECT * FROM goals_scored
 													WHERE game_id = ?
@@ -419,7 +414,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 															}));
 														}
 
-														// Construire la réponse complète
 														resolve(reply.send({
 															success: true,
 															game: {

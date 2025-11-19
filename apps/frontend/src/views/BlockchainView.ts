@@ -156,13 +156,11 @@ export const blockchainLogic = (): CleanupFunction => {
     const host = import.meta.env.VITE_HOST || 'localhost:8443';
     let isComponentMounted = true;
 
-    // Animations GSAP (identiques à avant)
     gsap.from("h1", { y: -50, opacity: 0, duration: 1, ease: "power3.out" });
     gsap.from(".crypto-card", { 
         y: 50, opacity: 0, duration: 0.8, stagger: 0.1, delay: 0.3, ease: "back.out(1.7)" 
     });
 
-    // Block height simulé
     const blockInterval = setInterval(() => {
         const blockEl = document.getElementById('block-height');
         if (blockEl) {
@@ -173,8 +171,6 @@ export const blockchainLogic = (): CleanupFunction => {
 
     const fetchBlockchainData = async () => {
         try {
-            // APPEL UNIQUE À LA NOUVELLE ROUTE
-            // On passe par Nginx (/blockchainback/...) qui redirigera vers le service
             const response = await fetch(`https://${host}/blockchainback/tournaments/all`);
             
             if (!response.ok) throw new Error("Network response was not ok");
@@ -215,9 +211,7 @@ export const blockchainLogic = (): CleanupFunction => {
         if (list) {
             list.style.display = 'grid';
             list.innerHTML = tournaments.map((t) => {
-                // Conversion du BigInt timestamp en date lisible
                 const date = new Date(Number(t.data.timestamp) * 1000).toLocaleString();
-                // Faux hash visuel pour le style
                 const visualHash = '0x' + btoa(t.id).substring(0, 40).toLowerCase() + '...';
 
                 return `
@@ -263,7 +257,6 @@ export const blockchainLogic = (): CleanupFunction => {
                 `;
             }).join('');
 
-            // Animation d'apparition
             gsap.to(".tournament-item", {
                 opacity: 1,
                 y: 0,
