@@ -209,8 +209,6 @@ services:
         condition: service_healthy
       gameback:
         condition: service_healthy
-      game3dback:
-        condition: service_healthy
       quickplayback:
         condition: service_healthy
       tournamentback:
@@ -232,7 +230,6 @@ volumes:
   chatback_node_modules:
   userback_node_modules:
   gameback_node_modules:
-  game3dback_node_modules:
   quickplayback_node_modules:
   tournamentback_node_modules:
   blockchainback_node_modules:
