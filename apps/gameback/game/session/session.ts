@@ -384,8 +384,7 @@ class GameSession {
         
         try
         {
-            const host = process.env.VITE_HOST || 'localhost:8443';
-            const url = `https://${host}/gamedb/games/room/${this.roomId}/start`;
+            const url = `http://database:3020/games/room/${this.roomId}/start`;
             
             await fetch(url, {
                 method: 'PATCH',
@@ -408,21 +407,14 @@ class GameSession {
 		if (!player) return;
 
 		try {
-			const host = process.env.VITE_HOST || 'localhost:8443';
-			const isDevelopment = process.env.NODE_ENV === 'development';
-			const agent = isDevelopment ? new (await import('https')).Agent({ rejectUnauthorized: false }) : undefined;
-
-			const gameResponse = await fetch(`https://${host}/gamedb/games/room/${this.roomId}`, {
-				// @ts-ignore
-				agent
-			});
+			const gameResponse = await fetch(`http://database:3020/games/room/${this.roomId}`);
 			const gameData = await gameResponse.json();
 			
 			if (!gameData.success || !gameData.game?.id) {
 				return;
 			}
 
-			await fetch(`https://${host}/gamedb/power-ups`, {
+			await fetch(`http://database:3020/power-ups`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -431,9 +423,7 @@ class GameSession {
 					power_up_type: type,
 					collected_at_game_time: gameTime,
 					activated_at_game_time: gameTime
-				}),
-				// @ts-ignore
-				agent
+				})
 			});
 
 			this.log?.info({ gameId: gameData.game.id, playerId: player.id, type, gameTime }, 'Power-up saved');
@@ -446,14 +436,7 @@ class GameSession {
 		if (!this.roomId) return;
 
 		try {
-			const host = process.env.VITE_HOST || 'localhost:8443';
-			const isDevelopment = process.env.NODE_ENV === 'development';
-			const agent = isDevelopment ? new (await import('https')).Agent({ rejectUnauthorized: false }) : undefined;
-
-			const gameResponse = await fetch(`https://${host}/gamedb/games/room/${this.roomId}`, {
-				// @ts-ignore
-				agent
-			});
+			const gameResponse = await fetch(`http://database:3020/games/room/${this.roomId}`);
 			const gameData = await gameResponse.json();
 			
 			if (!gameData.success || !gameData.game?.id) {
@@ -462,7 +445,7 @@ class GameSession {
 
 			const scoredAgainstSide = scorerSide === 'left' ? 'right' : 'left';
 
-			await fetch(`https://${host}/gamedb/goals`, {
+			await fetch(`http://database:3020/goals`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -471,9 +454,7 @@ class GameSession {
 					scored_against_side: scoredAgainstSide,
 					ball_y_position: ballYPosition,
 					scored_at_game_time: gameTime
-				}),
-				// @ts-ignore
-				agent
+				})
 			});
 
 			this.log?.info({ gameId: gameData.game.id, scorerSide, ballYPosition, gameTime }, 'Goal saved');
@@ -487,10 +468,6 @@ class GameSession {
 			return;
 		}
 
-		const host = process.env.VITE_HOST || 'localhost:8443';
-		const isDevelopment = process.env.NODE_ENV === 'development';
-		const agent = isDevelopment ? new (await import('https')).Agent({ rejectUnauthorized: false }) : undefined;
-
 		const savePlayerStats = async (side: 'left' | 'right') => {
 			const player = side === 'left' ? this.expected.left : this.expected.right;
 			const stats = side === 'left' ? this.leftStats : this.rightStats;
@@ -498,7 +475,7 @@ class GameSession {
 			if (!player) return;
 
 			try {
-				await fetch(`https://${host}/gamedb/game-stats`, {
+				await fetch(`http://database:3020/game-stats`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
@@ -509,13 +486,11 @@ class GameSession {
 						max_ball_speed: Math.round(stats.max_ball_speed),
 						power_ups_collected: stats.power_ups_collected,
 						skills_used: stats.skills_used
-					}),
-					// @ts-ignore
-					agent
+					})
 				});
 
 				for (const smash of stats.smashes) {
-					await fetch(`https://${host}/gamedb/skills`, {
+					await fetch(`http://database:3020/skills`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
@@ -524,14 +499,12 @@ class GameSession {
 							skill_type: 'smash',
 							activated_at_game_time: smash.time,
 							was_successful: smash.successful
-						}),
-						// @ts-ignore
-						agent
+						})
 					});
 				}
 
 				for (const dash of stats.dashes) {
-					await fetch(`https://${host}/gamedb/skills`, {
+					await fetch(`http://database:3020/skills`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
@@ -540,9 +513,7 @@ class GameSession {
 							skill_type: 'dash',
 							activated_at_game_time: dash.time,
 							was_successful: dash.successful
-						}),
-						// @ts-ignore
-						agent
+						})
 					});
 				}
 
@@ -572,9 +543,7 @@ class GameSession {
             await this.notifyTournamentMatchEnd(this.matchId, winnerId);
         }
 
-        const host = process.env.VITE_HOST || 'localhost:8443';
-        const endpoint = '/quickplay/room-finished';
-        const url = `https://${host}${endpoint}`;
+        const url = `http://quickplayback:3030/room-finished`;
 
         try
 		{
@@ -598,7 +567,7 @@ class GameSession {
 
 			if (this.roomId) {
 				try {
-					const gameResponse = await fetch(`https://${host}/gamedb/games/room/${this.roomId}`);
+					const gameResponse = await fetch(`http://database:3020/games/room/${this.roomId}`);
 					const gameData = await gameResponse.json();
 					if (gameData.success && gameData.game?.id) {
 						await this.saveGameStats(gameData.game.id);
@@ -615,9 +584,7 @@ class GameSession {
     }
 
 	private async notifyTournamentMatchEnd(matchId: string, winnerId: string): Promise<void> {
-        const host = process.env.VITE_HOST || 'localhost:8443';
-        const endpoint = '/tournamentback/match-finished';
-        const url = `https://${host}${endpoint}`;
+        const url = `http://tournamentback:3040/match-finished`;
 
         try
 		{

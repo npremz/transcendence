@@ -1,10 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { RoomManager } from './RoomManager'
 import { v4 as uuidv4 } from 'uuid'
-import https from 'https'
-
-const isDevelopment = process.env.NODE_ENV === 'development'
-const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
 
 export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager: RoomManager)
 {
@@ -35,9 +31,7 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
                 matchId
             );
 
-			// Use HTTPS via nginx for backend-to-backend communication
-			const backendHost = process.env.BACKEND_HOST || process.env.VITE_HOST || 'localhost:8443';
-			const fetchURL = `https://${backendHost}/gameback/create`;
+			const fetchURL = `http://gameback:3010/create`;
 
 			const gameResponse = await fetch(fetchURL, {
 				method: 'POST',
@@ -49,9 +43,7 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
 					isTournament: true,
 					tournamentId,
 					matchId
-				}),
-				// @ts-ignore
-				agent
+				})
 			});
 
 			if (!gameResponse.ok) {

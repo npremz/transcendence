@@ -3,19 +3,12 @@ import { RoomManager } from './RoomManager'
 import { Player, ClientMessage, ServerMessage } from './types'
 import type { RoomFinishedPayload } from './types'
 import { v4 as uuidv4 } from 'uuid'
-import https from 'https'
-
-const isDevelopment = process.env.NODE_ENV === 'development'
-const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
 
 async function callDatabase(endpoint: string, method: string = 'GET', body?: any) {
-	const host = process.env.BACKEND_HOST || process.env.VITE_HOST || 'localhost:8443';
-	const url = `https://${host}/gamedb${endpoint}`;
+	const url = `http://database:3020${endpoint}`;
 	
 	const options: RequestInit = {
 		method,
-		// @ts-ignore
-		agent
 	};
 
 	if (body && method !== 'GET') {
@@ -85,8 +78,7 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 		
 		if (room.players.length === 2)
 		{
-			const backendHost = process.env.BACKEND_HOST || process.env.VITE_HOST || 'localhost:8443';
-			const fetchURL = `https://${backendHost}/gameback/create`;
+			const fetchURL = `http://gameback:3010/create`;
 
 			const gameId = uuidv4();
 
@@ -119,8 +111,6 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 							selectedSkill: rightPlayer.selectedSkill || 'smash'
 						},
 					}),
-					// @ts-ignore
-					agent
 				});
 
 				if (!gameResponse.ok) {
