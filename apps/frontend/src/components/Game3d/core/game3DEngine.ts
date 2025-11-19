@@ -132,7 +132,7 @@ export class Game3DEngine {
 				document.body.appendChild(overlay);
 				setTimeout(() => {
 					sessionStorage.removeItem('gameWsURL');
-					window.location.href = `/tournament/${tournamentId}`; // wip redirection to 3D tournament
+					window.router.navigate(`/tournament/${tournamentId}`); // wip redirection to 3D tournament
 					document.body.removeChild(overlay);
 				}, 3000);
 				return;

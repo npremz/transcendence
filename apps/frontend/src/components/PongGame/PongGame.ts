@@ -434,7 +434,7 @@ export class PongGame implements Component {
 
 		setTimeout(() => {
 			sessionStorage.removeItem('gameWsURL');
-			window.location.href = `/tournament/${tournamentId}`;
+			window.router.navigate(`/tournament/${tournamentId}`);
 		}, 3000);
 	}
 

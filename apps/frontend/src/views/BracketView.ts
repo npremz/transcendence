@@ -306,7 +306,7 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
             const wsUrl = `wss://${host}${endpoint}/${myMatch.roomId}`;
             sessionStorage.setItem('gameWsURL', wsUrl);
             
-            window.location.href = `/game/${myMatch.roomId}`;
+            window.router.navigate(`/game/${myMatch.roomId}`);
         }
     };
 

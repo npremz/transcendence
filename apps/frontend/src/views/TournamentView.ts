@@ -492,7 +492,7 @@ export const tournamentLogic = (): CleanupFunction => {
                 cleanupIntervals(); // ✅ Nettoyer avant redirect
                 countdownModal.classList.add('hidden');
                 countdownModal.classList.remove('flex');
-                window.location.href = `/tournament/${tournamentId}`;
+                window.router.navigate(`/tournament/${tournamentId}`);
             }
         }, 1000);
         

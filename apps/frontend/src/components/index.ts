@@ -4,7 +4,6 @@ import { JoinTournamentComponent } from './JoinTournament';
 
 export function registerComponents(): void
 {
-    ComponentRegistry.register('chat', ChatComponant)
     ComponentRegistry.register('pong-game', PongGame)
     ComponentRegistry.register('joinTournament', JoinTournamentComponent)
 }
