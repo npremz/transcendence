@@ -139,7 +139,7 @@ export class UIManager {
 			const opponentRemainingMs = iAmLeft ? timeoutStatus.rightRemainingMs : timeoutStatus.leftRemainingMs;
 			if (opponentDisconnected && opponentRemainingMs > 0) {
 				const secondsRemaining = Math.ceil(opponentRemainingMs / 1000);
-				text = 'Opponent disconnected. Forfeit in ' + secondsRemaining + 's';
+				text = `⚠️ <span style="color:#ff4d4f">Opponent disconnected.</span> <br> Forfeit in ${secondsRemaining}s`;
 			} else {
 				text = 'Game Paused';
 			}
@@ -160,7 +160,7 @@ export class UIManager {
 		if (existing) {
 			const genericText = existing.querySelector('.generic-text');
 			if (genericText) {
-				genericText.textContent = text;
+				genericText.innerHTML = text;
 			}
 			return existing;
 		}
@@ -169,8 +169,8 @@ export class UIManager {
 		overlay.id = 'generic-overlay';
 		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
 		overlay.innerHTML = `
-			<div class="bg-gray-800/70 border-2 border-white/20 rounded-lg p-8 text-center max-w-md">
-				<h2 class="text-4xl font-bold text-white mb-4 generic-text">
+			<div class="p-8 text-center max-w-md">
+				<h2 class="text-2xl font-bold text-white mb-4 generic-text">
 					${text}
 				</h2>
 			</div>
