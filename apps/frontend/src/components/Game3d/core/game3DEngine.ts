@@ -207,7 +207,9 @@ export class Game3DEngine {
 		this.uiManager.render(
 			this.gameStatusInfo,
 			this.timeoutStatus,
-			this.networkManager.getSide());
+			this.networkManager.getSide(),
+			this.renderer.getCurrentState()
+		);
 		this.renderer.render();
 	}
 

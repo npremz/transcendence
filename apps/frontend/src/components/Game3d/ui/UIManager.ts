@@ -1,14 +1,27 @@
-import type { GameStatusInfo, TimeoutStatus } from "../types";
+import type { GameStatusInfo, TimeoutStatus, Game3DState} from "../types";
 
 export class UIManager {
 	private previousCount: number = 0;
 
 	constructor() {
-		this.injectStyles();
+		this.injectStylesAndHtml();
 	}
 
-	private injectStyles(): void {
+	private injectStylesAndHtml(): void {
 		if (document.getElementById('game3d-ui-styles')) return;
+		if (document.getElementById('game3d-ui-skill')) return;
+
+		const htmlDiv = document.createElement('div');
+		htmlDiv.id = 'game3d-ui-skill';
+		htmlDiv.innerHTML = `
+			<div id="game3d-skill-container" class="fixed left-1/2 bottom-6 transform -translate-x-1/2 z-50 pointer-events-none">
+				<div class="flex flex-col items-center">
+					<div id="skill-wrapper" class="skillLoader" aria-hidden="true"></div>
+					<div id="smash-cooldown" class="mt-2 text-white/90 text-sm select-none">Smash cooldown</div>
+				</div>
+			</div>
+		`;
+		document.body.appendChild(htmlDiv);
 
 		const style = document.createElement('style');
 		style.id = 'game3d-ui-styles';
@@ -23,9 +36,24 @@ export class UIManager {
 					transform: scale(1);
 				}
 			}
-
 			.animate-fade-in {
 				animation: fadeIn 0.3s ease-out;
+			}
+
+			/* Skill loader */
+			/* HTML: <div class="loader"></div> */
+			/* vars */
+			:root {
+				--skill-gradient-color: #00e676;
+			}
+
+			.skillLoader {
+				width: 120px;
+				height: 60px;
+				border-radius: 200px 200px 0 0;
+				-webkit-mask: repeating-radial-gradient(farthest-side at bottom ,#0000 0,#000 1px 12%,#0000 calc(12% + 1px) 20%);
+				background: radial-gradient(farthest-side at bottom, var(--skill-gradient-color) 0 95%,#0000 0) bottom/0% 0% no-repeat #ddd;
+				background-size: 100% 100%;
 			}
 		`;
 		document.head.appendChild(style);
@@ -96,21 +124,62 @@ export class UIManager {
 		return overlay;
 	}
 
-	public render(gameStatusInfo: GameStatusInfo, timeoutStatus: TimeoutStatus, side: 'left' | 'right' | 'spectator'): void {
-		// there will be only one overlay. The same overlay will be updated according to the game status
-		// If countdown is active, show the countdown overlay
-		// If the game is over, do not show pause/timeouts or countdown overlays —
-		// game-over UI is handled by the engine/game logic.
+	private updateSkillOverlay(side: 'left' | 'right' | 'spectator', state: Game3DState | null): void {
+		console.log('Updating skill overlay for side:', side);
+		if (!state) return;
+		console.log('Received game state');
+		const isBlackout = side === 'left' ? state.powerUpState.blackoutLeft : state.powerUpState.blackoutRight;
+		if (isBlackout) return;
+		const skillState = side === 'left' ? state.skillStates.left : state.skillStates.right;
+		const skillType = side === 'left' ? state.selectedSkills.left : state.skillStates.right;
+		const cooldown = skillType === 'smash' ? 3 : 5;
+		const progress = skillState.cooldownRemaining > 0
+			? Math.max(0, Math.min(1, 1 - skillState.cooldownRemaining / cooldown))
+			: 1;
+		const currentLoader = document.querySelector('.skillLoader') as HTMLElement;
+		if (currentLoader) {
+			const step = Math.floor(progress * 6);
+			console.log('Skill loader step:', step);
+			let backgroundSize: string = '';
+			const color = step == 6 ? '#00e676': '#ffcc00'
+			switch (step) {
+				case 1:
+					backgroundSize = '0% 0%';
+					break;
+				case 2:
+					backgroundSize = '20% 20%';
+					break;
+				case 3:
+					backgroundSize = '40% 40%';
+					break;
+				case 4:
+					backgroundSize = '60% 60%';
+					break;
+				case 5:
+					backgroundSize = '80% 80%';
+					break;
+				case 6:
+					backgroundSize = '100% 100%';
+					break;
+				default:
+					backgroundSize = '100% 100%';
+			}
+			currentLoader.style.backgroundSize = backgroundSize;
+			currentLoader.style.setProperty('--skill-gradient-color', color);
+		}
+	}
+	
+	public render(gameStatusInfo: GameStatusInfo, timeoutStatus: TimeoutStatus, side: 'left' | 'right' | 'spectator', state: Game3DState): void {
 		if (gameStatusInfo.isGameOver) {
-			// remove any generic overlays (countdown / paused banners)
 			this.clearOverlayById('generic-overlay');
 			return;
 		}
 
+		this.updateSkillOverlay(side, state);
+
 		let overlay: HTMLElement;
 		let text: string = '';
 		if ((gameStatusInfo.countdownValue ?? 0) > 0) {
-			// dont repeat if same number
 			if (this.previousCount === gameStatusInfo.countdownValue) return;
 			this.previousCount = gameStatusInfo.countdownValue ?? 0;
 			text = `${gameStatusInfo.countdownValue}`;
