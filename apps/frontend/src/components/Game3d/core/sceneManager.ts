@@ -58,9 +58,10 @@ export class SceneManager {
 			new Vector3(CAMERA.TARGET.x, CAMERA.TARGET.y, CAMERA.TARGET.z),
 			this.scene
 		);
-		camera.attachControl(this.canvas, true);
-		camera.lowerRadiusLimit = 10;
-		camera.upperRadiusLimit = 400;
+		// camera.attachControl(this.canvas, true); //dev to move camera with drag
+		// camera.lowerRadiusLimit = 10;// dev
+		// camera.upperRadiusLimit = 400;// dev
+		
 		return camera;
 	}
 
