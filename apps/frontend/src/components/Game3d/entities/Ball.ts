@@ -24,7 +24,7 @@ export class Ball extends Entity {
 		const z3d = ballConverter2DYto3DZ(state.y);
 
 		this.mesh.position.x = x3d;
-		this.mesh.position.y = BALL_3D.START_POSY * BALL_3D.SCALE_3D;
+		this.mesh.position.y = (BALL_3D.START_POSY * 2) * BALL_3D.SCALE_3D;
 		this.mesh.position.z = z3d;
 	}
 

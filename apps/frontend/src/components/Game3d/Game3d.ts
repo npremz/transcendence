@@ -94,11 +94,50 @@ export function Game3dComponent(): string {
 				</button>
 				<div id="player-right-name" class="text-xl font-bold text-white drop-shadow-lg">Player 2</div>
 			</div>
-			
+			<!-- skill indicator -->
+			<div id="game3d-ui-skill">
+				<div id="game3d-skill-container" class="fixed left-1/2 bottom-6 transform -translate-x-1/2 z-50 pointer-events-none">
+					<div class="flex flex-col items-center">
+						<div id="skill-wrapper" class="skillLoader" aria-hidden="true"></div>
+						<div id="skill-cooldown" class="mt-2 text-white/90 text-sm select-none">Skill cooldown</div>
+					</div>
+				</div>
+			</div>
+			<style id="game3d-ui-styles">
+				:root {
+					--skill-gradient-color: #00e676;
+				}
+
+				.skillLoader {
+					width: 120px;
+					height: 60px;
+					border-radius: 200px 200px 0 0;
+					-webkit-mask: repeating-radial-gradient(farthest-side at bottom ,#0000 0,#000 1px 12%,#0000 calc(12% + 1px) 20%);
+					background: radial-gradient(farthest-side at bottom, var(--skill-gradient-color) 0 95%,#0000 0) bottom/0% 0% no-repeat #ddd;
+					background-size: 100% 100%;
+				}
+			</style>
+
 			<!-- Camera View Indicator -->
 			<div class="absolute bottom-4 right-4 px-3 py-2 bg-black/50 text-white text-sm rounded pointer-events-none">
 				Press <span class="font-bold text-cyan-400">V</span> to toggle camera view
 			</div>
+			<!-- Global Css -->
+			<style>
+				@keyframes fadeIn {
+				from {
+					opacity: 0;
+					transform: scale(0.9);
+				}
+				to {
+					opacity: 1;
+					transform: scale(1);
+				}
+				}
+				.animate-fade-in {
+					animation: fadeIn 0.3s ease-out;
+				}
+			</style>
 		</div>
 	`;
 }
