@@ -175,8 +175,7 @@ export class Scoreboard extends Entity {
 		}
 
 		const scoreText = `${scoreLeft} - ${scoreRight}`;
-
-		ctx.font = 'bold 480px Arial';
+		ctx.font = 'bold 300px Arial';
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
 
