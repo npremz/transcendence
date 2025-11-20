@@ -2,12 +2,20 @@ import type { NavigationGuard } from './types';
 
 export const roomExistsGuard: NavigationGuard = async (to, from, params) => {
     const roomId = params?.roomId;
-    
+
     if (!roomId)
 	{
         console.log('No room id provided');
         return '/';
     }
+
+	// Check if this is a local tournament match
+	const isLocalTournament = sessionStorage.getItem('localTournamentMatch');
+	const localGameConfig = sessionStorage.getItem('localGameConfig');
+	if (isLocalTournament && localGameConfig && roomId.startsWith('local-tournament-')) {
+		console.log('Local tournament match detected, allowing navigation');
+		return true;
+	}
 
 	const cachedWsUrl = sessionStorage.getItem('gameWsURL');
     if (cachedWsUrl && cachedWsUrl.includes(roomId)) {

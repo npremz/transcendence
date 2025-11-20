@@ -10,6 +10,8 @@ import { CreateAccountView } from '../views/CreateAccountView';
 import { tournamentLogic, TournamentView } from '../views/TournamentView';
 import { BracketView, bracketLogic } from '../views/BracketView';
 import { LocalGameView, localGameLogic } from '../views/LocalGameView';
+import { LocalTournamentSetupView, localTournamentSetupLogic } from '../views/LocalTournamentSetupView';
+import { LocalTournamentBracketView, localTournamentBracketLogic } from '../views/LocalTournamentBracketView';
 import { HistoryView, historyLogic } from '../views/HistoryView';
 import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
 import { BlockchainView, blockchainLogic } from '../views/BlockchainView';
@@ -68,6 +70,20 @@ export class Router {
             view: LocalGameView,
             onMount: localGameLogic,
             title: 'Local Game'
+        });
+
+		this.routes.push({
+            path: '/local-tournament-setup',
+            view: LocalTournamentSetupView,
+            onMount: localTournamentSetupLogic,
+            title: 'Local Tournament Setup'
+        });
+
+		this.routes.push({
+            path: '/local-tournament-bracket',
+            view: LocalTournamentBracketView,
+            onMount: localTournamentBracketLogic,
+            title: 'Local Tournament Bracket'
         });
 
 		this.routes.push({
