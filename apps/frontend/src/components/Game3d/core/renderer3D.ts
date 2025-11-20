@@ -177,6 +177,10 @@ export class Renderer3D {
 		this.scene.render();
 	}
 
+	public getCurrentState(): Game3DState {
+		return this.currentState;
+	}
+
 	public dispose(): void {
 		this.paddleLeft?.dispose();
 		this.paddleRight?.dispose();

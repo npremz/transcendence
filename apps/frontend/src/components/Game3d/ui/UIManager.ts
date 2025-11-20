@@ -1,34 +1,9 @@
-import type { GameStatusInfo, TimeoutStatus } from "../types";
+import type { GameStatusInfo, TimeoutStatus, Game3DState} from "../types";
 
 export class UIManager {
 	private previousCount: number = 0;
 
 	constructor() {
-		this.injectStyles();
-	}
-
-	private injectStyles(): void {
-		if (document.getElementById('game3d-ui-styles')) return;
-
-		const style = document.createElement('style');
-		style.id = 'game3d-ui-styles';
-		style.textContent = `
-			@keyframes fadeIn {
-				from {
-					opacity: 0;
-					transform: scale(0.9);
-				}
-				to {
-					opacity: 1;
-					transform: scale(1);
-				}
-			}
-
-			.animate-fade-in {
-				animation: fadeIn 0.3s ease-out;
-			}
-		`;
-		document.head.appendChild(style);
 	}
 
 	public updatePlayerNames(side: 'left' | 'right' | 'spectator', playerNames?: { left?: string; right?: string }): void {
@@ -96,21 +71,65 @@ export class UIManager {
 		return overlay;
 	}
 
-	public render(gameStatusInfo: GameStatusInfo, timeoutStatus: TimeoutStatus, side: 'left' | 'right' | 'spectator'): void {
-		// there will be only one overlay. The same overlay will be updated according to the game status
-		// If countdown is active, show the countdown overlay
-		// If the game is over, do not show pause/timeouts or countdown overlays —
-		// game-over UI is handled by the engine/game logic.
+	private updateSkillOverlay(side: 'left' | 'right' | 'spectator', state: Game3DState | null): void {
+		console.log('Updating skill overlay for side:', side);
+		if (!state) return;
+		console.log('Received game state');
+		const isBlackout = side === 'left' ? state.powerUpState.blackoutLeft : state.powerUpState.blackoutRight;
+		if (isBlackout) return;
+		const skillState = side === 'left' ? state.skillStates.left : state.skillStates.right;
+		const skillType = side === 'left' ? state.selectedSkills.left : state.skillStates.right;
+		const cooldown = skillType === 'smash' ? 3 : 5;
+		const progress = skillState.cooldownRemaining > 0
+			? Math.max(0, Math.min(1, 1 - skillState.cooldownRemaining / cooldown))
+			: 1;
+		const currentLoader = document.querySelector('.skillLoader') as HTMLElement;
+		if (currentLoader) {
+			const step = Math.floor(progress * 6);
+			console.log('Skill loader step:', step);
+			let backgroundSize: string = '';
+			const color = step == 6 ? '#00e676': '#ffcc00'
+			switch (step) {
+				case 0:
+					backgroundSize = '0% 0%';
+					break;
+				case 1:
+					backgroundSize = '0% 0%';
+					break;
+				case 2:
+					backgroundSize = '20% 20%';
+					break;
+				case 3:
+					backgroundSize = '40% 40%';
+					break;
+				case 4:
+					backgroundSize = '60% 60%';
+					break;
+				case 5:
+					backgroundSize = '80% 80%';
+					break;
+				case 6:
+					backgroundSize = '100% 100%';
+					break;
+				default:
+					backgroundSize = '100% 100%';
+			}
+			currentLoader.style.setProperty('--skill-gradient-color', color);
+			currentLoader.style.backgroundSize = backgroundSize;
+		}
+	}
+	
+	public render(gameStatusInfo: GameStatusInfo, timeoutStatus: TimeoutStatus, side: 'left' | 'right' | 'spectator', state: Game3DState): void {
 		if (gameStatusInfo.isGameOver) {
-			// remove any generic overlays (countdown / paused banners)
 			this.clearOverlayById('generic-overlay');
 			return;
 		}
 
+		this.updateSkillOverlay(side, state);
+
 		let overlay: HTMLElement;
 		let text: string = '';
 		if ((gameStatusInfo.countdownValue ?? 0) > 0) {
-			// dont repeat if same number
 			if (this.previousCount === gameStatusInfo.countdownValue) return;
 			this.previousCount = gameStatusInfo.countdownValue ?? 0;
 			text = `${gameStatusInfo.countdownValue}`;
@@ -120,7 +139,7 @@ export class UIManager {
 			const opponentRemainingMs = iAmLeft ? timeoutStatus.rightRemainingMs : timeoutStatus.leftRemainingMs;
 			if (opponentDisconnected && opponentRemainingMs > 0) {
 				const secondsRemaining = Math.ceil(opponentRemainingMs / 1000);
-				text = 'Opponent disconnected. Forfeit in ' + secondsRemaining + 's';
+				text = `⚠️ <span style="color:#ff4d4f">Opponent disconnected.</span> <br> Forfeit in ${secondsRemaining}s`;
 			} else {
 				text = 'Game Paused';
 			}
@@ -141,7 +160,7 @@ export class UIManager {
 		if (existing) {
 			const genericText = existing.querySelector('.generic-text');
 			if (genericText) {
-				genericText.textContent = text;
+				genericText.innerHTML = text;
 			}
 			return existing;
 		}
@@ -150,8 +169,8 @@ export class UIManager {
 		overlay.id = 'generic-overlay';
 		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
 		overlay.innerHTML = `
-			<div class="bg-gray-800/70 border-2 border-white/20 rounded-lg p-8 text-center max-w-md">
-				<h2 class="text-4xl font-bold text-white mb-4 generic-text">
+			<div class="p-8 text-center max-w-md">
+				<h2 class="text-2xl font-bold text-white mb-4 generic-text">
 					${text}
 				</h2>
 			</div>
