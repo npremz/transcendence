@@ -4,59 +4,6 @@ export class UIManager {
 	private previousCount: number = 0;
 
 	constructor() {
-		this.injectStylesAndHtml();
-	}
-
-	private injectStylesAndHtml(): void {
-		if (document.getElementById('game3d-ui-styles')) return;
-		if (document.getElementById('game3d-ui-skill')) return;
-
-		const htmlDiv = document.createElement('div');
-		htmlDiv.id = 'game3d-ui-skill';
-		htmlDiv.innerHTML = `
-			<div id="game3d-skill-container" class="fixed left-1/2 bottom-6 transform -translate-x-1/2 z-50 pointer-events-none">
-				<div class="flex flex-col items-center">
-					<div id="skill-wrapper" class="skillLoader" aria-hidden="true"></div>
-					<div id="skill-cooldown" class="mt-2 text-white/90 text-sm select-none">Skill cooldown</div>
-				</div>
-			</div>
-		`;
-		document.body.appendChild(htmlDiv);
-
-		const style = document.createElement('style');
-		style.id = 'game3d-ui-styles';
-		style.textContent = `
-			@keyframes fadeIn {
-				from {
-					opacity: 0;
-					transform: scale(0.9);
-				}
-				to {
-					opacity: 1;
-					transform: scale(1);
-				}
-			}
-			.animate-fade-in {
-				animation: fadeIn 0.3s ease-out;
-			}
-
-			/* Skill loader */
-			/* HTML: <div class="loader"></div> */
-			/* vars */
-			:root {
-				--skill-gradient-color: #00e676;
-			}
-
-			.skillLoader {
-				width: 120px;
-				height: 60px;
-				border-radius: 200px 200px 0 0;
-				-webkit-mask: repeating-radial-gradient(farthest-side at bottom ,#0000 0,#000 1px 12%,#0000 calc(12% + 1px) 20%);
-				background: radial-gradient(farthest-side at bottom, var(--skill-gradient-color) 0 95%,#0000 0) bottom/0% 0% no-repeat #ddd;
-				background-size: 100% 100%;
-			}
-		`;
-		document.head.appendChild(style);
 	}
 
 	public updatePlayerNames(side: 'left' | 'right' | 'spectator', playerNames?: { left?: string; right?: string }): void {
