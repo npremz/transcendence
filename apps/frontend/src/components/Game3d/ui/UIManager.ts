@@ -17,7 +17,7 @@ export class UIManager {
 			<div id="game3d-skill-container" class="fixed left-1/2 bottom-6 transform -translate-x-1/2 z-50 pointer-events-none">
 				<div class="flex flex-col items-center">
 					<div id="skill-wrapper" class="skillLoader" aria-hidden="true"></div>
-					<div id="smash-cooldown" class="mt-2 text-white/90 text-sm select-none">Smash cooldown</div>
+					<div id="skill-cooldown" class="mt-2 text-white/90 text-sm select-none">Skill cooldown</div>
 				</div>
 			</div>
 		`;
@@ -143,6 +143,9 @@ export class UIManager {
 			let backgroundSize: string = '';
 			const color = step == 6 ? '#00e676': '#ffcc00'
 			switch (step) {
+				case 0:
+					backgroundSize = '0% 0%';
+					break;
 				case 1:
 					backgroundSize = '0% 0%';
 					break;
@@ -164,8 +167,8 @@ export class UIManager {
 				default:
 					backgroundSize = '100% 100%';
 			}
-			currentLoader.style.backgroundSize = backgroundSize;
 			currentLoader.style.setProperty('--skill-gradient-color', color);
+			currentLoader.style.backgroundSize = backgroundSize;
 		}
 	}
 	
