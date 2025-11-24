@@ -7,7 +7,7 @@
 
 import '@babylonjs/loaders';
 import { Animation, ArcRotateCamera, AxesViewer, Color3, CubicEase, DirectionalLight, EasingFunction, Engine, GlowLayer, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
-import { CAMERA } from '../constants';
+import { CAMERA, MATERIALS } from '../constants';
 
 export class SceneManager {
 	private scene: Scene;
@@ -18,7 +18,13 @@ export class SceneManager {
 		stadium: {
 			ground: Mesh | null;
 			group_border: Mesh | null;
-			gates?: Mesh | null;
+			gates: {
+				cables: Mesh[] | null;
+				poleCylinders: Mesh[] | null;
+				poleTops: Mesh[] | null;
+				poleMids: Mesh[] | null;
+				poleBots: Mesh[] | null;
+			} | null;
 			groundTexture: Mesh[] | null;
 		} | null;
 	};
@@ -84,7 +90,13 @@ export class SceneManager {
 			stadium: null as {
 				ground: Mesh | null;
 				group_border: Mesh | null;
-				gates: Mesh | null;
+				gates: {
+					cables: Mesh[] | null;
+					poleCylinders: Mesh[] | null;
+					poleTops: Mesh[] | null;
+					poleMids: Mesh[] | null;
+					poleBots: Mesh[] | null;
+				} | null,
 				groundTexture: Mesh[] | null;
 			} | null
 		};
@@ -118,12 +130,11 @@ export class SceneManager {
 		return skybox;
 	}
 
-	private async createStadium(): Promise<{ ground: Mesh | null; group_border: Mesh | null; gates: Mesh | null; groundTexture: Mesh[] | null }> {
+	private async createStadium(): Promise<{ ground: Mesh | null; group_border: Mesh | null; gates: { cables: Mesh[] | null; poleCylinders: Mesh[] | null; poleTops: Mesh[] | null; poleMids: Mesh[] | null; poleBots: Mesh[] | null; } | null; groundTexture: Mesh[] | null }> {
 		await SceneLoader.ImportMeshAsync('', '/assets/models/', 'stadium.gltf', this.scene);
 
 		const ground = this.scene.getMeshByName('ground') as Mesh | null;
 		const group_border = this.scene.getMeshByName('group_border') as Mesh | null;
-		const gates = this.scene.getMeshByName('gates') as Mesh | null;
 		const blackholeHelix = this.scene.getMeshByName('blacholeHelix') as Mesh | null;
 
 		// Ground material
@@ -139,16 +150,25 @@ export class SceneManager {
 		// Border material
 		if (group_border) {
 			const borderGroundMaterial = new StandardMaterial('borderMat', this.scene);
-			borderGroundMaterial.diffuseColor = Color3.FromHexString('#232323');
+			borderGroundMaterial.diffuseColor = Color3.FromHexString("#353535");
+			borderGroundMaterial.specularColor = Color3.FromHexString(MATERIALS.BORDER);
 			group_border.material = borderGroundMaterial;
 		}
 
-		// Gates material // wip
-		// if (gates) {
-		// 	const gatesMaterial = new StandardMaterial('gatesMat', this.scene);
-		// 	gatesMaterial.diffuseColor = Color3.FromHexString('#FFFFFF');
-		// 	gates.material = gatesMaterial;
-		// }
+		// Gates structure
+		const gates = {
+			cables: this.getMeshesByPrefix('cable'),
+			poleCylinders: this.getMeshesByPrefix('poleCylinder'),
+			poleTops: this.getMeshesByPrefix('poleTop'),
+			poleMids: this.getMeshesByPrefix('poleMid'),
+			poleBots: this.getMeshesByPrefix('poleBot'),
+		};
+		
+		this.colorCables(gates.cables);
+		this.colorPoleCylinders(gates.poleCylinders);
+		this.colorPoleTops(gates.poleTops);
+		this.colorPoleMids(gates.poleMids);
+		this.colorPoleBots(gates.poleBots);
 
 		const groundTexture = this.createGroundTexture();
 
@@ -161,6 +181,11 @@ export class SceneManager {
 			blackholeHelix.material = helixMaterial;
 		}
 		return { ground, group_border, gates, groundTexture };
+	}
+
+	private getMeshesByPrefix(prefix: string): Mesh[] | null {
+		const meshes = this.scene.meshes.filter((mesh: any) => typeof mesh.name === 'string' && mesh.name.startsWith(prefix)) as Mesh[];
+		return meshes.length > 0 ? meshes : null;
 	}
 
 	private createGroundTexture(): Mesh[] {
@@ -182,10 +207,58 @@ export class SceneManager {
 				textures.push(texture);
 			}
 		}
-
 		return textures;
 	}
-
+	
+	private colorCables(cables: Mesh[] | null): void {
+		if (!cables) return;
+		const cableMaterial = new StandardMaterial('cableMat', this.scene);
+		cableMaterial.diffuseColor = Color3.FromHexString(MATERIALS.CABLE);
+		cableMaterial.alpha = 0.7;
+		cableMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
+		cables.forEach(cable => {
+			cable.material = cableMaterial;
+		});
+	}
+	
+	private colorPoleCylinders(poleCylinders: Mesh[] | null): void {
+		if (!poleCylinders) return;
+		const poleCylinderMaterial = new StandardMaterial('poleCylinderMat', this.scene);
+		poleCylinderMaterial.diffuseColor = Color3.FromHexString(MATERIALS.poleCylinder);
+		poleCylinders.forEach(poleCylinder => {
+			poleCylinder.material = poleCylinderMaterial;
+		});
+	}
+	
+	private colorPoleTops(poleTops: Mesh[] | null): void {
+		if (!poleTops) return;
+		const poleTopMaterial = new StandardMaterial('poleTopMat', this.scene);
+		poleTopMaterial.diffuseColor = Color3.FromHexString(MATERIALS.poleTop).scale(1.5);
+		poleTopMaterial.specularColor = Color3.White();
+		poleTopMaterial.specularPower = 128;
+		poleTopMaterial.emissiveColor = Color3.FromHexString(MATERIALS.poleTop).scale(0.3);
+		poleTops.forEach(poleTop => {
+			poleTop.material = poleTopMaterial;
+		});
+	}
+	
+	private colorPoleMids(poleMids: Mesh[] | null): void {
+		if (!poleMids) return;
+		const poleMidMaterial = new StandardMaterial('poleMidMat', this.scene);
+		poleMidMaterial.diffuseColor = Color3.FromHexString(MATERIALS.poleMid);
+		poleMids.forEach(poleMid => {
+			poleMid.material = poleMidMaterial;
+		});
+	}
+	
+	private colorPoleBots(poleBots: Mesh[] | null): void {
+		if (!poleBots) return;
+		const poleBotMaterial = new StandardMaterial('poleBotMat', this.scene);
+		poleBotMaterial.diffuseColor = Color3.FromHexString(MATERIALS.poleBot);
+		poleBots.forEach(poleBot => {
+			poleBot.material = poleBotMaterial;
+		});
+	}
 	// private setupAxisHelper(): AxesViewer { //dev
 	// 	const axisHelper = new AxesViewer(this.scene, 1);
 	// 	return axisHelper;
@@ -286,7 +359,11 @@ export class SceneManager {
 	public dispose(): void {
 		this.environment.stadium?.ground?.dispose();
 		this.environment.stadium?.group_border?.dispose();
-		this.environment.stadium?.gates?.dispose();
+		this.environment.stadium?.gates?.cables?.forEach(mesh => mesh.dispose());
+		this.environment.stadium?.gates?.poleCylinders?.forEach(mesh => mesh.dispose());
+		this.environment.stadium?.gates?.poleTops?.forEach(mesh => mesh.dispose());
+		this.environment.stadium?.gates?.poleMids?.forEach(mesh => mesh.dispose());
+		this.environment.stadium?.gates?.poleBots?.forEach(mesh => mesh.dispose());
 		this.environment.skybox.dispose();
 		// this.axisHelper.dispose(); // dev
 		this.lights.main.dispose();

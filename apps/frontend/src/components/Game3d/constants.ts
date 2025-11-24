@@ -64,7 +64,13 @@ export const MATERIALS = {
 	BALL_COLOR: '#FFFFFF',
 	POWERUP_SPLIT: '#FFD700',
 	POWERUP_BLACKOUT: '#1522da',
-	POWERUP_BLACKHOLE: '#12012e'
+	POWERUP_BLACKHOLE: '#12012e',
+	BORDER: '#3CFFE2',
+	CABLE: '#ADFFE6',
+	poleCylinder:'#2E2E2E',
+	poleTop:'#00FFBC',
+	poleMid:'#2E2E2E',
+	poleBot:'#2E2E2E'
 } as const;
 
 export const CAMERA = {
