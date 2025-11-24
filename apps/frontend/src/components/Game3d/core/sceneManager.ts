@@ -214,7 +214,7 @@ export class SceneManager {
 		if (!cables) return;
 		const cableMaterial = new StandardMaterial('cableMat', this.scene);
 		cableMaterial.diffuseColor = Color3.FromHexString(MATERIALS.CABLE);
-		cableMaterial.alpha = 0.7;
+		cableMaterial.alpha = 0.4;
 		cableMaterial.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
 		cables.forEach(cable => {
 			cable.material = cableMaterial;
