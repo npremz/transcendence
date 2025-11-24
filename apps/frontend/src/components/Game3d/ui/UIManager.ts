@@ -18,7 +18,7 @@ export class UIManager {
 		
 		if (rightNameEl && playerNames?.right) {
 			rightNameEl.textContent = side === 'right' 
-				? `(You) 👉 ${playerNames.right}` 
+				? `${playerNames.right} 👈 (You)` 
 				: playerNames.right;
 		}
 	}

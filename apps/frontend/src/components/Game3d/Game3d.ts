@@ -83,18 +83,205 @@ export class Game3D {
 export function Game3dComponent(): string {
 	
 	return `
+		<style>
+			@keyframes gridMove {
+				0% { transform: translateY(0); }
+				100% { transform: translateY(50px); }
+			}
+			
+			@keyframes neonPulse {
+				0%, 100% { 
+					text-shadow: 
+						0 0 10px rgba(59, 130, 246, 0.8),
+						0 0 20px rgba(59, 130, 246, 0.6),
+						0 0 30px rgba(59, 130, 246, 0.4);
+				}
+				50% { 
+					text-shadow: 
+						0 0 20px rgba(59, 130, 246, 1),
+						0 0 30px rgba(59, 130, 246, 0.8),
+						0 0 40px rgba(59, 130, 246, 0.6);
+				}
+			}
+			
+			@keyframes scanline {
+				0% { transform: translateY(-100%); }
+				100% { transform: translateY(100vh); }
+			}
+
+			@keyframes glitch {
+				0%, 100% { transform: translate(0); }
+				20% { transform: translate(-2px, 2px); }
+				40% { transform: translate(-2px, -2px); }
+				60% { transform: translate(2px, 2px); }
+				80% { transform: translate(2px, -2px); }
+			}
+			
+			.pixel-font {
+				font-family: 'Courier New', monospace;
+				font-weight: bold;
+				letter-spacing: 0.1em;
+			}
+			
+			.neon-border {
+				box-shadow: 
+					0 0 10px rgba(59, 130, 246, 0.5),
+					inset 0 0 10px rgba(59, 130, 246, 0.2);
+				border: 3px solid rgba(59, 130, 246, 0.8);
+			}
+
+			.neon-border-green {
+				box-shadow: 
+					0 0 10px rgba(34, 197, 94, 0.5),
+					inset 0 0 10px rgba(34, 197, 94, 0.2);
+				border: 3px solid rgba(34, 197, 94, 0.8);
+			}
+
+			.neon-border-red {
+				box-shadow: 
+					0 0 10px rgba(239, 68, 68, 0.5),
+					inset 0 0 10px rgba(239, 68, 68, 0.2);
+				border: 3px solid rgba(239, 68, 68, 0.8);
+			}
+
+			.game-hud {
+				background: rgba(4, 7, 26, 0.85);
+				backdrop-filter: blur(10px);
+			}
+
+			.player-info {
+				transition: all 0.3s ease;
+			}
+
+			.player-info:hover {
+				transform: translateY(-2px);
+			}
+
+			#pong-canvas {
+				box-shadow: 
+					0 0 30px rgba(59, 130, 246, 0.4),
+					0 0 60px rgba(59, 130, 246, 0.2),
+					inset 0 0 30px rgba(59, 130, 246, 0.1);
+				border: 3px solid rgba(59, 130, 246, 0.6);
+			}
+
+			.action-button {
+				transition: all 0.2s ease;
+				position: relative;
+				overflow: hidden;
+			}
+
+			.action-button::before {
+				content: '';
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				width: 0;
+				height: 0;
+				border-radius: 50%;
+				background: rgba(255, 255, 255, 0.1);
+				transform: translate(-50%, -50%);
+				transition: width 0.6s, height 0.6s;
+			}
+
+			.action-button:hover::before {
+				width: 300px;
+				height: 300px;
+			}
+
+			.action-button:active {
+				transform: scale(0.95);
+			}
+
+			.forfeit-button:hover {
+				box-shadow: 
+					0 0 20px rgba(239, 68, 68, 0.6),
+					inset 0 0 20px rgba(239, 68, 68, 0.3);
+			}
+
+			.status-indicator {
+				animation: neonPulse 2s ease-in-out infinite;
+			}
+
+			.game-container {
+				animation: fadeIn 0.8s ease-out;
+			}
+
+			@keyframes fadeIn {
+				from { opacity: 0; transform: scale(0.95); }
+				to { opacity: 1; transform: scale(1); }
+			}
+
+			.corner-decoration {
+				position: absolute;
+				width: 20px;
+				height: 20px;
+			}
+
+			.corner-decoration-blue {
+				border: 2px solid rgba(59, 130, 246, 0.5);
+			}
+
+			.corner-decoration-green {
+				border: 2px solid rgba(34, 197, 94, 0.5);
+			}
+
+			.corner-decoration-red {
+				border: 2px solid rgba(239, 68, 68, 0.5);
+			}
+
+			.corner-tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+			.corner-tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+			.corner-bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+			.corner-br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+			.stat-good { color: #4ade80; }
+			.stat-medium { color: #fbbf24; }
+			.stat-bad { color: #ef4444; }
+		</style>
 		<div class="fixed inset-0 w-full h-full" data-component="game3d">
+
+			<!-- Header HUD -->
+			<div class="game-hud border-b border-white/10">
+				<div class="container mx-auto px-4 py-4">
+					<div class="flex items-center justify-between gap-4">
+						<!-- Left: Back button -->
+						<button 
+							onclick="history.back()" 
+							class="action-button pixel-font px-4 py-2 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all text-sm"
+							id="back-button"
+						>
+							<span class="relative z-10">← EXIT</span>
+						</button>
+
+							<!-- Player 1 Name -->
+						<div id="player-left-name" class="text-xl font-bold text-white drop-shadow-lg mx-4">Player 1</div>
+
+						<!-- Center: Status indicator -->
+						<div class="flex items-center gap-3">
+							<div id="connection-indicator" class="status-indicator w-3 h-3 bg-green-400 rounded-full"></div>
+							<span class="pixel-font text-sm text-blue-300">
+								LIVE MATCH
+							</span>
+						</div>
+
+							<!-- Player 2 Name -->
+						<div id="player-right-name" class="text-xl font-bold text-white drop-shadow-lg mx-4">Player 2</div>
+
+						<!-- Right: Forfeit button (si pas mode local) -->
+						<button 
+							id="forfeit-btn"
+							class="action-button forfeit-button pixel-font px-4 py-2 neon-border-red bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-sm relative z-10"
+						>
+							<span class="relative z-10">🏳️ SURRENDER</span>
+						</button>
+					</div>
+				</div>
+			</div>
+
 			<canvas id="game3d-canvas" class="w-full h-full block"></canvas>
 			
-			<!-- UI Overlay -->
-			<div class="absolute top-0 left-0 right-0 flex justify-between items-center px-8 py-4 pointer-events-none">
-				<div id="player-left-name" class="text-xl font-bold text-white drop-shadow-lg">Player 1</div>
-				<button id="forfeit-btn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto">
-					Surrender
-				</button>
-				<div id="player-right-name" class="text-xl font-bold text-white drop-shadow-lg">Player 2</div>
-			</div>
-			<!-- skill indicator -->
+				<!-- skill indicator -->
 			<div id="game3d-ui-skill">
 				<div id="game3d-skill-container" class="fixed left-1/2 bottom-6 transform -translate-x-1/2 z-50 pointer-events-none">
 					<div class="flex flex-col items-center">
