@@ -20,7 +20,7 @@ export function Button({
         primary: 'bg-blue-500 hover:bg-blue-600 text-white',
         secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800',
         danger: 'bg-red-500 hover:bg-red-600 text-white',
-		default: ''
+        default: ''
     };
     
     const sizes = {
@@ -33,7 +33,7 @@ export function Button({
         ${variants[variant]}
         ${sizes[size]}
         rounded-lg font-medium transition-colors cursor-pointer
-		relative block w-fit
+        relative block w-fit
         ${className}
     `.replace(/\s+/g, ' ').trim();
     
@@ -130,7 +130,7 @@ export function BackButton({
 }: BackButtonProps = {}): string {
     return `
         <button 
-            onclick="history.back()" 
+            id="back-button"
             class="
                 ${variant === 'primary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}
                 ${variant === 'secondary' ? 'bg-gray-200 hover:bg-gray-300 text-gray-800' : ''}
@@ -142,7 +142,6 @@ export function BackButton({
                 relative block w-fit
                 ${className}
             "
-            id="back-button"
         >
             ${text}
         </button>
