@@ -98,6 +98,40 @@ export const QuickPlayView: ViewFunction = () => {
 					opacity: 0.4;
 					cursor: not-allowed;
 				}
+
+				.switch-button {
+					background: rgba(15, 23, 42, 0.6);
+				}
+				.switch-button:before{
+					content: "3D";
+					position: absolute;
+					top: 0;
+					bottom: 0;
+					right: 0;
+					width: 120px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					z-index: 3;
+					pointer-events: none;
+				}
+				.switch-button-checkbox:checked + .switch-button-label:before {
+					transform: translateX(120px);
+					transition: transform 300ms linear;
+				}
+				.switch-button-label:before {
+					content: "";
+					background: rgba(59, 130, 246, 0.2);
+					height: 100%;
+					width: 100%;
+					position: absolute;
+					left: 0;
+					top: 0;
+					transform: translateX(0);
+					transition: transform 300ms;
+					border-radius: 4px;
+					border: 3px solid rgba(59, 130, 246, 0.8);
+				}
 			</style>
 			
 			<!-- Scanline effect -->
@@ -140,7 +174,11 @@ export const QuickPlayView: ViewFunction = () => {
 							>>> SELECT YOUR SKILL <<<
 						</p>
 					</div>
-
+					<!-- 2d-3d toggle -->
+					<div id="view-mode-toggle-container" class="switch-button mx-auto mb-8 neon-border rounded-lg pixel-font text-blue-400 overflow-hidden w-60 text-center text-lg tracking-[1px] relative pl-[5px] pr-[125px] py-[5px]">
+						<input id="view-mode-toggle" class="switch-button-checkbox cursor-pointer absolute w-full h-full opacity-0 z-[2] left-0 inset-y-0" type="checkbox" />
+						<label class="switch-button-label relative block select-none pointer-events-none px-0 py-[15px]" for="view-mode-toggle"><span class="switch-button-label-span relative">2D</span></label>
+					</div>
 					<!-- Section Skills -->
 					<div class="mb-12 neon-border bg-black/50 backdrop-blur-sm rounded-lg p-8" id="skills-section">
 						<h2 class="pixel-font text-2xl text-blue-400 mb-6 text-center">
