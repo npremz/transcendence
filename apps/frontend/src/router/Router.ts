@@ -30,6 +30,8 @@ export class Router {
     private componentManager: ComponentManager;
     private currentRoute?: Route;
     private globalBeforeEach?: NavigationGuard;
+	private navigationHistory: string[] = [];
+    private readonly MAX_HISTORY = 10;
     
     constructor()
     {
@@ -40,6 +42,35 @@ export class Router {
 		this.setupHistoryNavigation();
 
         this.globalBeforeEach = logGuard;
+    }
+
+	public getPreviousRoute(): string {
+        if (this.navigationHistory.length >= 2) {
+            return this.navigationHistory[this.navigationHistory.length - 2];
+        }
+        return this.getDefaultBackRoute(this.currentRoute?.path || '/');
+    }
+
+	private getDefaultBackRoute(currentPath: string): string {
+        if (currentPath.startsWith('/game/') || currentPath.startsWith('/game3d/')) {
+            return '/play';
+        }
+        if (currentPath === '/play/waiting') {
+            return '/play';
+        }
+        if (currentPath === '/local') {
+            return '/play';
+        }
+        if (currentPath.startsWith('/tournament/') && currentPath !== '/tournament') {
+            return '/tournament';
+        }
+        if (currentPath.startsWith('/history/')) {
+            return '/history';
+        }
+        if (['/play', '/tournament', '/history', '/login', '/create'].includes(currentPath)) {
+            return '/';
+        }
+        return '/';
     }
     
     private setupRoutes(): void
@@ -287,6 +318,11 @@ export class Router {
                     return;
                 }
             }
+
+			this.navigationHistory.push(path);
+            if (this.navigationHistory.length > this.MAX_HISTORY) {
+                this.navigationHistory.shift();
+            }
             
             const htmlContent = route.view(params);
             const app = document.getElementById('app');
@@ -314,6 +350,11 @@ export class Router {
         } else {
             this.show404();
         }
+    }
+
+	public goBack(): void {
+        const previousRoute = this.getPreviousRoute();
+        this.navigateTo(previousRoute);
     }
 
 	private cleanup(): void
