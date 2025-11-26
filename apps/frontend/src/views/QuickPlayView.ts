@@ -458,7 +458,10 @@ export const quickPlayLogic = (): CleanupFunction => {
 				selectedSkill = 'smash';
 				sessionStorage.setItem('selectedSkill', selectedSkill);
 			}
-			
+			// which view mode selected
+			const viewModeToggle = document.getElementById('view-mode-toggle') as HTMLInputElement | null;
+			const is3D = viewModeToggle?.checked || false;
+			sessionStorage.setItem('viewMode', is3D ? '3d' : '2d');
 			// Animation du bouton
 			gsap.to(playButton, {
 				scale: 0.95,

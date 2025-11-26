@@ -415,7 +415,10 @@ export const waitingRoomLogic = (): CleanupFunction => {
                     sessionStorage.setItem('gameWsURL', data.gameServerURL);
                     
                     setTimeout(() => {
-                        window.router.navigate(`/game/${roomId}`);
+						// set "game3d/" path or "game/"
+						const viewMode = sessionStorage.getItem('viewMode') || '2d';
+						const viewPath = viewMode === '3d' ? 'game3d' : 'game';
+                        window.router.navigate(`/${viewPath}/${roomId}`);
                     }, 1000);
                 }
             } catch (err) {
