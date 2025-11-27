@@ -147,7 +147,7 @@ export const CreateAccountView: ViewFunction = () => {
                         </div>
 
                         <!-- Formulaire -->
-                        <form action="/create" method="POST" id="createForm" class="space-y-6">
+                        <form id="createForm" class="space-y-6">
                             <!-- Username -->
                             <div>
                                 <label for="username" class="block mb-2 pixel-font text-sm text-blue-300">
@@ -198,7 +198,7 @@ export const CreateAccountView: ViewFunction = () => {
 
                             <!-- Bouton Submit -->
                             <button 
-                                type="submit" 
+                                type="button" 
                                 class="w-full py-3 pixel-font text-sm neon-border bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 hover:text-white transition-all"
                                 id="submit-btn"
                             >
@@ -253,9 +253,12 @@ export const createAccountLogic = (): (() => void) => {
     });
 
     // Gestion du formulaire
-    const form = document.getElementById('createForm') as HTMLFormElement;
+    const form = document.getElementById('createForm') as HTMLFormElement | null;
     const errorMessage = document.getElementById('error-message');
     const errorText = errorMessage?.querySelector('p');
+    const hostRaw = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
+    const host = (hostRaw || '').replace(/^https?:\/\//, '').trim();
+    const submitBtn = document.getElementById('submit-btn');
     
     const showError = (message: string) => {
         if (errorMessage && errorText) {
@@ -276,8 +279,7 @@ export const createAccountLogic = (): (() => void) => {
         }
     };
 
-    const handleSubmit = (e: Event) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
         hideError();
         
         const username = (document.getElementById('username') as HTMLInputElement).value;
@@ -290,8 +292,12 @@ export const createAccountLogic = (): (() => void) => {
             return;
         }
 
-        if (password.length < 6) {
-            showError('⚠️ Password must be at least 6 characters');
+        const hasMinLength = password.length >= 6;
+        const hasDigit = /\d/.test(password);
+        const hasUpper = /[A-Z]/.test(password);
+
+        if (!hasMinLength || !hasDigit || !hasUpper) {
+            showError('⚠️ Password must be 6+ chars, include 1 digit and 1 uppercase');
             return;
         }
 
@@ -314,7 +320,6 @@ export const createAccountLogic = (): (() => void) => {
         }
 
         // Animation du bouton
-        const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) {
             gsap.to(submitBtn, {
                 scale: 0.95,
@@ -322,32 +327,66 @@ export const createAccountLogic = (): (() => void) => {
                 yoyo: true,
                 repeat: 1
             });
+            submitBtn.setAttribute('disabled', 'true');
         }
 
-        // TODO: Logique de création de compte réelle
-        console.log('Create account attempt:', { username, password });
-        
-        // Animation de succès
-        gsap.to('#right-panel', {
-            scale: 1.05,
-            duration: 0.2,
-            yoyo: true,
-            repeat: 1,
-            onComplete: () => {
-                // Exemple de redirection après succès
-                // window.router.navigate('/login');
+        try {
+            const response = await fetch(`https://${host}/userback/users`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                showError(payload?.error || 'Unable to create account, please try again.');
+                return;
             }
-        });
+
+            gsap.to('#right-panel', {
+                scale: 1.05,
+                duration: 0.2,
+                yoyo: true,
+                repeat: 1,
+                onComplete: () => {
+                    setTimeout(() => {
+                        // @ts-ignore - router is injected globally by the app
+                        window.router?.navigate('/login');
+                    }, 300);
+                }
+            });
+        } catch (err) {
+            showError('Network error while creating account. Please try again.');
+        } finally {
+            if (submitBtn) {
+                submitBtn.removeAttribute('disabled');
+            }
+        }
+    };
+
+    const onFormSubmit = (e: Event) => {
+        e.preventDefault();
+        handleSubmit();
     };
 
     if (form) {
-        form.addEventListener('submit', handleSubmit);
+        form.addEventListener('submit', onFormSubmit);
+    }
+
+    if (submitBtn) {
+        submitBtn.addEventListener('click', handleSubmit);
     }
 
     // Cleanup
     return () => {
         if (form) {
-            form.removeEventListener('submit', handleSubmit);
+            form.removeEventListener('submit', onFormSubmit);
+        }
+        if (submitBtn) {
+            submitBtn.removeEventListener('click', handleSubmit);
         }
     };
 };

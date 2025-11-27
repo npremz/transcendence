@@ -137,7 +137,7 @@ export const LoginView: ViewFunction = () => {
                         </div>
 
                         <!-- Formulaire -->
-                        <form action="/login" method="POST" id="loginForm" class="space-y-6">
+                        <form id="loginForm" class="space-y-6">
                             <!-- Username -->
                             <div>
                                 <label for="username" class="block mb-2 pixel-font text-sm text-blue-300">
@@ -170,7 +170,7 @@ export const LoginView: ViewFunction = () => {
 
                             <!-- Bouton Submit -->
                             <button 
-                                type="submit" 
+                                type="button" 
                                 class="w-full py-3 pixel-font text-sm neon-border bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 hover:text-white transition-all"
                                 id="submit-btn"
                             >
@@ -227,9 +227,10 @@ export const loginLogic = (): (() => void) => {
 
     // Gestion du formulaire
     const form = document.getElementById('loginForm') as HTMLFormElement;
+    const submitBtn = document.getElementById('submit-btn');
     
-    const handleSubmit = (e: Event) => {
-        e.preventDefault();
+    const handleSubmit = (e?: Event) => {
+        if (e) e.preventDefault();
         
         const username = (document.getElementById('username') as HTMLInputElement).value;
         const password = (document.getElementById('password') as HTMLInputElement).value;
@@ -245,21 +246,35 @@ export const loginLogic = (): (() => void) => {
             });
         }
 
-        // TODO: Logique de connexion réelle
-        console.log('Login attempt:', { username, password });
-        
-        // Exemple de redirection après succès
-        // window.router.navigate('/');
+        // Simule une connexion réussie : enregistre le pseudo et redirige vers l'accueil
+        if ((window as any)?.simpleAuth?.setUsername) {
+            (window as any).simpleAuth.setUsername(username);
+        }
+        // Redirige immédiatement vers l'accueil
+        // @ts-ignore - router global
+        if (window.router?.navigate) {
+            window.router.navigate('/');
+        } else {
+            window.location.assign('/');
+        }
     };
 
     if (form) {
         form.addEventListener('submit', handleSubmit);
+    }
+    if (submitBtn) {
+        submitBtn.addEventListener('click', handleSubmit);
+    } else {
+        console.warn('[Login] submit button not found, navigation may fail');
     }
 
     // Cleanup
     return () => {
         if (form) {
             form.removeEventListener('submit', handleSubmit);
+        }
+        if (submitBtn) {
+            submitBtn.removeEventListener('click', handleSubmit);
         }
     };
 };

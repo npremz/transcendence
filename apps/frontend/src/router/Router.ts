@@ -6,7 +6,7 @@ import { WaitingRoomView, waitingRoomLogic } from '../views/WaitingRoomView';
 import { GameView } from '../views/GameView';
 import { StartGameView } from '../views/StartGameView';
 import { LoginView } from '../views/LoginView';
-import { CreateAccountView } from '../views/CreateAccountView';
+import { CreateAccountView, createAccountLogic } from '../views/CreateAccountView';
 import { tournamentLogic, TournamentView } from '../views/TournamentView';
 import { BracketView, bracketLogic } from '../views/BracketView';
 import { LocalGameView, localGameLogic } from '../views/LocalGameView';
@@ -16,6 +16,8 @@ import { HistoryView, historyLogic } from '../views/HistoryView';
 import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
 import { BlockchainView, blockchainLogic } from '../views/BlockchainView';
 import { Game3dView } from '../views/Game3dView.ts';
+import { ChatView, chatLogic } from '../views/ChatView';
+import { AdminUserView, adminUserLogic } from '../views/AdminUserView';
 import type { NavigationGuard } from './types';
 import {
     logGuard,
@@ -152,13 +154,29 @@ export class Router {
             path: '/login',
             view: LoginView,
             title: 'Test'
-        });
+		});
 
 		this.routes.push({
             path: '/create',
             view: CreateAccountView,
-            title: 'Test'
+            onMount: createAccountLogic,
+            title: 'Create Account'
         });
+		
+		this.routes.push({
+			path: '/chat',
+			view: ChatView,
+			onMount: chatLogic,
+			title: 'Chat'
+		});
+
+		// Temp admin inspect page
+		this.routes.push({
+			path: '/admin/users',
+			view: AdminUserView,
+			onMount: adminUserLogic,
+			title: 'Admin Users'
+		});
 		//wip temp road to work on the visual
 		this.routes.push({
 			path: '/dev3d',
