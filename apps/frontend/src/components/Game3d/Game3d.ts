@@ -247,7 +247,7 @@ export function Game3dComponent(): string {
 					<div class="flex items-center justify-between gap-4">
 						<!-- Left: Back button -->
 						<button 
-							onclick="history.back()" 
+							onclick="window.router.goBack()" 
 							class="action-button pixel-font px-4 py-2 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all text-sm"
 							id="back-button"
 						>

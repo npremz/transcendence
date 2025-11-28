@@ -160,8 +160,8 @@ export const BracketView: ViewFunction = () => {
         <div class="relative z-10 min-h-screen flex flex-col">
             <!-- Header avec BackButton -->
             <header class="flex justify-between items-center px-8 py-6">
-                <button 
-                    onclick="history.back()" 
+                <button
+                    onclick="window.router.goBack()"
                     class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
                     id="back-button"
                 >

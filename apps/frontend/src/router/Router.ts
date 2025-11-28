@@ -51,24 +51,52 @@ export class Router {
     }
 
 	private getDefaultBackRoute(currentPath: string): string {
+        // Routes de jeu → retour au mode de jeu sélectionné
         if (currentPath.startsWith('/game/') || currentPath.startsWith('/game3d/')) {
             return '/play';
         }
+
+        // Waiting room → retour à la sélection du mode
         if (currentPath === '/play/waiting') {
             return '/play';
         }
+
+        // Jeu local → retour à la sélection du mode
         if (currentPath === '/local') {
             return '/play';
         }
+
+        // Tournoi local - bracket → retour au setup
+        if (currentPath === '/local-tournament-bracket') {
+            return '/local-tournament-setup';
+        }
+
+        // Tournoi local - setup → retour à la sélection du mode
+        if (currentPath === '/local-tournament-setup') {
+            return '/play';
+        }
+
+        // Tournoi en ligne - bracket → retour à la liste des tournois
         if (currentPath.startsWith('/tournament/') && currentPath !== '/tournament') {
             return '/tournament';
         }
+
+        // Détail d'une partie → retour à l'historique
         if (currentPath.startsWith('/history/')) {
             return '/history';
         }
+
+        // Blockchain → retour à l'accueil
+        if (currentPath === '/blockchain') {
+            return '/';
+        }
+
+        // Pages principales → retour à l'accueil
         if (['/play', '/tournament', '/history', '/login', '/create'].includes(currentPath)) {
             return '/';
         }
+
+        // Fallback → accueil
         return '/';
     }
     

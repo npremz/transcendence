@@ -173,7 +173,7 @@ export const GameView: ViewFunction = () => {
 						
 						<!-- Left: Back button -->
 						<button 
-							onclick="history.back()" 
+							onclick="window.router.goBack()" 
 							class="action-button pixel-font px-4 py-2 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all text-sm"
 							id="back-button"
 						>

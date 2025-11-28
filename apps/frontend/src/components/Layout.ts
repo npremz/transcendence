@@ -90,7 +90,7 @@ export class Layout {
 			<header class="flex justify-between items-center px-8 py-6">
 				${showBackButton ? `
 					<button
-						onclick="history.back()"
+						onclick="window.router.goBack()"
 						class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
 						id="back-button"
 					>
@@ -179,7 +179,7 @@ export class Layout {
 		return `
 			<header class="flex justify-between items-center px-8 py-6">
 				<button
-					onclick="history.back()"
+					onclick="window.router.goBack()"
 					class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
 					id="back-button"
 				>
