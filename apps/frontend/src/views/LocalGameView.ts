@@ -356,7 +356,7 @@ export const localGameLogic = (): CleanupFunction | void => {
 	};
 
 	const backHandler = () => {
-		window.router?.navigateTo('/play');
+		window.router?.goBack();
 	};
 
 	backBtn?.addEventListener('click', backHandler);
