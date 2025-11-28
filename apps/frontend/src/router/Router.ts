@@ -1,27 +1,12 @@
-import type { Route, CleanupFunction, RouteParams } from './types';
+import type { Route, CleanupFunction, RouteParams, ViewModule, ViewFunction } from './types';
 import { ComponentManager } from '../components/ComponantManager'
-import { HomeView, homeLogic } from '../views/HomeView';
-import { QuickPlayView, quickPlayLogic } from '../views/QuickPlayView';
-import { WaitingRoomView, waitingRoomLogic } from '../views/WaitingRoomView';
-import { GameView } from '../views/GameView';
-import { LoginView } from '../views/LoginView';
-import { CreateAccountView } from '../views/CreateAccountView';
-import { tournamentLogic, TournamentView } from '../views/TournamentView';
-import { BracketView, bracketLogic } from '../views/BracketView';
-import { LocalGameView, localGameLogic } from '../views/LocalGameView';
-import { LocalTournamentSetupView, localTournamentSetupLogic } from '../views/LocalTournamentSetupView';
-import { LocalTournamentBracketView, localTournamentBracketLogic } from '../views/LocalTournamentBracketView';
-import { HistoryView, historyLogic } from '../views/HistoryView';
-import { GameDetailView, gameDetailLogic } from '../views/GameDetailView';
-import { BlockchainView, blockchainLogic } from '../views/BlockchainView';
-import { Game3dView } from '../views/Game3dView.ts';
+import { LoadingView } from '../components/LoadingView';
 import type { NavigationGuard } from './types';
 import {
     logGuard,
     tournamentExistsGuard,
     roomExistsGuard
 } from './Guards'
-import { dbUserLogic, dbUserView } from '../views/DbUserView';
 
 export class Router {
     private routes: Route[];
@@ -31,6 +16,10 @@ export class Router {
     private globalBeforeEach?: NavigationGuard;
 	private navigationHistory: string[] = [];
     private readonly MAX_HISTORY = 10;
+
+	// Cache pour les modules lazy-loaded
+	private moduleCache: Map<string, ViewModule> = new Map();
+	private loadingPromises: Map<string, Promise<ViewModule>> = new Map();
     
     constructor()
     {
@@ -41,7 +30,142 @@ export class Router {
 		this.setupHistoryNavigation();
 
         this.globalBeforeEach = logGuard;
+
+		// Précharger les routes critiques après le chargement initial
+		this.prefetchCriticalRoutes();
     }
+
+	/**
+	 * Charge un module de vue de manière lazy avec mise en cache
+	 */
+	private async loadView(route: Route): Promise<{ view: ViewFunction; onMount?: (params?: RouteParams) => CleanupFunction | void }> {
+		// Si la vue est synchrone, retourner directement
+		if (route.view) {
+			return { view: route.view, onMount: route.onMount };
+		}
+
+		// Si pas de lazyView, erreur
+		if (!route.lazyView) {
+			throw new Error(`Route ${route.path} has no view or lazyView`);
+		}
+
+		const cacheKey = route.path;
+
+		// Vérifier le cache
+		if (this.moduleCache.has(cacheKey)) {
+			const module = this.moduleCache.get(cacheKey)!;
+			return this.extractViewFromModule(module);
+		}
+
+		// Vérifier si un chargement est déjà en cours
+		if (this.loadingPromises.has(cacheKey)) {
+			const module = await this.loadingPromises.get(cacheKey)!;
+			return this.extractViewFromModule(module);
+		}
+
+		// Charger le module
+		const loadingPromise = route.lazyView();
+		this.loadingPromises.set(cacheKey, loadingPromise);
+
+		try {
+			const module = await loadingPromise;
+			this.moduleCache.set(cacheKey, module);
+			this.loadingPromises.delete(cacheKey);
+			return this.extractViewFromModule(module);
+		} catch (error) {
+			this.loadingPromises.delete(cacheKey);
+			console.error(`Failed to load view for ${route.path}:`, error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Extrait la fonction de vue et onMount du module chargé
+	 */
+	private extractViewFromModule(module: ViewModule): { view: ViewFunction; onMount?: (params?: RouteParams) => CleanupFunction | void } {
+		// Chercher la fonction de vue selon les conventions de nommage
+		// 1. Exports standards: HomeView, QuickPlayView, etc.
+		// 2. Export default
+		// 3. Export nommé 'view'
+		// 4. Premier export fonction trouvé
+		let viewFunction: ViewFunction | undefined;
+
+		// Essayer de trouver un export avec pattern *View
+		const viewExport = Object.entries(module).find(([key]) =>
+			key.endsWith('View') && typeof module[key] === 'function'
+		);
+
+		if (viewExport) {
+			viewFunction = viewExport[1] as ViewFunction;
+		} else {
+			// Fallback sur default ou view
+			viewFunction = (module.default ||
+						   module.view ||
+						   Object.values(module).find(exp => typeof exp === 'function' && exp.length <= 1)) as ViewFunction;
+		}
+
+		if (!viewFunction || typeof viewFunction !== 'function') {
+			throw new Error('No valid view function found in module');
+		}
+
+		// Chercher onMount/logic selon les conventions
+		// homeLogic, quickPlayLogic, etc. ou onMount
+		let onMount: ((params?: RouteParams) => CleanupFunction | void) | undefined;
+
+		const logicExport = Object.entries(module).find(([key]) =>
+			key.endsWith('Logic') && typeof module[key] === 'function'
+		);
+
+		if (logicExport) {
+			onMount = logicExport[1] as (params?: RouteParams) => CleanupFunction | void;
+		} else {
+			onMount = module.onMount || module.logic;
+		}
+
+		return {
+			view: viewFunction,
+			onMount: onMount as ((params?: RouteParams) => CleanupFunction | void) | undefined
+		};
+	}
+
+	/**
+	 * Précharge une route en arrière-plan
+	 */
+	public prefetch(path: string): void {
+		const matchResult = this.findRoute(path);
+		if (matchResult?.route.lazyView && !this.moduleCache.has(matchResult.route.path)) {
+			this.loadView(matchResult.route).catch(err => {
+				console.warn(`Failed to prefetch ${path}:`, err);
+			});
+		}
+	}
+
+	/**
+	 * Précharge les routes critiques définies avec prefetch: true
+	 */
+	private prefetchCriticalRoutes(): void {
+		// Attendre que la page soit chargée avant de précharger
+		if (document.readyState === 'complete') {
+			this.doPrefetch();
+		} else {
+			window.addEventListener('load', () => {
+				// Attendre un peu pour ne pas ralentir le chargement initial
+				setTimeout(() => this.doPrefetch(), 500);
+			});
+		}
+	}
+
+	private doPrefetch(): void {
+		this.routes
+			.filter(route => route.prefetch)
+			.forEach(route => {
+				if (route.lazyView) {
+					this.loadView(route).catch(err => {
+						console.warn(`Failed to prefetch ${route.path}:`, err);
+					});
+				}
+			});
+	}
 
 	public getPreviousRoute(): string {
         if (this.navigationHistory.length >= 2) {
@@ -102,126 +226,135 @@ export class Router {
     
     private setupRoutes(): void
     {
+        // Page d'accueil - Eager loading (chargée immédiatement)
+		// C'est la première page donc on la charge directement
         this.routes.push({
             path: '/',
-            view: HomeView,
-            onMount: homeLogic,
+            lazyView: () => import('../views/HomeView'),
+			prefetch: false,  // Déjà chargée
             title: 'Accueil'
         });
 
+		// QuickPlay - Lazy avec prefetch (page très visitée)
 		this.routes.push({
             path: '/play',
-            view: QuickPlayView,
-            onMount: quickPlayLogic,
+            lazyView: () => import('../views/QuickPlayView'),
+			prefetch: true,  // Précharger en arrière-plan
             title: 'QuickPlay'
         });
 
+		// Waiting Room - Lazy
 		this.routes.push({
             path: '/play/waiting',
-            view: WaitingRoomView,
-            onMount: waitingRoomLogic,
+            lazyView: () => import('../views/WaitingRoomView'),
             title: 'Waiting Room'
         });
 
+		// Local Game - Lazy
 		this.routes.push({
             path: '/local',
-            view: LocalGameView,
-            onMount: localGameLogic,
+            lazyView: () => import('../views/LocalGameView'),
             title: 'Local Game'
         });
 
+		// Local Tournament Setup - Lazy
 		this.routes.push({
             path: '/local-tournament-setup',
-            view: LocalTournamentSetupView,
-            onMount: localTournamentSetupLogic,
+            lazyView: () => import('../views/LocalTournamentSetupView'),
             title: 'Local Tournament Setup'
         });
 
+		// Local Tournament Bracket - Lazy
 		this.routes.push({
             path: '/local-tournament-bracket',
-            view: LocalTournamentBracketView,
-            onMount: localTournamentBracketLogic,
+            lazyView: () => import('../views/LocalTournamentBracketView'),
             title: 'Local Tournament Bracket'
         });
 
+		// Game View - Lazy
 		this.routes.push({
             path: '/game/:roomId',
-            view: GameView,
+            lazyView: () => import('../views/GameView'),
             title: 'Pong gaming',
             beforeEnter: async (to, from, params) => {
                 return await roomExistsGuard(to, from, params);
             },
         });
 
+		// Game 3D View - Lazy
 		this.routes.push({
             path: '/game3d/:roomId',
-            view: Game3dView,
+            lazyView: () => import('../views/Game3dView'),
             title: 'Pong 3D gaming',
             beforeEnter: async (to, from, params) => {
                 return await roomExistsGuard(to, from, params);
             },
         });
 
+		// Tournament - Lazy avec prefetch
         this.routes.push({
             path: '/tournament',
-            view: TournamentView,
-            onMount: tournamentLogic,
+            lazyView: () => import('../views/TournamentView'),
+			prefetch: true,  // Précharger en arrière-plan
             title: 'Tournament'
         });
 
+		// Tournament Bracket - Lazy
         this.routes.push({
             path: '/tournament/:id',
-            view: BracketView,
-            onMount: bracketLogic,
+            lazyView: () => import('../views/BracketView'),
             title: 'Tounament brackets',
             beforeEnter: async (to, from, params) => {
                 return await tournamentExistsGuard(to, from, params);
             }
         });
 
+		// DB User - Lazy
         this.routes.push({
             path: '/dbuser',
-            view: dbUserView,
-            onMount: dbUserLogic,
+            lazyView: () => import('../views/DbUserView'),
             title: 'dbUser',
         });
 
+		// History - Lazy
         this.routes.push({
             path: '/history',
-            view: HistoryView,
-            onMount: historyLogic,
+            lazyView: () => import('../views/HistoryView'),
             title: 'Historique des Parties'
         });
 
+		// Game Detail - Lazy
         this.routes.push({
             path: '/history/:id',
-            view: GameDetailView,
-            onMount: gameDetailLogic,
+            lazyView: () => import('../views/GameDetailView'),
             title: 'Détails de la Partie'
         });
 
+		// Login - Lazy
 		this.routes.push({
             path: '/login',
-            view: LoginView,
-            title: 'Test'
+            lazyView: () => import('../views/LoginView'),
+            title: 'Login'
         });
 
+		// Create Account - Lazy
 		this.routes.push({
             path: '/create',
-            view: CreateAccountView,
-            title: 'Test'
+            lazyView: () => import('../views/CreateAccountView'),
+            title: 'Create Account'
         });
-		//wip temp road to work on the visual
+
+		// Dev 3D - Lazy
 		this.routes.push({
 			path: '/dev3d',
-			view: Game3dView,
+            lazyView: () => import('../views/Game3dView'),
 			title: 'game 3D'
 		});
 
+		// Blockchain - Lazy
 		this.routes.push({
 			path: '/blockchain',
-			view: BlockchainView,
-			onMount: blockchainLogic,
+            lazyView: () => import('../views/BlockchainView'),
 			title: 'Blockchain Registry'
 		});
 
@@ -344,29 +477,46 @@ export class Router {
             if (this.navigationHistory.length > this.MAX_HISTORY) {
                 this.navigationHistory.shift();
             }
-            
-            const htmlContent = route.view(params);
-            const app = document.getElementById('app');
-            if (app) {
-                app.innerHTML = htmlContent;
-            }
-            
-            document.title = route.title || 'Transcendence';
-            
-            if (updateHistory && window.location.pathname !== path) {
-                window.history.pushState({}, '', path);
-            }
-            
-            this.componentManager.scanAndMount();
 
-            if (route.onMount) {
-                const cleanup = route.onMount(params);
-                if (cleanup && typeof cleanup === 'function') {
-                    this.currentCleanup = cleanup;
-                }
-            }
+			// Afficher le loading si vue lazy et non cachée
+			const app = document.getElementById('app');
+			if (route.lazyView && !this.moduleCache.has(route.path)) {
+				if (app) {
+					app.innerHTML = LoadingView();
+				}
+			}
 
-            this.currentRoute = route;
+			try {
+				// Charger la vue (lazy ou synchrone)
+				const { view, onMount } = await this.loadView(route);
+				const htmlContent = view(params);
+
+				if (app) {
+					app.innerHTML = htmlContent;
+				}
+
+				document.title = route.title || 'Transcendence';
+
+				if (updateHistory && window.location.pathname !== path) {
+					window.history.pushState({}, '', path);
+				}
+
+				this.componentManager.scanAndMount();
+
+				// Utiliser onMount du module chargé ou de la route
+				const mountFunction = onMount || route.onMount;
+				if (mountFunction) {
+					const cleanup = mountFunction(params);
+					if (cleanup && typeof cleanup === 'function') {
+						this.currentCleanup = cleanup;
+					}
+				}
+
+				this.currentRoute = route;
+			} catch (error) {
+				console.error('Failed to load view:', error);
+				this.show404();
+			}
 
         } else {
             this.show404();
