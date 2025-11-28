@@ -1,6 +1,7 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const WaitingRoomView: ViewFunction = () => {
     const content = `
@@ -122,6 +123,7 @@ export const WaitingRoomView: ViewFunction = () => {
 export const waitingRoomLogic = (): CleanupFunction => {
     console.log('🎮 WaitingRoomView: Initializing...');
 
+	const cleanupManager = createCleanupManager();
     let pollInterval: number | null = null;
     let roomId: string | null = null;
     const skill = (sessionStorage.getItem('selectedSkill') as 'smash' | 'dash' | null) || 'smash';
@@ -135,8 +137,17 @@ export const waitingRoomLogic = (): CleanupFunction => {
     gsap.set('#status-container', { y: 50, opacity: 0 });
     gsap.set('#cancel-btn', { y: 50, opacity: 0 });
 
+	// Enregistrer les cibles GSAP pour cleanup
+	cleanupManager.registerGsapTarget('#waiting-title');
+	cleanupManager.registerGsapTarget('#waiting-subtitle');
+	cleanupManager.registerGsapTarget('#search-animation');
+	cleanupManager.registerGsapTarget('#your-card');
+	cleanupManager.registerGsapTarget('#opponent-card');
+	cleanupManager.registerGsapTarget('#status-container');
+	cleanupManager.registerGsapTarget('#cancel-btn');
+
     // ✅ PUIS animer vers l'état final
-    setTimeout(() => {
+    cleanupManager.setTimeout(() => {
         gsap.to('#waiting-title', {
             scale: 1,
             opacity: 1,
@@ -271,8 +282,8 @@ export const waitingRoomLogic = (): CleanupFunction => {
                     
                     stopPolling();
                     sessionStorage.setItem('gameWsURL', data.gameServerURL);
-                    
-                    setTimeout(() => {
+
+                    cleanupManager.setTimeout(() => {
 						// set "game3d/" path or "game/"
 						const viewMode = sessionStorage.getItem('viewMode') || '2d';
 						const viewPath = viewMode === '3d' ? 'game3d' : 'game';
@@ -311,7 +322,7 @@ export const waitingRoomLogic = (): CleanupFunction => {
     };
 
     // Démarrer après un court délai
-    setTimeout(() => {
+    cleanupManager.setTimeout(() => {
         updatePlayerInfo();
         handleJoin();
     }, 100);
@@ -320,14 +331,16 @@ export const waitingRoomLogic = (): CleanupFunction => {
     const cancelBtn = document.getElementById('cancel-btn');
     if (cancelBtn) {
         cancelBtn.addEventListener('click', handleCancel);
+		cleanupManager.onCleanup(() => {
+			cancelBtn.removeEventListener('click', handleCancel);
+		});
     }
 
+	// Enregistrer le cleanup du polling
+	cleanupManager.onCleanup(() => {
+		stopPolling();
+	});
+
     // Cleanup
-    return (): void => {
-        console.log('🧹 WaitingRoomView: Cleaning up...');
-        stopPolling();
-        if (cancelBtn) {
-            cancelBtn.removeEventListener('click', handleCancel);
-        }
-    };
+    return cleanupManager.getCleanupFunction();
 };

@@ -2,6 +2,7 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { BackButton } from "../components/Button";
 import { gsap } from "gsap";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 interface BlockchainTournament {
     tournamentName: string;
@@ -153,15 +154,21 @@ export const BlockchainView: ViewFunction = () => {
 };
 
 export const blockchainLogic = (): CleanupFunction => {
+    const cleanupManager = createCleanupManager();
     const host = import.meta.env.VITE_HOST || 'localhost:8443';
     let isComponentMounted = true;
 
+    // Enregistrer les cibles GSAP
+    cleanupManager.registerGsapTarget('h1');
+    cleanupManager.registerGsapTarget('.crypto-card');
+    cleanupManager.registerGsapTarget('.tournament-item');
+
     gsap.from("h1", { y: -50, opacity: 0, duration: 1, ease: "power3.out" });
-    gsap.from(".crypto-card", { 
-        y: 50, opacity: 0, duration: 0.8, stagger: 0.1, delay: 0.3, ease: "back.out(1.7)" 
+    gsap.from(".crypto-card", {
+        y: 50, opacity: 0, duration: 0.8, stagger: 0.1, delay: 0.3, ease: "back.out(1.7)"
     });
 
-    const blockInterval = setInterval(() => {
+    const blockInterval = cleanupManager.setInterval(() => {
         const blockEl = document.getElementById('block-height');
         if (blockEl) {
             const height = Math.floor(Math.random() * 1000000) + 12000000;
@@ -269,8 +276,10 @@ export const blockchainLogic = (): CleanupFunction => {
 
     fetchBlockchainData();
 
-    return () => {
+    // Enregistrer le cleanup
+    cleanupManager.onCleanup(() => {
         isComponentMounted = false;
-        clearInterval(blockInterval);
-    };
+    });
+
+    return cleanupManager.getCleanupFunction();
 };

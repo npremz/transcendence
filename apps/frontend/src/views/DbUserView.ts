@@ -1,5 +1,6 @@
-import type { ViewFunction } from "../router/types";
+import type { ViewFunction, CleanupFunction } from "../router/types";
 import { Header } from "../components/Header";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const dbUserView: ViewFunction = () => {
     return `
@@ -67,15 +68,18 @@ export const dbUserView: ViewFunction = () => {
 };
 
 export const dbUserLogic = (): CleanupFunction => {
+    const cleanupManager = createCleanupManager();
 
     function handleClick() {
         alert("ok")
     }
-    
+
     document?.querySelector('h1')?.addEventListener("click", handleClick)
 
-
-    return () => {
+    // Enregistrer le cleanup
+    cleanupManager.onCleanup(() => {
         document.querySelector('h1')?.removeEventListener("click", handleClick)
-    };
+    });
+
+    return cleanupManager.getCleanupFunction();
 };

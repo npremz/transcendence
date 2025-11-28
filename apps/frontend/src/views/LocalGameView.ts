@@ -1,6 +1,7 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 const makeId = () => {
 	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -188,6 +189,14 @@ export const LocalGameView: ViewFunction = () => {
 };
 
 export const localGameLogic = (): CleanupFunction | void => {
+	const cleanupManager = createCleanupManager();
+
+	// Enregistrer les cibles GSAP
+	cleanupManager.registerGsapTarget('#local-title');
+	cleanupManager.registerGsapTarget('#player-left-card');
+	cleanupManager.registerGsapTarget('#player-right-card');
+	cleanupManager.registerGsapTarget('#local-game-feedback');
+
 	// Animations d'entrée - UNE SEULE FOIS
 	gsap.to('#local-title', {
 		scale: 1,
@@ -313,8 +322,11 @@ export const localGameLogic = (): CleanupFunction | void => {
 
 	form.addEventListener('submit', submitHandler);
 
-	return () => {
+	// Enregistrer le cleanup
+	cleanupManager.onCleanup(() => {
 		form.removeEventListener('submit', submitHandler);
 		backBtn?.removeEventListener('click', backHandler);
-	};
+	});
+
+	return cleanupManager.getCleanupFunction();
 };

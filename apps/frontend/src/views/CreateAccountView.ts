@@ -1,6 +1,7 @@
 import type { ViewFunction } from "../router/types";
 import { gsap } from "gsap";
 import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const CreateAccountView: ViewFunction = () => {
     const content = `
@@ -128,6 +129,14 @@ export const CreateAccountView: ViewFunction = () => {
 };
 
 export const createAccountLogic = (): (() => void) => {
+    const cleanupManager = createCleanupManager();
+
+    // Enregistrer les cibles GSAP
+    cleanupManager.registerGsapTarget('#create-title');
+    cleanupManager.registerGsapTarget('#left-panel');
+    cleanupManager.registerGsapTarget('#right-panel');
+    cleanupManager.registerGsapTarget('#error-message');
+
     gsap.from('#create-title', {
         scale: 0.5,
         opacity: 0,
@@ -200,9 +209,9 @@ export const createAccountLogic = (): (() => void) => {
             const confirmInput = document.getElementById('confirmpassword') as HTMLInputElement;
             passwordInput?.classList.add('error');
             confirmInput?.classList.add('error');
-            
+
             // Retirer après 2 secondes
-            setTimeout(() => {
+            cleanupManager.setTimeout(() => {
                 passwordInput?.classList.remove('error');
                 confirmInput?.classList.remove('error');
             }, 2000);
@@ -241,10 +250,12 @@ export const createAccountLogic = (): (() => void) => {
         form.addEventListener('submit', handleSubmit);
     }
 
-    // Cleanup
-    return () => {
+    // Enregistrer le cleanup
+    cleanupManager.onCleanup(() => {
         if (form) {
             form.removeEventListener('submit', handleSubmit);
         }
-    };
+    });
+
+    return cleanupManager.getCleanupFunction();
 };

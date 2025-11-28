@@ -2,6 +2,7 @@ import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { LocalTournamentManager, type LocalTournament, type LocalMatch } from "../utils/localTournamentManager";
 import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const LocalTournamentBracketView: ViewFunction = () => {
 	const content = `
@@ -317,6 +318,7 @@ const showWinnerModal = (winner: { username: string }): void => {
 };
 
 export const localTournamentBracketLogic = (): CleanupFunction => {
+	const cleanupManager = createCleanupManager();
 	const tournament = LocalTournamentManager.getCurrentTournament();
 
 	if (!tournament) {
@@ -324,6 +326,11 @@ export const localTournamentBracketLogic = (): CleanupFunction => {
 		window.router.navigate('/local-tournament-setup');
 		return () => {};
 	}
+
+	// Enregistrer les cibles GSAP
+	cleanupManager.registerGsapTarget('.round-column');
+	cleanupManager.registerGsapTarget('#next-match-panel');
+	cleanupManager.registerGsapTarget('#winner-modal');
 
 	// Rendu initial
 	renderBracket(tournament);
@@ -422,11 +429,13 @@ export const localTournamentBracketLogic = (): CleanupFunction => {
 	newTournamentBtn?.addEventListener('click', handleNewTournament);
 	exitToMenuBtn?.addEventListener('click', handleExitToMenu);
 
-	// Cleanup
-	return () => {
+	// Enregistrer le cleanup
+	cleanupManager.onCleanup(() => {
 		playMatchBtn?.removeEventListener('click', handlePlayMatch);
 		exitBtn?.removeEventListener('click', handleExit);
 		newTournamentBtn?.removeEventListener('click', handleNewTournament);
 		exitToMenuBtn?.removeEventListener('click', handleExitToMenu);
-	};
+	});
+
+	return cleanupManager.getCleanupFunction();
 };

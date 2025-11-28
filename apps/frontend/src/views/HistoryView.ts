@@ -1,6 +1,7 @@
 import type { ViewFunction } from "../router/types";
 import { BackButton } from "../components/Button";
 import { gsap } from "gsap";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 interface GameHistory {
     id: string;
@@ -157,10 +158,15 @@ export const HistoryView: ViewFunction = () => {
 };
 
 export const historyLogic = (): (() => void) => {
+    const cleanupManager = createCleanupManager();
     let allGames: GameHistory[] = [];
     let filteredGames: GameHistory[] = [];
     let currentFilter: 'all' | 'quickplay' | 'tournament' = 'all';
     let currentSort: 'recent' | 'oldest' | 'duration' = 'recent';
+
+    // Enregistrer les cibles GSAP
+    cleanupManager.registerGsapTarget('.game-card');
+    cleanupManager.registerGsapTarget('.stat-card');
 
     // Fonction pour récupérer l'historique global
     const fetchHistory = async (): Promise<void> => {
@@ -445,14 +451,16 @@ export const historyLogic = (): (() => void) => {
     // Charger l'historique
     fetchHistory();
 
-    // Fonction de cleanup
-    return (): void => {
+    // Enregistrer le cleanup
+    cleanupManager.onCleanup(() => {
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.removeEventListener('click', handleFilterClick);
         });
-        
+
         if (sortSelect) {
             sortSelect.removeEventListener('change', handleSortChange);
         }
-    };
+    });
+
+    return cleanupManager.getCleanupFunction();
 };

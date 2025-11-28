@@ -1,6 +1,7 @@
 import type { ViewFunction } from "../router/types";
 import { BackButton } from "../components/Button";
 import { gsap } from "gsap";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 interface GameDetail {
     id: string;
@@ -145,8 +146,12 @@ export const GameDetailView: ViewFunction = (params) => {
 };
 
 export const gameDetailLogic = (params?: Record<string, string>): (() => void) => {
+    const cleanupManager = createCleanupManager();
     const gameId = params?.id;
-    
+
+    // Enregistrer les cibles GSAP
+    cleanupManager.registerGsapTarget('#game-content > *');
+
     if (!gameId) {
         showError();
         return () => {};
@@ -733,11 +738,16 @@ export const gameDetailLogic = (params?: Record<string, string>): (() => void) =
     // Charger les détails
     fetchGameDetails().then(() => {
         // Setup des filtres après que le contenu soit chargé
-        setTimeout(setupTimelineFilters, 100);
+        cleanupManager.setTimeout(setupTimelineFilters, 100);
     });
 
-    // Cleanup
-    return (): void => {
-        // Pas de listeners à nettoyer pour le moment
-    };
+    // Enregistrer le cleanup des filtres
+    cleanupManager.onCleanup(() => {
+        const filterButtons = document.querySelectorAll('.timeline-filter');
+        filterButtons.forEach(button => {
+            button.removeEventListener('click', () => {});
+        });
+    });
+
+    return cleanupManager.getCleanupFunction();
 };

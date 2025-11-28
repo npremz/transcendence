@@ -1,6 +1,7 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const QuickPlayView: ViewFunction = () => {
 	const content = `
@@ -208,6 +209,13 @@ export const QuickPlayView: ViewFunction = () => {
 };
 
 export const quickPlayLogic = (): CleanupFunction => {
+	const cleanupManager = createCleanupManager();
+
+	// Enregistrer les cibles GSAP
+	cleanupManager.registerGsapTarget('#quickplay-title');
+	cleanupManager.registerGsapTarget('#skills-section');
+	cleanupManager.registerGsapTarget('#modes-section');
+
 	// Animations d'entrée
 	gsap.from('#quickplay-title', {
 		scale: 0.5,
@@ -421,9 +429,12 @@ export const quickPlayLogic = (): CleanupFunction => {
 
 	updateUI();
 
-	return () => {
+	// Enregistrer le cleanup des event listeners
+	cleanupManager.onCleanup(() => {
 		listeners.forEach(({ element, handler }) => {
 			element.removeEventListener('click', handler);
 		});
-	};
+	});
+
+	return cleanupManager.getCleanupFunction();
 };

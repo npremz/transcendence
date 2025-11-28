@@ -1,6 +1,7 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const TournamentView: ViewFunction = () => {
     const content = `
@@ -197,9 +198,10 @@ export const TournamentView: ViewFunction = () => {
 export const tournamentLogic = (): CleanupFunction => {
     console.log('🎮 TournamentView: Initializing...');
 
+	const cleanupManager = createCleanupManager();
     const tournamentBtns = document.querySelectorAll('[data-component="joinTournament"]');
     const usernameInput = document.getElementById("usernameInput") as HTMLInputElement;
-    
+
     let pollInterval: number | null = null;
     let currentTournamentId: string | null = null;
     let countdownInterval: number | null = null;
@@ -212,25 +214,30 @@ export const tournamentLogic = (): CleanupFunction => {
         (btn as HTMLElement).style.zIndex = '10';
     });
 
+	// Enregistrer les cibles GSAP pour cleanup
+	cleanupManager.registerGsapTarget('#tournament-title');
+	cleanupManager.registerGsapTarget('#username-section');
+	cleanupManager.registerGsapTarget('.tournament-card');
+
     // Animations d'entrée
-    gsap.fromTo('#tournament-title', 
+    gsap.fromTo('#tournament-title',
         { scale: 0.5, opacity: 0 },
         { scale: 1, opacity: 1, duration: 1, ease: 'back.out(1.7)' }
     );
 
-    gsap.fromTo('#username-section', 
+    gsap.fromTo('#username-section',
         { y: 50, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, delay: 0.3, ease: 'power2.out' }
     );
 
-    gsap.fromTo('.tournament-card', 
+    gsap.fromTo('.tournament-card',
         { y: 100, opacity: 0 },
-        { 
-            y: 0, 
-            opacity: 1, 
-            duration: 1, 
-            stagger: 0.2, 
-            delay: 0.5, 
+        {
+            y: 0,
+            opacity: 1,
+            duration: 1,
+            stagger: 0.2,
+            delay: 0.5,
             ease: 'power3.out',
             onComplete: () => {
                 // ✅ Re-forcer après animation
@@ -455,23 +462,23 @@ export const tournamentLogic = (): CleanupFunction => {
     const updateInterval = setInterval(fetchTournaments, 2000);
     console.log('🔄 Started tournament stats polling');
 
+	// Enregistrer les cleanups existants
+	cleanupManager.onCleanup(() => {
+		cleanupIntervals();
+		if (updateInterval) {
+			clearInterval(updateInterval);
+			console.log('🧹 Update interval cleared');
+		}
+		handlers.forEach((handler, element) => {
+			element.removeEventListener("click", handler, { capture: true });
+		});
+		handlers.clear();
+	});
+
     // ✅ FONCTION DE CLEANUP COMPLÈTE
     return (): void => {
         console.log('🧹 TournamentView: Cleaning up...');
-
-        // 1. Nettoyer tous les intervals
-        cleanupIntervals();
-        
-        if (updateInterval) {
-            clearInterval(updateInterval);
-            console.log('🧹 Update interval cleared');
-        }
-
-        // 2. Retirer tous les event listeners
-        handlers.forEach((handler, element) => {
-            element.removeEventListener("click", handler, { capture: true });
-        });
-        handlers.clear();
+		cleanupManager.cleanup();
         console.log('🧹 Event listeners removed');
 
         // 3. Se désinscrire du tournoi si on quitte la page

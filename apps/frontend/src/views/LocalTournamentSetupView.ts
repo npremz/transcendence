@@ -2,6 +2,7 @@ import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { LocalTournamentManager, type LocalPlayer } from "../utils/localTournamentManager";
 import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const LocalTournamentSetupView: ViewFunction = () => {
 	const content = `
@@ -139,7 +140,12 @@ const generatePlayerCards = (count: number): string => {
 };
 
 export const localTournamentSetupLogic = (): CleanupFunction => {
+	const cleanupManager = createCleanupManager();
 	let currentSize = 4;
+
+	// Enregistrer les cibles GSAP
+	cleanupManager.registerGsapTarget('#tournament-title');
+	cleanupManager.registerGsapTarget('.player-card');
 
 	// Fonction pour mettre à jour les cartes de joueurs
 	const updatePlayerCards = (size: number) => {
@@ -237,8 +243,13 @@ export const localTournamentSetupLogic = (): CleanupFunction => {
 
 	form?.addEventListener('submit', handleSubmit);
 
-	// Cleanup
-	return () => {
+	// Enregistrer le cleanup
+	cleanupManager.onCleanup(() => {
 		form?.removeEventListener('submit', handleSubmit);
-	};
+		sizeSelectors.forEach(selector => {
+			selector.removeEventListener('click', () => {});
+		});
+	});
+
+	return cleanupManager.getCleanupFunction();
 };

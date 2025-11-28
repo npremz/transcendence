@@ -1,6 +1,7 @@
 import type { ViewFunction } from "../router/types";
 import { gsap } from "gsap";
 import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const LoginView: ViewFunction = () => {
     const content = `
@@ -105,6 +106,13 @@ export const LoginView: ViewFunction = () => {
 };
 
 export const loginLogic = (): (() => void) => {
+    const cleanupManager = createCleanupManager();
+
+    // Enregistrer les cibles GSAP
+    cleanupManager.registerGsapTarget('#login-title');
+    cleanupManager.registerGsapTarget('#left-panel');
+    cleanupManager.registerGsapTarget('#right-panel');
+
     // Animations d'entrée avec GSAP
     gsap.from('#login-title', {
         scale: 0.5,
@@ -158,10 +166,12 @@ export const loginLogic = (): (() => void) => {
         form.addEventListener('submit', handleSubmit);
     }
 
-    // Cleanup
-    return () => {
+    // Enregistrer le cleanup
+    cleanupManager.onCleanup(() => {
         if (form) {
             form.removeEventListener('submit', handleSubmit);
         }
-    };
+    });
+
+    return cleanupManager.getCleanupFunction();
 };

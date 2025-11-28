@@ -530,8 +530,16 @@ export class Router {
 
 	private cleanup(): void
     {
+		// Tuer toutes les animations GSAP en cours
+		if (typeof window !== 'undefined' && (window as any).gsap) {
+			const gsap = (window as any).gsap;
+			gsap.killTweensOf('*');  // Tue toutes les animations
+		}
+
+		// Nettoyer les composants
         this.componentManager.cleanupAll();
 
+		// Appeler le cleanup spécifique de la vue
         if (this.currentCleanup)
         {
             this.currentCleanup();

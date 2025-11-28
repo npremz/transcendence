@@ -1,5 +1,6 @@
 import type { ViewFunction, CleanupFunction, RouteParams } from "../router/types";
 import { gsap } from "gsap";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 interface Player {
     id: string;
@@ -211,6 +212,7 @@ export const BracketView: ViewFunction = () => {
 export const bracketLogic = (params: RouteParams | undefined): CleanupFunction => {
     console.log('🎮 BracketView: Initializing...');
 
+    const cleanupManager = createCleanupManager();
     const tournamentId = params?.id;
     const myPlayerId = window.simpleAuth.getPlayerId();
 
@@ -218,6 +220,10 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     let isFirstRender = true;
     let displayedMatchIds = new Set<string>();
     let currentTournamentState: Tournament | null = null;
+
+    // Enregistrer les cibles GSAP
+    cleanupManager.registerGsapTarget('.neon-border');
+    cleanupManager.registerGsapTarget('.round-column');
 
     const cleanupIntervals = () => {
         if (pollInterval) {
@@ -335,7 +341,7 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                 ease: 'power2.out'
             });
 
-            setTimeout(() => drawConnections(tournament.bracket), 1000);
+            cleanupManager.setTimeout(() => drawConnections(tournament.bracket), 1000);
 
             isFirstRender = false;
         } else {
@@ -621,19 +627,18 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
 
     fetchTournamentData();
 
-    pollInterval = setInterval(() => {
+    pollInterval = cleanupManager.setInterval(() => {
         fetchTournamentData();
         if (currentTournamentState) {
-            setTimeout(() => drawConnections(currentTournamentState!.bracket), 100);
+            cleanupManager.setTimeout(() => drawConnections(currentTournamentState!.bracket), 100);
         }
     }, 2000);
     console.log('🔄 Started bracket polling');
 
-    return (): void => {
-        console.log('🧹 BracketView: Cleaning up...');
-        
+    // Enregistrer le cleanup du polling
+    cleanupManager.onCleanup(() => {
         cleanupIntervals();
-        
-        console.log('✅ BracketView: Cleanup complete');
-    };
+    });
+
+    return cleanupManager.getCleanupFunction();
 };

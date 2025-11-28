@@ -1,6 +1,7 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const HomeView: ViewFunction = () => {
     const content = `
@@ -113,6 +114,12 @@ export const HomeView: ViewFunction = () => {
 };
 
 export const homeLogic = (): CleanupFunction => {
+	const cleanupManager = createCleanupManager();
+	cleanupManager.registerGsapTarget('#main-title');
+	cleanupManager.registerGsapTarget('#play-card');
+	cleanupManager.registerGsapTarget('#tournament-card');
+	cleanupManager.registerGsapTarget('#history-card');
+
     // Animation d'entrée du titre
     gsap.to('#main-title', {
         scale: 1,
@@ -237,7 +244,7 @@ export const homeLogic = (): CleanupFunction => {
     loadLeaderboard();
 
     // Rafraîchir les stats toutes les 30 secondes
-    const statsInterval = setInterval(loadGlobalStats, 30000);
+    const statsInterval = cleanupManager.setInterval(loadGlobalStats, 30000);
 
     // Arrêter le polling si l'utilisateur quitte l'onglet
     const handleVisibilityChange = () => {
@@ -247,12 +254,12 @@ export const homeLogic = (): CleanupFunction => {
             loadGlobalStats(); // Refresh immédiat au retour
         }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+	cleanupManager.onCleanup(() => {
+		document.removeEventListener('visibilitychange', handleVisibilityChange);
+	});
 
     // Cleanup
-    return () => {
-        clearInterval(statsInterval);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    return cleanupManager.getCleanupFunction();
 };
