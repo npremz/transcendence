@@ -155,11 +155,11 @@ export class Router {
 		}
 	}
 
-	private doPrefetch(): void {
-		this.routes
-			.filter(route => route.prefetch)
-			.forEach(route => {
-				if (route.lazyView) {
+    private doPrefetch(): void {
+        this.routes
+            .filter(route => route.prefetch)
+            .forEach(route => {
+                if (route.lazyView) {
 					this.loadView(route).catch(err => {
 						console.warn(`Failed to prefetch ${route.path}:`, err);
 					});
@@ -216,7 +216,7 @@ export class Router {
         }
 
         // Pages principales → retour à l'accueil
-        if (['/play', '/tournament', '/history', '/login', '/create'].includes(currentPath)) {
+        if (['/play', '/tournament', '/history', '/login', '/create', '/chat', '/admin/users', '/dbuser'].includes(currentPath)) {
             return '/';
         }
 
@@ -317,7 +317,7 @@ export class Router {
         });
 
 		// History - Lazy
-        this.routes.push({
+		this.routes.push({
             path: '/history',
             lazyView: () => import('../views/HistoryView'),
             title: 'Historique des Parties'
@@ -329,6 +329,13 @@ export class Router {
             lazyView: () => import('../views/GameDetailView'),
             title: 'Détails de la Partie'
         });
+
+		// Chat - Lazy
+		this.routes.push({
+			path: '/chat',
+            lazyView: () => import('../views/ChatView'),
+			title: 'Chat'
+		});
 
 		// Login - Lazy
 		this.routes.push({
@@ -343,6 +350,20 @@ export class Router {
             lazyView: () => import('../views/CreateAccountView'),
             title: 'Create Account'
         });
+
+		// Admin Users - Lazy
+		this.routes.push({
+			path: '/admin/users',
+            lazyView: () => import('../views/AdminUserView'),
+			title: 'Admin Users'
+		});
+
+		// Start Game - Lazy
+		this.routes.push({
+			path: '/startgame',
+            lazyView: () => import('../views/StartGameView'),
+			title: 'Test'
+		});
 
 		// Dev 3D - Lazy
 		this.routes.push({
