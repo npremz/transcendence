@@ -1,106 +1,9 @@
 import type { ViewFunction } from "../router/types";
 import { gsap } from "gsap";
+import { Layout } from "../components/Layout";
 
 export const LoginView: ViewFunction = () => {
-    return `
-        <!-- Fond avec grille animée (même que HomeView) -->
-        <div class="fixed inset-0 bg-black overflow-hidden">
-            <!-- Grille de fond -->
-            <div class="absolute inset-0" style="
-                background-image: 
-                    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-                background-size: 50px 50px;
-                animation: gridMove 20s linear infinite;
-            "></div>
-            
-            <style>
-                @keyframes gridMove {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(50px); }
-                }
-                
-                @keyframes neonPulse {
-                    0%, 100% { 
-                        text-shadow: 
-                            0 0 10px rgba(59, 130, 246, 0.8),
-                            0 0 20px rgba(59, 130, 246, 0.6),
-                            0 0 30px rgba(59, 130, 246, 0.4);
-                    }
-                    50% { 
-                        text-shadow: 
-                            0 0 20px rgba(59, 130, 246, 1),
-                            0 0 30px rgba(59, 130, 246, 0.8),
-                            0 0 40px rgba(59, 130, 246, 0.6);
-                    }
-                }
-                
-                @keyframes scanline {
-                    0% { transform: translateY(-100%); }
-                    100% { transform: translateY(100vh); }
-                }
-                
-                .pixel-font {
-                    font-family: 'Courier New', monospace;
-                    font-weight: bold;
-                    letter-spacing: 0.1em;
-                }
-                
-                .neon-border {
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    border: 3px solid rgba(59, 130, 246, 0.8);
-                }
-                
-                .neon-border:hover {
-                    box-shadow: 
-                        0 0 20px rgba(59, 130, 246, 0.8),
-                        inset 0 0 20px rgba(59, 130, 246, 0.3);
-                    border-color: rgba(59, 130, 246, 1);
-                }
-                
-                .neon-input {
-                    background: rgba(15, 23, 42, 0.6);
-                    border: 2px solid rgba(59, 130, 246, 0.5);
-                    color: #60A5FA;
-                    transition: all 0.3s ease;
-                }
-                
-                .neon-input:focus {
-                    outline: none;
-                    border-color: rgba(59, 130, 246, 1);
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    background: rgba(15, 23, 42, 0.8);
-                }
-                
-                .neon-input::placeholder {
-                    color: rgba(96, 165, 250, 0.4);
-                }
-            </style>
-            
-            <!-- Scanline effect -->
-            <div class="absolute inset-0 pointer-events-none opacity-10">
-                <div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
-            </div>
-        </div>
-
-        <!-- Contenu principal -->
-        <div class="relative z-10 min-h-screen flex flex-col">
-            <!-- Header avec BackButton -->
-            <div class="p-8">
-                <button 
-                    onclick="history.back()" 
-                    class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
-                    id="back-button"
-                >
-                    ← BACK
-                </button>
-            </div>
-
-            <!-- Zone centrale -->
+    const content = `
             <div class="flex-1 flex items-center justify-center px-4 py-12">
                 <div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8">
                     
@@ -193,13 +96,12 @@ export const LoginView: ViewFunction = () => {
                     </div>
                 </div>
             </div>
-
-            <!-- Footer -->
-            <footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
-                <p>© 2025 PONG - SKILL ISSUE</p>
-            </footer>
-        </div>
     `;
+
+    return Layout.render(content, {
+        showBackButton: true,
+        showFooter: true
+    });
 };
 
 export const loginLogic = (): (() => void) => {

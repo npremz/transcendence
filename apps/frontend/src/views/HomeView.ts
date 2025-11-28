@@ -1,103 +1,9 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
+import { Layout } from "../components/Layout";
 
 export const HomeView: ViewFunction = () => {
-    return `
-        <!-- Fond avec grille animée -->
-        <div class="fixed inset-0 bg-black overflow-hidden">
-            <!-- Grille de fond -->
-            <div class="absolute inset-0" style="
-                background-image: 
-                    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-                background-size: 50px 50px;
-                animation: gridMove 20s linear infinite;
-            "></div>
-            
-            <style>
-                @keyframes gridMove {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(50px); }
-                }
-                
-                @keyframes neonPulse {
-                    0%, 100% { 
-                        text-shadow: 
-                            0 0 10px rgba(59, 130, 246, 0.8),
-                            0 0 20px rgba(59, 130, 246, 0.6),
-                            0 0 30px rgba(59, 130, 246, 0.4);
-                    }
-                    50% { 
-                        text-shadow: 
-                            0 0 20px rgba(59, 130, 246, 1),
-                            0 0 30px rgba(59, 130, 246, 0.8),
-                            0 0 40px rgba(59, 130, 246, 0.6);
-                    }
-                }
-                
-                @keyframes scanline {
-                    0% { transform: translateY(-100%); }
-                    100% { transform: translateY(100vh); }
-                }
-                
-                .pixel-font {
-                    font-family: 'Courier New', monospace;
-                    font-weight: bold;
-                    letter-spacing: 0.1em;
-                }
-                
-                .neon-border {
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    border: 3px solid rgba(59, 130, 246, 0.8);
-                }
-                
-                .neon-border:hover {
-                    box-shadow: 
-                        0 0 20px rgba(59, 130, 246, 0.8),
-                        inset 0 0 20px rgba(59, 130, 246, 0.3);
-                    border-color: rgba(59, 130, 246, 1);
-                }
-                
-                .game-card {
-                    transition: all 0.3s ease;
-                    background: rgba(15, 23, 42, 0.8);
-                    backdrop-filter: blur(10px);
-                }
-                
-                .game-card:hover {
-                    transform: translateY(-10px) scale(1.02);
-                    background: rgba(30, 41, 59, 0.9);
-                }
-            </style>
-            
-            <!-- Scanline effect -->
-            <div class="absolute inset-0 pointer-events-none opacity-10">
-                <div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
-            </div>
-        </div>
-
-        <!-- Contenu principal -->
-        <div class="relative z-10 min-h-screen flex flex-col">
-            <!-- Header avec PONG et bouton connexion -->
-            <header class="flex justify-between items-center px-8 py-6">
-                <!-- Logo PONG -->
-                <div class="pixel-font text-4xl md:text-5xl text-blue-400" style="animation: neonPulse 2s ease-in-out infinite;">
-                    PONG
-                </div>
-                
-                <!-- Bouton Connexion -->
-                <a href="/login" 
-                   class="pixel-font bg-blue-500 opacity-80 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
-                    <span>SIGN IN</span>
-                </a>
-            </header>
-
-            <!-- Ligne horizontale néon -->
-            <div class="w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50"></div>
-
-            <!-- Zone centrale -->
+    const content = `
             <div class="flex-1 flex flex-col items-center justify-center px-4 py-12">
                 <!-- Titre principal -->
                 <div class="text-center mb-8">
@@ -197,13 +103,13 @@ export const HomeView: ViewFunction = () => {
 					</a>
 				</div>
             </div>
-
-            <!-- Footer -->
-            <footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
-                <p>© 2025 PONG - SKILL ISSUE</p>
-            </footer>
-        </div>
     `;
+
+    return Layout.render(content, {
+        customHeader: Layout.renderHomeHeader(),
+        showFooter: true,
+        showBackButton: false
+    });
 };
 
 export const homeLogic = (): CleanupFunction => {
