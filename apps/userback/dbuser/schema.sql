@@ -234,3 +234,37 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at);
+
+-- ===========================================
+-- JWT AUTHENTICATION
+-- ===========================================
+
+-- Refresh tokens pour l'authentification JWT
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id TEXT PRIMARY KEY,                    -- UUID du token
+    user_id TEXT NOT NULL,
+    token_hash TEXT NOT NULL,               -- Hash du refresh token
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_used_at DATETIME,
+    user_agent TEXT,                        -- Pour tracking des devices
+    ip_address TEXT,
+    is_revoked BOOLEAN NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_hash ON refresh_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+
+-- Blacklist pour les tokens révoqués (logout, compromission)
+CREATE TABLE IF NOT EXISTS token_blacklist (
+    jti TEXT PRIMARY KEY,                   -- JWT ID (claim jti)
+    user_id TEXT NOT NULL,
+    token_type TEXT NOT NULL CHECK(token_type IN ('access','refresh')),
+    revoked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL,           -- Pour nettoyage automatique
+    reason TEXT,                            -- logout, security, etc.
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_blacklist_expires ON token_blacklist(expires_at);
+CREATE INDEX IF NOT EXISTS idx_blacklist_user ON token_blacklist(user_id);

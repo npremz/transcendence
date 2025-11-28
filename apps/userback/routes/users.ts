@@ -1,19 +1,11 @@
-import { randomBytes, randomUUID, pbkdf2Sync } from 'crypto';
+import { randomUUID } from 'crypto';
 import type { FastifyInstance } from 'fastify';
+import { hashPassword, validatePasswordStrength } from '../utils/password';
 
 type CreateUserBody = {
 	username?: string;
 	password?: string;
 };
-
-function hashPassword(password: string): string {
-	const salt = randomBytes(16).toString('hex');
-	const iterations = 120000;
-	const digest = 'sha512';
-	const hash = pbkdf2Sync(password, salt, iterations, 64, digest).toString('hex');
-
-	return `pbkdf2$${digest}$${iterations}$${salt}$${hash}`;
-}
 
 export function registerUserRoutes(fastify: FastifyInstance): void {
 	fastify.post<{ Body: CreateUserBody }>('/users', async (request, reply) => {
@@ -33,14 +25,11 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
 			});
 		}
 
-		const hasMinLength = password.length >= 6;
-		const hasDigit = /\d/.test(password);
-		const hasUpper = /[A-Z]/.test(password);
-
-		if (!hasMinLength || !hasDigit || !hasUpper) {
+		const passwordValidation = validatePasswordStrength(password);
+		if (!passwordValidation.valid) {
 			return reply.status(400).send({
 				success: false,
-				error: 'password must be at least 6 characters, include one digit and one uppercase letter'
+				error: passwordValidation.error
 			});
 		}
 
@@ -71,7 +60,12 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
 	});
 
 	// GET - Récupérer un utilisateur par username (ou liste récente)
-	fastify.get<{ Querystring: { username?: string } }>('/users', async (request, reply) => {
+	fastify.get<{ Querystring: { username?: string } }>(
+		'/users',
+		{
+			onRequest: [fastify.authenticate]
+		},
+		async (request, reply) => {
 		const { username } = request.query || {};
 
 		if (username) {
@@ -105,7 +99,7 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
 			});
 		}
 
-		// Pas de filtre => on renvoie une petite liste pour inspection rapide
+		// Pas de filtre => on renvoie une petite liste pour inspection rapide (authentifié)
 		return new Promise((resolve) => {
 			fastify.db.all(
 				`SELECT id, username, created_at, last_seen FROM users ORDER BY created_at DESC LIMIT 50`,
@@ -129,7 +123,12 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
 	});
 
 	// ADMIN - Détails complets d'un utilisateur (temporaire)
-	fastify.get<{ Querystring: { username?: string } }>('/admin/users/details', async (request, reply) => {
+	fastify.get<{ Querystring: { username?: string } }>(
+		'/admin/users/details',
+		{
+			onRequest: [fastify.authenticate]
+		},
+		async (request, reply) => {
 		const { username } = request.query || {};
 
 		if (!username) {
