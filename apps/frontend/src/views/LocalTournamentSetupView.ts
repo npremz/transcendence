@@ -1,19 +1,10 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { LocalTournamentManager, type LocalPlayer } from "../utils/localTournamentManager";
+import { Layout } from "../components/Layout";
 
 export const LocalTournamentSetupView: ViewFunction = () => {
-	return `
-		<!-- Fond avec grille animée -->
-		<div class="fixed inset-0 bg-black overflow-hidden">
-			<div class="absolute inset-0" style="
-				background-image:
-					linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-					linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-				background-size: 50px 50px;
-				animation: gridMove 20s linear infinite;
-			"></div>
-
+	const content = `
 			<style>
 				.size-selector {
 					cursor: pointer;
@@ -26,23 +17,6 @@ export const LocalTournamentSetupView: ViewFunction = () => {
 					transform: scale(1.05);
 				}
 			</style>
-
-			<div class="absolute inset-0 pointer-events-none opacity-10">
-				<div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
-			</div>
-		</div>
-
-		<!-- Contenu principal -->
-		<div class="relative z-10 min-h-screen flex flex-col">
-			<header class="flex justify-between items-center px-8 py-6">
-				<button
-					onclick="history.back()"
-					class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
-					id="back-button"
-				>
-					← BACK
-				</button>
-			</header>
 
 			<div class="flex-1 flex items-center justify-center px-4 py-12">
 				<div class="w-full max-w-6xl">
@@ -102,8 +76,12 @@ export const LocalTournamentSetupView: ViewFunction = () => {
 
 				</div>
 			</div>
-		</div>
 	`;
+
+	return Layout.render(content, {
+		showBackButton: true,
+		showFooter: false
+	});
 };
 
 const generateId = (): string => {

@@ -1,19 +1,10 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { LocalTournamentManager, type LocalTournament, type LocalMatch } from "../utils/localTournamentManager";
+import { Layout } from "../components/Layout";
 
 export const LocalTournamentBracketView: ViewFunction = () => {
-	return `
-		<!-- Fond avec grille animée -->
-		<div class="fixed inset-0 bg-black overflow-hidden">
-			<div class="absolute inset-0" style="
-				background-image:
-					linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-					linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-				background-size: 50px 50px;
-				animation: gridMove 20s linear infinite;
-			"></div>
-
+	const content = `
 			<style>
 				.match-card {
 					transition: all 0.3s ease;
@@ -104,13 +95,6 @@ export const LocalTournamentBracketView: ViewFunction = () => {
 				}
 			</style>
 
-			<div class="absolute inset-0 pointer-events-none opacity-10">
-				<div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
-			</div>
-		</div>
-
-		<!-- Contenu principal -->
-		<div class="relative z-10 min-h-screen flex flex-col">
 			<header class="flex justify-between items-center px-8 py-6">
 				<button
 					id="exit-tournament-btn"
@@ -182,8 +166,12 @@ export const LocalTournamentBracketView: ViewFunction = () => {
 					</button>
 				</div>
 			</div>
-		</div>
 	`;
+
+	return Layout.render(content, {
+		showBackButton: true,
+		showFooter: false
+	});
 };
 
 const generateMatchCard = (match: LocalMatch): string => {
