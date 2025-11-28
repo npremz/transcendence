@@ -1,4 +1,5 @@
 import './style.css'
+import './global.css'
 import { Router } from './router/Router';
 import { registerComponents } from './components';
 import { SimpleAuth } from './simpleAuth/SimpleAuth'

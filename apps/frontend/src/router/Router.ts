@@ -4,7 +4,6 @@ import { HomeView, homeLogic } from '../views/HomeView';
 import { QuickPlayView, quickPlayLogic } from '../views/QuickPlayView';
 import { WaitingRoomView, waitingRoomLogic } from '../views/WaitingRoomView';
 import { GameView } from '../views/GameView';
-import { StartGameView } from '../views/StartGameView';
 import { LoginView } from '../views/LoginView';
 import { CreateAccountView } from '../views/CreateAccountView';
 import { tournamentLogic, TournamentView } from '../views/TournamentView';
@@ -157,12 +156,6 @@ export class Router {
             view: dbUserView,
             onMount: dbUserLogic,
             title: 'dbUser',
-        });
-
-		this.routes.push({
-            path: '/startgame',
-            view: StartGameView,
-            title: 'Test'
         });
 
         this.routes.push({
