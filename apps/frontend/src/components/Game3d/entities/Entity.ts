@@ -21,7 +21,6 @@ export abstract class Entity implements IEntity, IRenderable {
 		this.position.set(x, y, z);
 		if (this.mesh) {
 			this.mesh.position.copyFrom(this.position);
-			// or this.mesh.position = this.position; //wip
 		}
 	}
 

@@ -209,8 +209,36 @@ export class Scoreboard extends Entity {
 			texture.dispose();
 		}
 		this.panelTextures = [];
+		
+		for (const panel of this.panels) {
+			const mat = panel.material as StandardMaterial;
+			if (mat) {
+				if (mat.diffuseTexture) mat.diffuseTexture.dispose();
+				mat.dispose();
+			}
+			if (panel.getChildMeshes) {
+				for (const border of panel.getChildMeshes()) {
+					const borderMat = border.material as StandardMaterial;
+					if (borderMat) borderMat.dispose();
+					border.dispose();
+				}
+			}
+			panel.dispose();
+		}
 		this.panels = [];
-		this.parentMesh.dispose();
+		
+		if (this.parentMesh && this.parentMesh.getChildMeshes) {
+			for (const child of this.parentMesh.getChildMeshes()) {
+				const childMat = child.material as StandardMaterial;
+				if (childMat) childMat.dispose();
+				child.dispose();
+			}
+		}
+		if (this.parentMesh) {
+			const parentMat = this.parentMesh.material as StandardMaterial;
+			if (parentMat) parentMat.dispose();
+			this.parentMesh.dispose();
+		}
 		super.dispose();
 	}
 }

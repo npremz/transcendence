@@ -63,5 +63,6 @@ export class InputSystem implements ISystem {
 		window.removeEventListener('keydown', this.onKeyDown);
 		window.removeEventListener('keyup', this.onKeyUp);
 		this.keys.clear();
+		this.canvas.removeEventListener('contextmenu', (e) => e.preventDefault());
 	}
 }

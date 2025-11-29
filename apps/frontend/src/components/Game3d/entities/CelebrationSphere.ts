@@ -3,6 +3,7 @@ import { MeshBuilder, StandardMaterial, Color4, Scene, Mesh, ParticleSystem, Dyn
 
 export class CelebrationSphere extends Entity {
 	private particleSystem?: ParticleSystem;
+	private timeoutId?: number;
 
 	constructor(scene: Scene, id: string = 'celebration-sphere') {
 		super(scene, id);
@@ -61,13 +62,30 @@ export class CelebrationSphere extends Entity {
 		const material = this.mesh.material as StandardMaterial;
 		material.alpha = 0;
 		this.particleSystem?.start();
-		setTimeout(() => {
+		this.timeoutId = setTimeout(() => {
 			this.particleSystem?.stop();
 		}, 2000);
 	}
 
 	public dispose(): void {
+		if (this.particleSystem) {
+			const texture = this.particleSystem.particleTexture as DynamicTexture;
+			this.particleSystem.dispose();
+			if (texture) texture.dispose();
+			this.particleSystem = undefined;
+		}
+
+		if (this.mesh) {
+			const material = this.mesh.material as StandardMaterial;
+			if (material) material.dispose();
+			this.mesh.dispose();
+			this.mesh = undefined as any;
+		}
+
+		if (this.timeoutId) {
+			clearTimeout(this.timeoutId);
+			this.timeoutId = undefined;
+		}
 		super.dispose();
-		this.particleSystem?.dispose();
 	}
 }
