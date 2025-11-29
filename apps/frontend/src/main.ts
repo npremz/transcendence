@@ -19,7 +19,7 @@ window.simpleAuth = auth;
 const router = new Router();
 
 const currentPath = window.location.pathname;
-router.navigate(currentPath);
+router.navigate(currentPath, false);
 
 window.router = router;
 

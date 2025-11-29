@@ -15,6 +15,7 @@ export class Router {
     private currentRoute?: Route;
     private globalBeforeEach?: NavigationGuard;
 	private navigationHistory: string[] = [];
+	private historyPointer: number = -1;
     private readonly MAX_HISTORY = 10;
 
 	// Cache pour les modules lazy-loaded
@@ -168,10 +169,25 @@ export class Router {
 	}
 
 	public getPreviousRoute(): string {
-        if (this.navigationHistory.length >= 2) {
-            return this.navigationHistory[this.navigationHistory.length - 2];
+        if (this.historyPointer > 0) {
+            return this.navigationHistory[this.historyPointer - 1];
         }
         return this.getDefaultBackRoute(this.currentRoute?.path || '/');
+    }
+
+	private recordNavigation(path: string): void {
+        if (this.historyPointer < this.navigationHistory.length - 1) {
+            this.navigationHistory = this.navigationHistory.slice(0, this.historyPointer + 1);
+        }
+
+        this.navigationHistory.push(path);
+
+        if (this.navigationHistory.length > this.MAX_HISTORY) {
+            const overflow = this.navigationHistory.length - this.MAX_HISTORY;
+            this.navigationHistory = this.navigationHistory.slice(overflow);
+        }
+
+        this.historyPointer = this.navigationHistory.length - 1;
     }
 
 	private getDefaultBackRoute(currentPath: string): string {
@@ -429,21 +445,50 @@ export class Router {
 
 	private setupHistoryNavigation(): void
     {
-        window.addEventListener('popstate', () => {
-            this.navigate(window.location.pathname, false);
+        window.addEventListener('popstate', (event: PopStateEvent) => {
+            const targetPath = window.location.pathname;
+
+            if (event.state && typeof event.state.navIndex === 'number') {
+                this.historyPointer = event.state.navIndex;
+            } else {
+                const resolvedIndex = this.resolveHistoryPointer(targetPath);
+                if (resolvedIndex !== -1) {
+                    this.historyPointer = resolvedIndex;
+                } else {
+                    this.navigationHistory = [targetPath];
+                    this.historyPointer = 0;
+                }
+            }
+
+            this.navigate(targetPath, false, false);
         });
+    }
+
+	private resolveHistoryPointer(path: string): number {
+        if (this.historyPointer > 0 && this.navigationHistory[this.historyPointer - 1] === path) {
+            return this.historyPointer - 1;
+        }
+
+        if (
+            this.historyPointer >= 0 &&
+            this.historyPointer < this.navigationHistory.length - 1 &&
+            this.navigationHistory[this.historyPointer + 1] === path
+        ) {
+            return this.historyPointer + 1;
+        }
+
+        return this.navigationHistory.lastIndexOf(path);
     }
 
 	public navigateTo(path: string): void
     {
         if (window.location.pathname !== path)
         {
-            window.history.pushState({}, '', path);
             this.navigate(path);
         }
     }
     
-    public async navigate(path: string, updateHistory: boolean = true): Promise<void> {
+    public async navigate(path: string, updateHistory: boolean = true, recordHistory: boolean = true): Promise<void> {
         this.cleanup();
         
         const matchResult = this.findRoute(path);
@@ -494,9 +539,23 @@ export class Router {
                 }
             }
 
-			this.navigationHistory.push(path);
-            if (this.navigationHistory.length > this.MAX_HISTORY) {
-                this.navigationHistory.shift();
+			const shouldRecordHistory = recordHistory || this.historyPointer === -1;
+            if (shouldRecordHistory) {
+                this.recordNavigation(path);
+            }
+
+            const historyState = { navIndex: this.historyPointer };
+
+            if (shouldRecordHistory) {
+                if (updateHistory) {
+                    if (window.location.pathname === path) {
+                        window.history.replaceState(historyState, '', path);
+                    } else {
+                        window.history.pushState(historyState, '', path);
+                    }
+                } else {
+                    window.history.replaceState(historyState, '', path);
+                }
             }
 
 			// Afficher le loading si vue lazy et non cachée
@@ -517,10 +576,6 @@ export class Router {
 				}
 
 				document.title = route.title || 'Transcendence';
-
-				if (updateHistory && window.location.pathname !== path) {
-					window.history.pushState({}, '', path);
-				}
 
 				this.componentManager.scanAndMount();
 
@@ -545,8 +600,18 @@ export class Router {
     }
 
 	public goBack(): void {
-        const previousRoute = this.getPreviousRoute();
-        this.navigateTo(previousRoute);
+        if (this.historyPointer > 0) {
+            this.historyPointer -= 1;
+            const previousRoute = this.navigationHistory[this.historyPointer];
+            window.history.replaceState({ navIndex: this.historyPointer }, '', previousRoute);
+            this.navigate(previousRoute, false, false);
+            return;
+        }
+
+        const fallbackRoute = this.getDefaultBackRoute(this.currentRoute?.path || '/');
+        this.navigationHistory = [];
+        this.historyPointer = -1;
+        this.navigateTo(fallbackRoute);
     }
 
 	private cleanup(): void

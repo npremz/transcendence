@@ -1,8 +1,8 @@
 {
   "network": "fuji",
-  "contractAddress": "0xaeB9f52e3E9EB4f5033DF31400E06d1d333856a4",
-  "deployedAt": "2025-11-04T09:57:04.592Z",
+  "contractAddress": "0xF2ECEF251033A65ccFe03eBf18f0904E4091E1Af",
+  "deployedAt": "2025-11-28T22:28:14.722Z",
   "deployer": "0xbd55fB3703D194c37018d58373c044FFB309570A",
-  "transactionHash": "0x1ced278f517ceeb3703b2a3ca4d49fcfd97d2dcc6bfaa78b7735e641db37fc7b",
-  "explorerUrl": "https://testnet.snowtrace.io/address/0xaeB9f52e3E9EB4f5033DF31400E06d1d333856a4"
+  "transactionHash": "0x88c16436909d3a48a60f6e45b3ecafb77e7a5b041e64b3044c98a1192062fa79",
+  "explorerUrl": "https://testnet.snowtrace.io/address/0xF2ECEF251033A65ccFe03eBf18f0904E4091E1Af"
 }

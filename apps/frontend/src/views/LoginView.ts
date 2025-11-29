@@ -183,14 +183,7 @@ export const loginLogic = (): (() => void) => {
         if (form) {
             form.removeEventListener('submit', handleSubmit);
         }
-<<<<<<< HEAD
     });
 
     return cleanupManager.getCleanupFunction();
-=======
-        if (submitBtn) {
-            submitBtn.removeEventListener('click', handleSubmit);
-        }
-    };
->>>>>>> 0351f6be3d080010c47f1b3b2ae56d66816f2d2f
 };
