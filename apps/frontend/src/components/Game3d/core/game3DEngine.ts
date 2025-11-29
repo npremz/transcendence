@@ -31,6 +31,7 @@ export class Game3DEngine {
 	};
 
 	private gameOverHandled: boolean = false;
+	private tournamentTimeoutId: number | null = null;
 
 	// systems
 	private inputSystem!: InputSystem;
@@ -47,12 +48,12 @@ export class Game3DEngine {
 			antialias: true,
 			powerPreference: 'high-performance'
 		});
-		
-		this.sceneManager = new SceneManager(this.engine, canvas);
+
+		this.sceneManager = new SceneManager(this.engine);
 		this.initializeSystems();
 	}
 
-	private getRoomIdFromURL(): string { // todo needs better secu
+	private getRoomIdFromURL(): string {
 		return (window.location.pathname.split('/').pop() || '');
 	}
 
@@ -62,7 +63,7 @@ export class Game3DEngine {
 		this.uiManager = new UIManager();
 		this.inputSystem.initialize();
 		this.setupNetworkCallbacks();
-		this.renderer = new Renderer3D(this.sceneManager.getScene(), this.networkManager);
+		this.renderer = new Renderer3D(this.sceneManager.getScene(), this.networkManager); 
 	}
 
 	private setupNetworkCallbacks(): void {
@@ -112,7 +113,6 @@ export class Game3DEngine {
 		this.networkManager.onGameOver = (winner, isTournament, tournamentId) => {
 			if (this.gameOverHandled) return;
 			this.gameOverHandled = true;
-			// Make sure internal status reflects game over so UIManager.render won't show pause overlays
 			this.gameStatusInfo.isGameOver = true;
 			this.gameStatusInfo.isPaused = false;
 			this.gameStatusInfo.countdownValue = 0;
@@ -126,18 +126,16 @@ export class Game3DEngine {
 			const didIWin = (winner === 'left' && amILeft) || (winner === 'right' && !amILeft);
 
 			if (isTournament && tournamentId) {
-				// ensure any generic pause/countdown overlay is removed so tournament overlay is visible
 				this.uiManager.clearOverlayById('generic-overlay');
 				const overlay = this.uiManager.handleTournamentGameOver(didIWin, this.gameStatusInfo.score!);
 				document.body.appendChild(overlay);
-				setTimeout(() => {
+				this.tournamentTimeoutId = setTimeout(() => {
 					sessionStorage.removeItem('gameWsURL');
 					window.router.navigate(`/tournament/${tournamentId}`); // wip redirection to 3D tournament
 					document.body.removeChild(overlay);
 				}, 3000);
 				return;
 			}
-			// ensure any generic pause/countdown overlay is removed so game-over overlay is visible
 			this.uiManager.clearOverlayById('generic-overlay');
 			const overlay = this.uiManager.showGameOver(didIWin, this.gameStatusInfo.score!);
 			document.body.appendChild(overlay);
@@ -225,7 +223,6 @@ export class Game3DEngine {
 	public dispose(): void {
 		this.isRunning = false;
 		this.engine.stopRenderLoop();
-		this.uiManager.dispose();
 		
 		const forfeitBtn = document.getElementById('forfeit-btn');
 		if (forfeitBtn) {
@@ -234,11 +231,15 @@ export class Game3DEngine {
 		
 		this.inputSystem.dispose();
 		this.networkManager.disconnect();
+		this.uiManager.dispose();
 		
 		this.renderer.dispose();
 		this.sceneManager.dispose();
 		this.engine.dispose();
-		
+		if (this.tournamentTimeoutId) {
+			clearTimeout(this.tournamentTimeoutId);
+			this.tournamentTimeoutId = null;
+		}
 		window.removeEventListener('resize', this.handleResize);
 	}
 }

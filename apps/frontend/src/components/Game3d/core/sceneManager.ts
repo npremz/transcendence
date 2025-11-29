@@ -1,12 +1,5 @@
-// todo: add shadows
-// todo: optimize imports
-// todo: add gates material
-// todo: add camera intro animation
-// todo: add stadium loading error handling
-// todo: maybe add more types for environment
-
 import '@babylonjs/loaders';
-import { Animation, ArcRotateCamera, AxesViewer, Color3, CubicEase, DirectionalLight, EasingFunction, Engine, GlowLayer, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
+import { Animation, ArcRotateCamera, Color3, CubicEase, DirectionalLight, EasingFunction, Engine, HemisphericLight, Mesh, MeshBuilder, Scene, SceneLoader, StandardMaterial, Texture, Vector3 } from '@babylonjs/core';
 import { CAMERA, MATERIALS } from '../constants';
 
 export class SceneManager {
@@ -26,6 +19,7 @@ export class SceneManager {
 				poleBots: Mesh[] | null;
 			} | null;
 			groundTexture: Mesh[] | null;
+			blackholeHelix: Mesh | null;
 		} | null;
 	};
 	private lights: {
@@ -33,17 +27,13 @@ export class SceneManager {
 		main: DirectionalLight;
 	};
 	private engine: Engine;
-	private canvas: HTMLCanvasElement;
-	// private axisHelper: AxesViewer; // dev
 
-	constructor(engine: Engine, canvas: HTMLCanvasElement) {
+	constructor(engine: Engine) {
 		this.engine = engine;
-		this.canvas = canvas;
 		this.scene = this.createScene();
 		this.camera = this.setupCamera();
 		this.lights = this.setupLights();
 		this.environment = this.setupEnvironment();
-		// this.axisHelper = this.setupAxisHelper(); // dev
 	}
 	
 	private createScene(): Scene {
@@ -64,10 +54,6 @@ export class SceneManager {
 			new Vector3(CAMERA.TARGET.x, CAMERA.TARGET.y, CAMERA.TARGET.z),
 			this.scene
 		);
-		// camera.attachControl(this.canvas, true); //dev to move camera with drag
-		// camera.lowerRadiusLimit = 10;// dev
-		// camera.upperRadiusLimit = 400;// dev
-		
 		return camera;
 	}
 
@@ -76,7 +62,6 @@ export class SceneManager {
 		const mainLight = new DirectionalLight('mainLight', new Vector3(-1, -2, -1), this.scene);
 		mainLight.position = new Vector3(20, 40, 20);
 		mainLight.intensity = 0.7;
-		// todo shadows
 		return {
 			ambient: ambientLight,
 			main: mainLight
@@ -98,6 +83,7 @@ export class SceneManager {
 					poleBots: Mesh[] | null;
 				} | null,
 				groundTexture: Mesh[] | null;
+				blackholeHelix: Mesh | null;
 			} | null
 		};
 
@@ -130,7 +116,7 @@ export class SceneManager {
 		return skybox;
 	}
 
-	private async createStadium(): Promise<{ ground: Mesh | null; group_border: Mesh | null; gates: { cables: Mesh[] | null; poleCylinders: Mesh[] | null; poleTops: Mesh[] | null; poleMids: Mesh[] | null; poleBots: Mesh[] | null; } | null; groundTexture: Mesh[] | null }> {
+	private async createStadium(): Promise<{ ground: Mesh | null; group_border: Mesh | null; gates: { cables: Mesh[] | null; poleCylinders: Mesh[] | null; poleTops: Mesh[] | null; poleMids: Mesh[] | null; poleBots: Mesh[] | null; } | null; groundTexture: Mesh[] | null; blackholeHelix: Mesh | null }> {
 		await SceneLoader.ImportMeshAsync('', '/assets/models/', 'stadium.gltf', this.scene);
 
 		const ground = this.scene.getMeshByName('ground') as Mesh | null;
@@ -155,7 +141,7 @@ export class SceneManager {
 			group_border.material = borderGroundMaterial;
 		}
 
-		// Gates structure
+		// Gates structure (meshes and materials)
 		const gates = {
 			cables: this.getMeshesByPrefix('cable'),
 			poleCylinders: this.getMeshesByPrefix('poleCylinder'),
@@ -170,8 +156,10 @@ export class SceneManager {
 		this.colorPoleMids(gates.poleMids);
 		this.colorPoleBots(gates.poleBots);
 
+		// Ground textures (meshes and materials)
 		const groundTexture = this.createGroundTexture();
 
+		// Blackhole helix material
 		if (blackholeHelix) {
 			const helixMaterial = new StandardMaterial('blackholeHelixMat', this.scene);
 			helixMaterial.diffuseColor = Color3.FromHexString('#000000');
@@ -180,7 +168,7 @@ export class SceneManager {
 			helixMaterial.alpha = 0;
 			blackholeHelix.material = helixMaterial;
 		}
-		return { ground, group_border, gates, groundTexture };
+		return { ground, group_border, gates, groundTexture, blackholeHelix };
 	}
 
 	private getMeshesByPrefix(prefix: string): Mesh[] | null {
@@ -259,10 +247,6 @@ export class SceneManager {
 			poleBot.material = poleBotMaterial;
 		});
 	}
-	// private setupAxisHelper(): AxesViewer { //dev
-	// 	const axisHelper = new AxesViewer(this.scene, 1);
-	// 	return axisHelper;
-	// }
 
 	public playCameraIntro(): void {
 		const startHorizontalRotation = CAMERA.ANIMATION.START_ALPHA;
@@ -357,15 +341,33 @@ export class SceneManager {
 	}
 
 	public dispose(): void {
+		this.environment.stadium?.groundTexture?.forEach(mesh => mesh.material?.dispose());
+		this.environment.stadium?.groundTexture?.forEach(mesh => mesh.dispose());
 		this.environment.stadium?.ground?.dispose();
+		this.environment.stadium?.group_border?.material?.dispose();
 		this.environment.stadium?.group_border?.dispose();
+		this.environment.stadium?.gates?.cables?.forEach(mesh => mesh.material?.dispose());
 		this.environment.stadium?.gates?.cables?.forEach(mesh => mesh.dispose());
+		this.environment.stadium?.gates?.poleCylinders?.forEach(mesh => mesh.material?.dispose());
 		this.environment.stadium?.gates?.poleCylinders?.forEach(mesh => mesh.dispose());
+		this.environment.stadium?.gates?.poleTops?.forEach(mesh => mesh.material?.dispose());
 		this.environment.stadium?.gates?.poleTops?.forEach(mesh => mesh.dispose());
+		this.environment.stadium?.gates?.poleMids?.forEach(mesh => mesh.material?.dispose());
 		this.environment.stadium?.gates?.poleMids?.forEach(mesh => mesh.dispose());
+		this.environment.stadium?.gates?.poleBots?.forEach(mesh => mesh.material?.dispose());
 		this.environment.stadium?.gates?.poleBots?.forEach(mesh => mesh.dispose());
-		this.environment.skybox.dispose();
-		// this.axisHelper.dispose(); // dev
+		this.environment.stadium?.blackholeHelix?.material?.dispose();
+		this.environment.stadium?.blackholeHelix?.dispose();
+		this.environment.stadium = null;
+		if (this.environment.skybox) {
+			const mat = this.environment.skybox.material as StandardMaterial;
+			if (mat) {
+				if (mat.diffuseTexture) mat.diffuseTexture.dispose();
+				if (mat.emissiveTexture && mat.emissiveTexture !== mat.diffuseTexture) mat.emissiveTexture.dispose();
+				mat.dispose();
+			}
+			this.environment.skybox.dispose();
+		}
 		this.lights.main.dispose();
 		this.lights.ambient.dispose();
 		this.camera.dispose();

@@ -12,19 +12,18 @@ export class UIManager {
 		
 		if (leftNameEl && playerNames?.left) {
 			leftNameEl.textContent = side === 'left' 
-				? `${playerNames.left} 👈 (You)` 
+				? `${playerNames.left} 👈` 
 				: playerNames.left;
 		}
 		
 		if (rightNameEl && playerNames?.right) {
 			rightNameEl.textContent = side === 'right' 
-				? `${playerNames.right} 👈 (You)` 
+				? `${playerNames.right} 👈` 
 				: playerNames.right;
 		}
 	}
 
 	public showGameOver(didIWin: boolean, score: { left: number; right: number }): HTMLElement {
-
 		const overlay = document.createElement('div');
 		overlay.id = 'game-over-overlay';
 		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
@@ -48,7 +47,6 @@ export class UIManager {
 	}
 
 	public handleTournamentGameOver(didIWin: boolean, score: { left: number; right: number }): HTMLElement {
-		// Handle tournament-specific game over logic here
 		const overlay = document.createElement('div');
 		overlay.id = 'tournament-game-over-overlay';
 		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
@@ -72,9 +70,7 @@ export class UIManager {
 	}
 
 	private updateSkillOverlay(side: 'left' | 'right' | 'spectator', state: Game3DState | null): void {
-		console.log('Updating skill overlay for side:', side);
 		if (!state) return;
-		console.log('Received game state');
 		const isBlackout = side === 'left' ? state.powerUpState.blackoutLeft : state.powerUpState.blackoutRight;
 		if (isBlackout) return;
 		const skillState = side === 'left' ? state.skillStates.left : state.skillStates.right;
@@ -86,7 +82,6 @@ export class UIManager {
 		const currentLoader = document.querySelector('.skillLoader') as HTMLElement;
 		if (currentLoader) {
 			const step = Math.floor(progress * 6);
-			console.log('Skill loader step:', step);
 			let backgroundSize: string = '';
 			const color = step == 6 ? '#00e676': '#ffcc00'
 			switch (step) {

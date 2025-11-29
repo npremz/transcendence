@@ -108,5 +108,9 @@ export class NetworkManager  {
 		this.onStateUpdate = undefined;
 		this.onWelcome = undefined;
 		this.onGameOver = undefined;
+		this.onPaused = undefined;
+		this.onResumed = undefined;
+		this.onCountdown = undefined;
+		this.onTimeoutStatus = undefined;
 	}
 }
