@@ -20,6 +20,7 @@ docker compose exec userback sqlite3 /userback/data/users.db "SELECT * FROM frie
 
 ## Accès API (via nginx)
 - Créer un user : `POST https://<host>/userback/users` body `{ "username": "...", "password": "..." }`
+- Login : `POST https://<host>/userback/users/login` body `{ "username": "...", "password": "..." }`
 - User basique : `GET https://<host>/userback/users?username=<name>`
 - Détails complets (temp admin) : `GET https://<host>/userback/admin/users/details?username=<name>`  
   Renvoie la ligne complète `users` (avatar_url, stats…), settings, présence, friendships.

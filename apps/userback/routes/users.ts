@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID, pbkdf2Sync } from 'crypto';
+import { randomBytes, randomUUID, pbkdf2Sync, timingSafeEqual } from 'crypto';
 import type { FastifyInstance } from 'fastify';
 
 type CreateUserBody = {
@@ -13,6 +13,38 @@ function hashPassword(password: string): string {
 	const hash = pbkdf2Sync(password, salt, iterations, 64, digest).toString('hex');
 
 	return `pbkdf2$${digest}$${iterations}$${salt}$${hash}`;
+}
+
+function verifyPassword(password: string, storedHash?: string | null): boolean {
+	if (!storedHash) {
+		return false;
+	}
+
+	const parts = storedHash.split('$');
+	if (parts.length !== 5 || parts[0] !== 'pbkdf2') {
+		return false;
+	}
+
+	const [, digest, iterationsStr, salt, expectedHash] = parts;
+	const iterations = Number(iterationsStr);
+	if (!digest || !iterations || !salt || !expectedHash) {
+		return false;
+	}
+
+	try {
+		const derived = pbkdf2Sync(password, salt, iterations, expectedHash.length / 2, digest).toString('hex');
+		const expectedBuffer = Buffer.from(expectedHash, 'hex');
+		const derivedBuffer = Buffer.from(derived, 'hex');
+
+		if (expectedBuffer.length !== derivedBuffer.length) {
+			return false;
+		}
+
+		return timingSafeEqual(expectedBuffer, derivedBuffer);
+	} catch (error) {
+		console.warn('Password verification failed', error);
+		return false;
+	}
 }
 
 export function registerUserRoutes(fastify: FastifyInstance): void {
@@ -64,6 +96,48 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
 					resolve(reply.status(201).send({
 						success: true,
 						user: { id, username }
+					}));
+				}
+			);
+		});
+	});
+
+	fastify.post<{ Body: CreateUserBody }>('/users/login', async (request, reply) => {
+		const { username, password } = request.body || {};
+
+		if (!username || !password) {
+			return reply.status(400).send({
+				success: false,
+				error: 'username and password are required'
+			});
+		}
+
+		return new Promise((resolve) => {
+			fastify.db.get(
+				`SELECT id, username, password_hash FROM users WHERE username = ?`,
+				[username],
+				(err, row) => {
+					if (err) {
+						resolve(reply.status(500).send({
+							success: false,
+							error: err.message
+						}));
+						return;
+					}
+
+					if (!row || !verifyPassword(password, row.password_hash)) {
+						resolve(reply.status(401).send({
+							success: false,
+							error: 'invalid username or password'
+						}));
+						return;
+					}
+
+					fastify.db.run(`UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?`, [row.id], () => {});
+
+					resolve(reply.send({
+						success: true,
+						user: { id: row.id, username: row.username }
 					}));
 				}
 			);

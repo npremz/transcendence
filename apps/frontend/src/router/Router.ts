@@ -589,6 +589,11 @@ export class Router {
 				}
 
 				this.currentRoute = route;
+
+				if (typeof window !== 'undefined') {
+					const simpleAuth = (window as any).simpleAuth;
+					simpleAuth?.syncAuthDom?.();
+				}
 			} catch (error) {
 				console.error('Failed to load view:', error);
 				this.show404();

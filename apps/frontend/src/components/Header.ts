@@ -1,5 +1,5 @@
 import type { ComponentProps } from './types';
-import { Button } from './Button';
+import { renderAuthControls } from './AuthControls';
 
 interface HeaderProps extends ComponentProps {
     isLogged?: boolean
@@ -7,7 +7,7 @@ interface HeaderProps extends ComponentProps {
 
 export function Header({ 
 	className = '',
-	isLogged = false
+	isLogged: _isLogged = false
 }: HeaderProps): string {
 
 	const baseClass = `
@@ -21,23 +21,7 @@ export function Header({
 	return `
 		<header class="${baseClass}">
 			<h1 class="text-2xl text-white">Pongers!</h1>
-			${isLogged ? 
-				Button({
-					children: "Profile",
-					id: "profileBtn",
-					variant: "secondary",
-					size: "md",
-					href: ""
-				})
-					:
-				Button({
-					children: "Login",
-					id: "loginBtn",
-					variant: "secondary",
-					size: "md",
-					href: "/login"
-				})
-			}
+			${renderAuthControls()}
 		</header>
 	`;
 }

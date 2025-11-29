@@ -40,3 +40,16 @@ document.addEventListener('click', (e: MouseEvent) => {
         }
     }
 });
+
+document.addEventListener('click', (e: MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    const logoutButton = target?.closest('[data-auth-logout]');
+
+    if (!logoutButton) {
+        return;
+    }
+
+    e.preventDefault();
+    window.simpleAuth?.logout();
+    window.router?.navigate('/login');
+});

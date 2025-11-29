@@ -1,3 +1,5 @@
+import { renderAuthControls } from './AuthControls';
+
 export interface LayoutOptions {
 	/** Afficher le bouton Back dans le header */
 	showBackButton?: boolean;
@@ -86,6 +88,8 @@ export class Layout {
 			return '';
 		}
 
+		const rightSlot = showSignInButton ? renderAuthControls() : '<div></div>';
+
 		return `
 			<header class="flex justify-between items-center px-8 py-6">
 				${showBackButton ? `
@@ -98,12 +102,7 @@ export class Layout {
 					</button>
 				` : '<div></div>'}
 
-				${showSignInButton ? `
-					<a href="/login"
-					   class="pixel-font bg-blue-500 opacity-80 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
-						<span>SIGN IN</span>
-					</a>
-				` : ''}
+				${rightSlot}
 			</header>
 		`;
 	}
@@ -160,11 +159,7 @@ export class Layout {
 					PONG
 				</div>
 
-				<!-- Bouton Connexion -->
-				<a href="/login"
-				   class="pixel-font bg-blue-500 opacity-80 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
-					<span>SIGN IN</span>
-				</a>
+				${renderAuthControls()}
 			</header>
 
 			<!-- Ligne horizontale néon -->

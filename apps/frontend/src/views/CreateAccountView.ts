@@ -69,15 +69,24 @@ export const CreateAccountView: ViewFunction = () => {
                                 <label for="password" class="block mb-2 pixel-font text-sm text-blue-300">
                                     PASSWORD:
                                 </label>
-                                <input 
-                                    type="password" 
-                                    id="password" 
-                                    name="password"
-                                    placeholder="Enter password"
-                                    required
-                                    minlength="6"
-                                    class="w-full p-3 rounded pixel-font text-sm neon-input"
-                                >
+                                <div class="relative">
+                                    <input 
+                                        type="password" 
+                                        id="password" 
+                                        name="password"
+                                        placeholder="Enter password"
+                                        required
+                                        minlength="6"
+                                        class="w-full p-3 rounded pixel-font text-sm neon-input pr-12"
+                                    >
+                                    <button
+                                        type="button"
+                                        class="absolute inset-y-0 right-2 px-2 text-blue-300 text-xs pixel-font hover:text-white"
+                                        data-toggle-password="create-password"
+                                    >
+                                        SHOW
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Confirm Password -->
@@ -85,14 +94,23 @@ export const CreateAccountView: ViewFunction = () => {
                                 <label for="confirmpassword" class="block mb-2 pixel-font text-sm text-blue-300">
                                     CONFIRM PASSWORD:
                                 </label>
-                                <input 
-                                    type="password" 
-                                    id="confirmpassword" 
-                                    name="confirmpassword"
-                                    placeholder="Confirm your password"
-                                    required
-                                    class="w-full p-3 rounded pixel-font text-sm neon-input"
-                                >
+                                <div class="relative">
+                                    <input 
+                                        type="password" 
+                                        id="confirmpassword" 
+                                        name="confirmpassword"
+                                        placeholder="Confirm your password"
+                                        required
+                                        class="w-full p-3 rounded pixel-font text-sm neon-input pr-12"
+                                    >
+                                    <button
+                                        type="button"
+                                        class="absolute inset-y-0 right-2 px-2 text-blue-300 text-xs pixel-font hover:text-white"
+                                        data-toggle-password="create-confirm"
+                                    >
+                                        SHOW
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Bouton Submit -->
@@ -120,6 +138,13 @@ export const CreateAccountView: ViewFunction = () => {
                     </div>
                 </div>
             </div>
+            <div 
+                id="create-toast" 
+                class="fixed bottom-6 right-6 z-50 px-4 py-3 neon-border bg-emerald-500/20 text-emerald-200 rounded shadow-2xl opacity-0 pointer-events-none translate-y-4"
+                aria-live="polite"
+            >
+                <span class="pixel-font text-sm"></span>
+            </div>
     `;
 
     return Layout.render(content, {
@@ -136,6 +161,7 @@ export const createAccountLogic = (): (() => void) => {
     cleanupManager.registerGsapTarget('#left-panel');
     cleanupManager.registerGsapTarget('#right-panel');
     cleanupManager.registerGsapTarget('#error-message');
+    cleanupManager.registerGsapTarget('#create-toast');
 
     gsap.from('#create-title', {
         scale: 0.5,
@@ -165,6 +191,13 @@ export const createAccountLogic = (): (() => void) => {
     const hostRaw = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
     const host = (hostRaw || '').replace(/^https?:\/\//, '').trim();
     const submitBtn = document.getElementById('submit-btn');
+    const toast = document.getElementById('create-toast');
+    const toastText = toast?.querySelector('span');
+    const passwordInput = document.getElementById('password') as HTMLInputElement | null;
+    const confirmPasswordInput = document.getElementById('confirmpassword') as HTMLInputElement | null;
+    const passwordToggle = document.querySelector('[data-toggle-password="create-password"]') as HTMLButtonElement | null;
+    const confirmToggle = document.querySelector('[data-toggle-password="create-confirm"]') as HTMLButtonElement | null;
+    const passwordToggleHandlers: Array<{ button: HTMLButtonElement; handler: () => void }> = [];
     
     const showError = (message: string) => {
         if (errorMessage && errorText) {
@@ -184,6 +217,45 @@ export const createAccountLogic = (): (() => void) => {
             errorMessage.classList.add('hidden');
         }
     };
+
+    const hideToast = () => {
+        if (!toast) return;
+        gsap.to(toast, {
+            opacity: 0,
+            y: 20,
+            duration: 0.2,
+            ease: 'power2.in',
+            onComplete: () => {
+                toast.classList.add('pointer-events-none');
+            }
+        });
+    };
+
+    const showToast = (message: string) => {
+        if (!toast || !toastText) return;
+        toastText.textContent = message;
+        toast.classList.remove('pointer-events-none');
+        gsap.killTweensOf(toast);
+        gsap.fromTo(toast,
+            { opacity: 0, y: 20 },
+            { opacity: 1, y: 0, duration: 0.25, ease: 'power2.out' }
+        );
+        cleanupManager.setTimeout(hideToast, 2500);
+    };
+
+    const registerPasswordToggle = (button: HTMLButtonElement | null, input: HTMLInputElement | null) => {
+        if (!button || !input) return;
+        const handler = () => {
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            button.textContent = isHidden ? 'HIDE' : 'SHOW';
+        };
+        button.addEventListener('click', handler);
+        passwordToggleHandlers.push({ button, handler });
+    };
+
+    registerPasswordToggle(passwordToggle, passwordInput);
+    registerPasswordToggle(confirmToggle, confirmPasswordInput);
 
     const handleSubmit = async () => {
         hideError();
@@ -252,6 +324,8 @@ export const createAccountLogic = (): (() => void) => {
                 return;
             }
 
+            showToast('✅ Account created! Redirecting to login...');
+
             gsap.to('#right-panel', {
                 scale: 1.05,
                 duration: 0.2,
@@ -294,6 +368,10 @@ export const createAccountLogic = (): (() => void) => {
         if (submitBtn) {
             submitBtn.removeEventListener('click', handleSubmit);
         }
+        passwordToggleHandlers.forEach(({ button, handler }) => {
+            button.removeEventListener('click', handler);
+        });
+        passwordToggleHandlers.length = 0;
     });
 
     return cleanupManager.getCleanupFunction();
