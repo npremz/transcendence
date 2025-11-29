@@ -19,11 +19,6 @@ export const QuickPlayView: ViewFunction = () => {
 							>>> SELECT YOUR SKILL <<<
 						</p>
 					</div>
-					<!-- 2d-3d toggle -->
-					<div id="view-mode-toggle-container" class="switch-button mx-auto mb-8 neon-border rounded-lg pixel-font text-blue-400 overflow-hidden w-60 text-center text-lg tracking-[1px] relative pl-[5px] pr-[125px] py-[5px]">
-						<input id="view-mode-toggle" class="switch-button-checkbox cursor-pointer absolute w-full h-full opacity-0 z-[2] left-0 inset-y-0" type="checkbox" />
-						<label class="switch-button-label relative block select-none pointer-events-none px-0 py-[15px]" for="view-mode-toggle"><span class="switch-button-label-span relative">2D</span></label>
-					</div>
 					<!-- Section Skills -->
 					<div class="mb-12 neon-border bg-black/50 backdrop-blur-sm rounded-lg p-8" id="skills-section">
 						<h2 class="pixel-font text-2xl text-blue-400 mb-6 text-center">
@@ -133,12 +128,21 @@ export const QuickPlayView: ViewFunction = () => {
 							id="play-online" 
 							class="mode-button w-full p-6 neon-border rounded-lg pixel-font text-lg text-blue-400 hover:text-white transition-all relative group"
 						>
-							<div class="flex items-center justify-between">
+							<div class="flex items-center justify-between w-full">
 								<div class="flex items-center gap-4">
 									<span class="text-3xl">🌐</span>
 									<div class="text-left">
 										<div class="text-xl">PLAY ONLINE</div>
 										<div class="text-xs opacity-60 font-normal">Find an opponent and start playing</div>
+									</div>
+								</div>
+								<!-- 2d-3d toggle -->
+								<div class="ml-auto mr-4">
+									<div id="view-mode-toggle-container" class="switch-button neon-border rounded-lg pixel-font text-blue-400 overflow-hidden w-28 text-center text-sm tracking-[1px] relative">
+										<input id="view-mode-toggle" class="switch-button-checkbox cursor-pointer absolute w-full h-full opacity-0 z-[2] left-0 inset-y-0" type="checkbox" />
+										<label class="switch-button-label relative block select-none pointer-events-none px-0 py-[8px]" for="view-mode-toggle">
+											<span class="switch-button-label-span relative">2D</span>
+										</label>
 									</div>
 								</div>
 								<span class="text-2xl group-hover:translate-x-2 transition-transform">→</span>
@@ -248,9 +252,13 @@ export const quickPlayLogic = (): CleanupFunction => {
 	const localButton = document.getElementById('play-local') as HTMLButtonElement | null;
 	const localTournamentButton = document.getElementById('play-local-tournament') as HTMLButtonElement | null;
 	const label = document.getElementById('selected-skill-label');
+	const toggleButton = document.getElementById('view-mode-toggle') as HTMLInputElement | null;
+	const toggleContainer = document.getElementById('view-mode-toggle-container');
 
 	let selectedSkill = (sessionStorage.getItem('selectedSkill') as 'smash' | 'dash' | null) || 'smash';
 	sessionStorage.setItem('selectedSkill', selectedSkill);
+
+	sessionStorage.setItem('viewMode', '2d'); // 2d default
 
 	const updateUI = () => {
 		skillButtons.forEach(btn => {
@@ -302,6 +310,22 @@ export const quickPlayLogic = (): CleanupFunction => {
 		btn.addEventListener('click', handler);
 		listeners.push({ element: btn, handler });
 	});
+	// will be used to prevent propagation when clicking the toggle inside the play button
+	if (toggleButton) {
+		const toggleHandler = (e: Event) => {
+			e.stopPropagation();
+		};
+		toggleButton.addEventListener('click', toggleHandler);
+		listeners.push({ element: toggleButton, handler: toggleHandler as unknown as (e: Event) => void });
+	}
+
+	if (toggleContainer) {
+		const containerHandler = (e: Event) => {
+			e.stopPropagation();
+		};
+		toggleContainer.addEventListener('click', containerHandler);
+		listeners.push({ element: toggleContainer, handler: containerHandler as unknown as (e: Event) => void });
+	}
 
 	if (playButton) {
 		const playHandler = (event: MouseEvent) => {
