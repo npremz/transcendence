@@ -6,8 +6,6 @@ export class Game3D {
 
 	constructor(element: HTMLElement) {
 		console.log('[game3d] initializing...');
-
-		//CANVAS
 		const canvasElem = element.querySelector('#game3d-canvas') as HTMLCanvasElement;
 		if (!canvasElem) throw new Error('[game3d] error: canvas not found');
 		this.canvas = canvasElem;

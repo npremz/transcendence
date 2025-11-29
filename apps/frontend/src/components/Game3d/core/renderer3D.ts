@@ -16,7 +16,7 @@ export class Renderer3D {
 	private balls: Map<string, Ball> = new Map();
 	private scoreboard!: Scoreboard;
 	private celebrationSphere!: CelebrationSphere;
-	private powerUpMeshes: Map<string, PowerUp> = new Map(); //todo add !
+	private powerUpMeshes: Map<string, PowerUp> = new Map();
 	
 	
 	private currentState!: Game3DState;
@@ -169,7 +169,7 @@ export class Renderer3D {
 			this.powerUpEffects.restoreVisibilityAfterBlackout();
 		}
 
-		// Per frame update (only helix now)
+		// Per frame update (only helix for now)
 		this.powerUpEffects.update();
 	}
 
