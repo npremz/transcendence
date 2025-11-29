@@ -76,6 +76,7 @@ export class Game3D {
 			this.gameEngine = null as any;
 		}
 		sessionStorage.removeItem('gameWsURL');
+		sessionStorage.removeItem('viewMode');
 	}
 }
 

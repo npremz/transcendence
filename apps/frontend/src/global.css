@@ -172,6 +172,10 @@
 
 .switch-button {
 	background: rgba(15, 23, 42, 0.6);
+	padding-left: 5px;
+	padding-right: 52px;
+	padding-top: 3px;
+	padding-bottom: 3px;
 }
 
 .switch-button:before{
@@ -180,7 +184,7 @@
 	top: 0;
 	bottom: 0;
 	right: 0;
-	width: 120px;
+	width: 60px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -189,7 +193,7 @@
 }
 
 .switch-button-checkbox:checked + .switch-button-label:before {
-	transform: translateX(120px);
+	transform: translateX(47px);
 	transition: transform 300ms linear;
 }
 
