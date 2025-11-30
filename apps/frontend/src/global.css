@@ -40,6 +40,15 @@
 	75%, 100% { transform: scale(2); opacity: 0; }
 }
 
+@keyframes emphasizeTextPulse {
+	0%, 100% {
+		text-shadow: 0 0 8px #ff0a0a88, 0 0 16px #ff0a0a44;
+	}
+	50% {
+		text-shadow: 0 0 16px #ff0a0a, 0 0 32px #ff0a0a88;
+	}
+}
+
 /* ==================== TYPOGRAPHIE ==================== */
 
 .pixel-font {
@@ -304,4 +313,11 @@
 	-webkit-mask: repeating-radial-gradient(farthest-side at bottom ,#0000 0,#000 1px 12%,#0000 calc(12% + 1px) 20%);
 	background: radial-gradient(farthest-side at bottom, var(--skill-gradient-color) 0 95%,#0000 0) bottom/0% 0% no-repeat #ddd;
 	background-size: 100% 100%;
+}
+
+.emphasize-side-player {
+	color: #ff0a0a;
+	font-weight: bold;
+	text-shadow: 0 0 8px #ff0a0a88, 0 0 16px #ff0a0a44;
+	animation: emphasizeTextPulse 2s infinite;
 }

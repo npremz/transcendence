@@ -11,15 +11,21 @@ export class UIManager {
 		const rightNameEl = document.getElementById('player-right-name');
 		
 		if (leftNameEl && playerNames?.left) {
-			leftNameEl.textContent = side === 'left' 
-				? `${playerNames.left} 👈` 
-				: playerNames.left;
+			leftNameEl.textContent = playerNames.left;
+			if (side === 'left') {
+				leftNameEl.classList.add('emphasize-side-player');
+			} else {
+				leftNameEl.classList.remove('emphasize-side-player');
+			}
 		}
 		
 		if (rightNameEl && playerNames?.right) {
-			rightNameEl.textContent = side === 'right' 
-				? `${playerNames.right} 👈` 
-				: playerNames.right;
+			rightNameEl.textContent = playerNames.right;
+			if (side === 'right') {
+				rightNameEl.classList.add('emphasize-side-player');
+			} else {
+				rightNameEl.classList.remove('emphasize-side-player');
+			}
 		}
 	}
 
