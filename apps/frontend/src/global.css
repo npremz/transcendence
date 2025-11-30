@@ -48,6 +48,13 @@
 	letter-spacing: 0.1em;
 }
 
+ /* ==================== GAME HUD ==================== */
+
+.game-hud {
+	background: rgba(4, 7, 26, 0.85);
+	backdrop-filter: blur(10px);
+}
+
 /* ==================== EFFETS NEON ==================== */
 
 .neon-border {
@@ -62,6 +69,13 @@
 		0 0 20px rgba(59, 130, 246, 0.8),
 		inset 0 0 20px rgba(59, 130, 246, 0.3);
 	border-color: rgba(59, 130, 246, 1);
+}
+
+.neon-border-red {
+	box-shadow: 
+		0 0 10px rgba(239, 68, 68, 0.5),
+		inset 0 0 10px rgba(239, 68, 68, 0.2);
+	border: 3px solid rgba(239, 68, 68, 0.8);
 }
 
 /* ==================== FORMULAIRES ==================== */
@@ -168,6 +182,40 @@
 	cursor: not-allowed;
 }
 
+.action-button {
+	transition: all 0.2s ease;
+	position: relative;
+	overflow: hidden;
+}
+
+.action-button::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 0;
+	height: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.1);
+	transform: translate(-50%, -50%);
+	transition: width 0.6s, height 0.6s;
+}
+
+.action-button:hover::before {
+	width: 300px;
+	height: 300px;
+}
+
+.action-button:active {
+	transform: scale(0.95);
+}
+
+.forfeit-button:hover {
+	box-shadow: 
+		0 0 20px rgba(239, 68, 68, 0.6),
+		inset 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
 /* ==================== SWITCH TOGGLE ==================== */
 
 .switch-button {
@@ -242,4 +290,18 @@
 
 .countdown-modal {
 	backdrop-filter: blur(10px);
+}
+
+/* ==================== GAME 3D ==================== */
+:root {
+	--skill-gradient-color: #00e676;
+}
+
+.skillLoader {
+	width: 120px;
+	height: 60px;
+	border-radius: 200px 200px 0 0;
+	-webkit-mask: repeating-radial-gradient(farthest-side at bottom ,#0000 0,#000 1px 12%,#0000 calc(12% + 1px) 20%);
+	background: radial-gradient(farthest-side at bottom, var(--skill-gradient-color) 0 95%,#0000 0) bottom/0% 0% no-repeat #ddd;
+	background-size: 100% 100%;
 }
