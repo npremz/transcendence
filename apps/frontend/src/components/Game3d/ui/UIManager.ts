@@ -30,7 +30,7 @@ export class UIManager {
 		overlay.innerHTML = `
 			<div class="bg-[#0C154D]/90 border-2 border-white/20 rounded-lg p-8 text-center max-w-md">
 				<h2 class="text-4xl font-bold mb-4 ${didIWin ? 'text-green-400' : 'text-red-400'}">
-					${didIWin ? '🏆 VICTOIRE !' : '💀 DÉFAITE'}
+					${didIWin ? '🏆 WIN !' : '💀 DEFEAT'}
 				</h2>
 				<p class="text-white/80 text-xl mb-6">
 					Score: ${score.left} - ${score.right}
@@ -39,7 +39,7 @@ export class UIManager {
 					id="return-to-lobby"
 					class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all cursor-pointer"
 				>
-					Retour au lobby
+					Return to Lobby
 				</button>
 			</div>
 		`;
@@ -53,7 +53,7 @@ export class UIManager {
 		overlay.innerHTML = `
 			<div class="bg-[#0C154D]/90 border-2 border-white/20 rounded-lg p-8 text-center max-w-md">
 				<h2 class="text-4xl font-bold mb-4 ${didIWin ? 'text-green-400' : 'text-red-400'}">
-					${didIWin ? '🏆 VICTOIRE TOURNAMENT!' : '💀 DÉFAITE TOURNAMENT!'}
+					${didIWin ? '🏆 TOURNAMENT WIN!' : '💀 TOURNAMENT DEFEAT!'}
 				</h2>
 				<p class="text-white/80 text-xl mb-6">
 					Score: ${score.left} - ${score.right}
@@ -62,7 +62,7 @@ export class UIManager {
 					id="return-to-lobby"
 					class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all cursor-pointer"
 				>
-					Retour au lobby
+					Return to Lobby
 				</button>
 			</div>
 		`;
