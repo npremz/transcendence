@@ -32,21 +32,29 @@ export class SimpleAuth
     private static readonly COOKIE_NAME = 'player_session';
     private static readonly USERNAME_KEY = 'player_username';
     private static readonly AUTH_STATE_KEY = 'player_authenticated';
+    private static readonly AVATAR_KEY = 'player_avatar';
     private playerId: string | null;
     private username: string = 'Anon';
     private isAuthenticated = false;
+    private avatarDataUrl: string | null = null;
+    private avatarPickerInitialized = false;
 
     constructor()
 {
         this.playerId = this.getOrCreatePlayerId();
         this.username = localStorage.getItem(SimpleAuth.USERNAME_KEY) || 'Anon';
         this.isAuthenticated = localStorage.getItem(SimpleAuth.AUTH_STATE_KEY) === '1';
+        this.avatarDataUrl = localStorage.getItem(SimpleAuth.AVATAR_KEY);
 
         if (typeof document !== 'undefined') {
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => this.syncAuthDom());
+                document.addEventListener('DOMContentLoaded', () => {
+                    this.syncAuthDom();
+                    this.initAvatarPicker();
+                });
             } else {
                 this.syncAuthDom();
+                this.initAvatarPicker();
             }
         }
     }
@@ -59,6 +67,16 @@ export class SimpleAuth
     private clearStoredUsername(): void {
         this.username = 'Anon';
         localStorage.removeItem(SimpleAuth.USERNAME_KEY);
+    }
+
+    private setAvatar(dataUrl: string | null): void {
+        this.avatarDataUrl = dataUrl;
+        if (dataUrl) {
+            localStorage.setItem(SimpleAuth.AVATAR_KEY, dataUrl);
+        } else {
+            localStorage.removeItem(SimpleAuth.AVATAR_KEY);
+        }
+        this.syncAuthDom();
     }
 
     private notifyChange(): void {
@@ -123,6 +141,7 @@ else
         this.playerId = uuidv4();
         CookieManager.setCookie(SimpleAuth.COOKIE_NAME, this.playerId, 30);
         this.clearStoredUsername();
+        this.setAvatar(null);
         this.setAuthenticated(false);
     }
 
@@ -151,6 +170,44 @@ else
 
         document.querySelectorAll<HTMLElement>('[data-auth-username]').forEach((el) => {
             el.textContent = username;
+        });
+
+        const avatarSrc = this.avatarDataUrl || '/sprites/cat.gif';
+        document.querySelectorAll<HTMLImageElement>('[data-auth-avatar]').forEach((img) => {
+            img.src = avatarSrc;
+        });
+    }
+
+    private initAvatarPicker(): void {
+        if (this.avatarPickerInitialized || typeof document === 'undefined') return;
+        this.avatarPickerInitialized = true;
+
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.className = 'hidden';
+        input.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(input);
+
+        input.addEventListener('change', () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const result = reader.result;
+                if (typeof result === 'string') {
+                    this.setAvatar(result);
+                }
+            };
+            reader.readAsDataURL(file);
+            input.value = '';
+        });
+
+        document.addEventListener('click', (event) => {
+            const target = (event.target as HTMLElement | null)?.closest('[data-avatar-change]');
+            if (!target) return;
+            event.preventDefault();
+            input.click();
         });
     }
 }
