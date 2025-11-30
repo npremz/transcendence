@@ -232,7 +232,7 @@ export class Router {
         }
 
         // Pages principales → retour à l'accueil
-        if (['/play', '/tournament', '/history', '/login', '/create', '/chat', '/admin/users', '/dbuser'].includes(currentPath)) {
+        if (['/play', '/tournament', '/history', '/dashboard', '/login', '/create', '/chat', '/admin/users', '/dbuser'].includes(currentPath)) {
             return '/';
         }
 
@@ -325,12 +325,20 @@ export class Router {
             }
         });
 
-		// DB User - Lazy
+        // DB User - Lazy
         this.routes.push({
             path: '/dbuser',
             lazyView: () => import('../views/DbUserView'),
             title: 'dbUser',
         });
+
+		// User Dashboard - Lazy
+		this.routes.push({
+			path: '/dashboard',
+			lazyView: () => import('../views/UserDashboardView'),
+			title: 'User Dashboard',
+			prefetch: true
+		});
 
 		// History - Lazy
 		this.routes.push({

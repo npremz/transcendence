@@ -35,7 +35,7 @@ export const HomeView: ViewFunction = () => {
                 </div>
 
                 <!-- Cartes de jeu -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl mb-12">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl mb-12">
                     <!-- QuickPlay Card -->
                     <a href="/play" 
                        class="game-card group relative p-8 md:p-12 neon-border hover:cursor-pointer"
@@ -85,6 +85,27 @@ export const HomeView: ViewFunction = () => {
                         <div class="absolute top-4 left-4 text-blue-500 text-2xl opacity-80">←</div>
                         <div class="absolute bottom-4 right-4 text-blue-500 text-2xl opacity-80">→</div>
                     </a>
+
+                    <!-- Dashboard Card -->
+                    <a href="/dashboard" 
+                       class="game-card group relative p-8 md:p-12 neon-border hover:cursor-pointer"
+                       id="dashboard-card"
+                       style="opacity: 0; transform: translateY(100px);">
+                        <div class="text-6xl md:text-7xl mb-6 text-center">
+                            🧭
+                        </div>
+                        
+                        <h2 class="pixel-font text-2xl md:text-3xl text-purple-400 text-center opacity-80 mb-4">
+                            DASHBOARD
+                        </h2>
+                        
+                        <p class="pixel-font text-sm text-blue-300 text-center opacity-80">
+                            Stats, parties récentes et profil joueur
+                        </p>
+                        
+                        <div class="absolute top-4 left-4 text-purple-400 text-2xl opacity-80">⇠</div>
+                        <div class="absolute bottom-4 right-4 text-purple-400 text-2xl opacity-80">⇢</div>
+                    </a>
                 </div>
 
                 <!-- Leaderboard -->
@@ -116,9 +137,9 @@ export const HomeView: ViewFunction = () => {
 export const homeLogic = (): CleanupFunction => {
 	const cleanupManager = createCleanupManager();
 	cleanupManager.registerGsapTarget('#main-title');
-	cleanupManager.registerGsapTarget('#play-card');
+	cleanupManager.registerGsapTarget('#quickplay-card');
 	cleanupManager.registerGsapTarget('#tournament-card');
-	cleanupManager.registerGsapTarget('#history-card');
+	cleanupManager.registerGsapTarget('#dashboard-card');
 
     // Animation d'entrée du titre
     gsap.to('#main-title', {
@@ -153,6 +174,14 @@ export const homeLogic = (): CleanupFunction => {
         delay: 0.8,
         ease: 'power3.out'
     });
+
+	gsap.to('#dashboard-card', {
+		y: 0,
+		opacity: 1,
+		duration: 1,
+		delay: 1.1,
+		ease: 'power3.out'
+	});
 
     // Animation des chiffres (compteur)
     const animateCounter = (id: string, target: number) => {
