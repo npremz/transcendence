@@ -50,7 +50,6 @@ CREATE TABLE IF NOT EXISTS games (
 	id TEXT PRIMARY KEY,
 	room_id TEXT NOT NULL UNIQUE,
 	game_type TEXT NOT NULL CHECK(game_type IN ('quickplay', 'tournament')),
-	is_3d BOOLEAN DEFAULT 0,
 	tournament_id TEXT,
 	tournament_round INTEGER,
 	match_position INTEGER,
