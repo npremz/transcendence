@@ -48,6 +48,7 @@ export class Game3D {
 			this.gameEngine = undefined;
 		}
 		sessionStorage.removeItem('gameWsURL');
+		sessionStorage.removeItem('currentGameRoute');
 		sessionStorage.removeItem('viewMode');
 	}
 }

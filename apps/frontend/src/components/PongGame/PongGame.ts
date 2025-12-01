@@ -435,6 +435,7 @@ export class PongGame implements Component {
 
 		setTimeout(() => {
 			sessionStorage.removeItem('gameWsURL');
+			sessionStorage.removeItem('currentGameRoute');
 			window.router.navigate(`/tournament/${tournamentId}`);
 		}, 3000);
 	}
@@ -501,6 +502,7 @@ export class PongGame implements Component {
 					clearInterval(countdownInterval);
 					overlay.remove(); // Supprimer l'overlay du DOM
 					sessionStorage.removeItem('gameWsURL');
+					sessionStorage.removeItem('currentGameRoute');
 					sessionStorage.removeItem('localGameConfig');
 					sessionStorage.removeItem('localTournamentMatch');
 					window.router.navigate('/local-tournament-bracket');
@@ -552,6 +554,7 @@ export class PongGame implements Component {
 				console.log('Return to lobby clicked');
 				e.stopPropagation();
 				sessionStorage.removeItem('gameWsURL');
+				sessionStorage.removeItem('currentGameRoute');
 				document.body.removeChild(overlay);
 				window.router?.navigateTo('/play');
 			}

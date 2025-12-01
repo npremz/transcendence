@@ -4,6 +4,8 @@ import { LoadingView } from '../components/LoadingView';
 import type { NavigationGuard } from './types';
 import {
     logGuard,
+    authGuard,
+    noActiveGameGuard,
     tournamentExistsGuard,
     roomExistsGuard
 } from './Guards'
@@ -256,35 +258,46 @@ export class Router {
             path: '/play',
             lazyView: () => import('../views/QuickPlayView'),
 			prefetch: true,  // Précharger en arrière-plan
-            title: 'QuickPlay'
+            title: 'QuickPlay',
+            beforeEnter: authGuard
         });
 
 		// Waiting Room - Lazy
 		this.routes.push({
             path: '/play/waiting',
             lazyView: () => import('../views/WaitingRoomView'),
-            title: 'Waiting Room'
+            title: 'Waiting Room',
+            beforeEnter: (to, from, params) => {
+                const authResult = authGuard(to, from, params);
+                if (authResult !== true) {
+                    return authResult;
+                }
+                return noActiveGameGuard(to, from, params);
+            }
         });
 
 		// Local Game - Lazy
 		this.routes.push({
             path: '/local',
             lazyView: () => import('../views/LocalGameView'),
-            title: 'Local Game'
+            title: 'Local Game',
+            beforeEnter: authGuard
         });
 
 		// Local Tournament Setup - Lazy
 		this.routes.push({
             path: '/local-tournament-setup',
             lazyView: () => import('../views/LocalTournamentSetupView'),
-            title: 'Local Tournament Setup'
+            title: 'Local Tournament Setup',
+            beforeEnter: authGuard
         });
 
 		// Local Tournament Bracket - Lazy
 		this.routes.push({
             path: '/local-tournament-bracket',
             lazyView: () => import('../views/LocalTournamentBracketView'),
-            title: 'Local Tournament Bracket'
+            title: 'Local Tournament Bracket',
+            beforeEnter: authGuard
         });
 
 		// Game View - Lazy
@@ -293,6 +306,10 @@ export class Router {
             lazyView: () => import('../views/GameView'),
             title: 'Pong gaming',
             beforeEnter: async (to, from, params) => {
+                const authResult = authGuard(to, from, params);
+                if (authResult !== true) {
+                    return authResult;
+                }
                 return await roomExistsGuard(to, from, params);
             },
         });
@@ -303,6 +320,10 @@ export class Router {
             lazyView: () => import('../views/Game3dView'),
             title: 'Pong 3D gaming',
             beforeEnter: async (to, from, params) => {
+                const authResult = authGuard(to, from, params);
+                if (authResult !== true) {
+                    return authResult;
+                }
                 return await roomExistsGuard(to, from, params);
             },
         });
@@ -312,7 +333,8 @@ export class Router {
             path: '/tournament',
             lazyView: () => import('../views/TournamentView'),
 			prefetch: true,  // Précharger en arrière-plan
-            title: 'Tournament'
+            title: 'Tournament',
+            beforeEnter: authGuard
         });
 
 		// Tournament Bracket - Lazy
@@ -321,6 +343,10 @@ export class Router {
             lazyView: () => import('../views/BracketView'),
             title: 'Tounament brackets',
             beforeEnter: async (to, from, params) => {
+                const authResult = authGuard(to, from, params);
+                if (authResult !== true) {
+                    return authResult;
+                }
                 return await tournamentExistsGuard(to, from, params);
             }
         });
@@ -590,6 +616,11 @@ export class Router {
 				}
 
 				this.currentRoute = route;
+
+				// Stocker le chemin de la route pour les routes de jeu
+				if (path.startsWith('/game/') || path.startsWith('/game3d/')) {
+					sessionStorage.setItem('currentGameRoute', path);
+				}
 
 				if (typeof window !== 'undefined') {
 					const simpleAuth = (window as any).simpleAuth;

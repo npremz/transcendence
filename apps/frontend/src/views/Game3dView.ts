@@ -8,16 +8,8 @@ export const Game3dView: ViewFunction = () => {
 			<div class="game-hud border-b border-white/10">
 				<div class="container mx-auto px-4 py-4">
 					<div class="flex items-center justify-between gap-4">
-						<!-- Left: Back button -->
-						<button 
-							onclick="window.router.goBack()" 
-							class="action-button pixel-font px-4 py-2 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all text-sm"
-							id="back-button"
-						>
-							<span class="relative z-10">← EXIT</span>
-						</button>
 
-							<!-- Player 1 Name -->
+						<!-- Player 1 Name -->
 						<div id="player-left-name" class="text-xl font-bold text-white drop-shadow-lg mx-4">Player 1</div>
 
 						<!-- Center: Status indicator -->
@@ -28,11 +20,11 @@ export const Game3dView: ViewFunction = () => {
 							</span>
 						</div>
 
-							<!-- Player 2 Name -->
+						<!-- Player 2 Name -->
 						<div id="player-right-name" class="text-xl font-bold text-white drop-shadow-lg mx-4">Player 2</div>
 
 						<!-- Right: Forfeit button (si pas mode local) -->
-						<button 
+						<button
 							id="forfeit-btn"
 							class="action-button forfeit-button pixel-font px-4 py-2 neon-border-red bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-sm relative z-10"
 						>

@@ -170,15 +170,6 @@ export const GameView: ViewFunction = () => {
 			<div class="game-hud border-b border-white/10">
 				<div class="container mx-auto px-4 py-4">
 					<div class="flex items-center justify-between">
-						
-						<!-- Left: Back button -->
-						<button 
-							onclick="window.router.goBack()" 
-							class="action-button pixel-font px-4 py-2 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all text-sm"
-							id="back-button"
-						>
-							<span class="relative z-10">← EXIT</span>
-						</button>
 
 						<!-- Center: Status indicator -->
 						<div class="flex items-center gap-3">
@@ -189,7 +180,7 @@ export const GameView: ViewFunction = () => {
 						</div>
 
 						<!-- Right: Forfeit button (si pas mode local) -->
-						<button 
+						<button
 							id="forfeit-btn"
 							class="action-button forfeit-button pixel-font px-4 py-2 neon-border-red bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-sm relative z-10"
 						>

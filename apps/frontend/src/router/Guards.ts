@@ -86,6 +86,38 @@ export const tournamentExistsGuard: NavigationGuard = async (to, from, params) =
     }
 };
 
+export const authGuard: NavigationGuard = (to, from, params) => {
+    if (typeof window === 'undefined') {
+        return true;
+    }
+
+    const simpleAuth = (window as any).simpleAuth;
+
+    if (!simpleAuth || !simpleAuth.isLoggedIn()) {
+        console.log('Navigation blocked: user not authenticated');
+        return '/login';
+    }
+
+    return true;
+};
+
+export const noActiveGameGuard: NavigationGuard = (to, from, params) => {
+    if (typeof window === 'undefined') {
+        return true;
+    }
+
+    const gameWsURL = sessionStorage.getItem('gameWsURL');
+    const currentGameRoute = sessionStorage.getItem('currentGameRoute');
+
+    if (gameWsURL && currentGameRoute) {
+        console.log('Navigation blocked: player already in a game');
+        console.log('Redirecting to:', currentGameRoute);
+        return currentGameRoute;
+    }
+
+    return true;
+};
+
 export const logGuard: NavigationGuard = (to, from, params) => {
     console.log('📍 Navigation:', {
         from: from?.path || 'initial',

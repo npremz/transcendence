@@ -28,7 +28,10 @@ class GameSession {
 	private roles = new Map<WebSocket, Role>();
 	private leftCtrl?: WebSocket;
 	private rightCtrl?: WebSocket;
-    
+	private leftReady: boolean = false;
+	private rightReady: boolean = false;
+	private gameStarted: boolean = false;
+
     private expected: {left?: Player; right?: Player} = {};
 
 	private leftStats: GameStats = {
@@ -71,7 +74,10 @@ class GameSession {
 	constructor(private readonly roomId?: string, log?: FastifyBaseLogger) {
 		this.startLoops();
 		this.log = log;
-		
+
+		// Start the game in paused state, waiting for both players to be ready
+		this.world.state.isPaused = true;
+
 		this.world.setCallbacks({
 			onPaddleHit: (side) => {
 				const stats = side === 'left' ? this.leftStats : this.rightStats;
@@ -293,9 +299,10 @@ class GameSession {
                     this.log?.info({ roomId: this.roomId, assRole, clients: this.clients.size, playerId: msg.id }, 'client connected');
 
                     const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
-                    if (haveBoth && !this.hadBothCtrl) {
+                    // If game has already started and both players are now connected, start countdown before resuming
+                    if (this.gameStarted && haveBoth && this.world.state.isPaused && this.world.state.countdownValue === 0) {
                         this.world.startCountdown();
-                        this.notifyGameStarted();
+                        this.log?.info({ roomId: this.roomId }, 'Player reconnected - starting countdown before resuming game');
                     }
                     this.hadBothCtrl = haveBoth;
                 }
@@ -303,6 +310,31 @@ class GameSession {
                     this.send(ws, { type: 'error', message: 'no player expected for this room.' })
                 }
                 break;
+            case 'ready': {
+                const role = this.roles.get(ws);
+                if (role === 'left' && ws === this.leftCtrl) {
+                    this.leftReady = true;
+                    this.log?.info({ roomId: this.roomId, side: 'left' }, 'Player ready');
+                } else if (role === 'right' && ws === this.rightCtrl) {
+                    this.rightReady = true;
+                    this.log?.info({ roomId: this.roomId, side: 'right' }, 'Player ready');
+                } else {
+                    this.send(ws, { type: 'error', message: 'Only players can signal ready' });
+                    break;
+                }
+
+                // Start the game only when both players are connected AND ready
+                const bothReady = this.leftReady && this.rightReady;
+                const bothConnected = !!this.leftCtrl && !!this.rightCtrl;
+                if (bothReady && bothConnected && !this.gameStarted) {
+                    this.world.startCountdown();
+                    this.notifyGameStarted();
+                    this.gameStarted = true;
+                    this.hadBothCtrl = true;
+                    this.log?.info({ roomId: this.roomId }, 'Both players ready - starting game');
+                }
+                break;
+            }
             case 'ping':
                 this.send(ws, { type: 'pong', t: msg.t });
                 break;
@@ -358,12 +390,20 @@ class GameSession {
 		if (this.leftCtrl === ws)
 		{
 			this.leftCtrl = undefined;
+			// Only reset ready flag if game hasn't started yet
+			if (!this.gameStarted) {
+				this.leftReady = false;
+			}
             this.leftCtrlDisconnectedAt = Date.now();
             this.log?.info({roomId: this.roomId, role}, 'client disconnected starting 30s timeout');
 		}
 		if (this.rightCtrl === ws)
 		{
 			this.rightCtrl = undefined;
+			// Only reset ready flag if game hasn't started yet
+			if (!this.gameStarted) {
+				this.rightReady = false;
+			}
             this.rightCtrlDisconnectedAt = Date.now();
             this.log?.info({roomId: this.roomId, role}, 'client disconnected starting 30s timeout');
 		}

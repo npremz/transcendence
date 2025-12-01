@@ -136,6 +136,7 @@ export class Game3DEngine {
 				document.body.appendChild(overlay);
 				this.tournamentTimeoutId = setTimeout(() => {
 					sessionStorage.removeItem('gameWsURL');
+					sessionStorage.removeItem('currentGameRoute');
 					window.router.navigate(`/tournament/${tournamentId}`); // wip redirection to 3D tournament
 					document.body.removeChild(overlay);
 				}, 3000);
@@ -149,6 +150,7 @@ export class Game3DEngine {
 				if (target.id === 'return-to-lobby' || target.closest('#return-to-lobby')) {
 					e.stopPropagation();
 					sessionStorage.removeItem('gameWsURL');
+					sessionStorage.removeItem('currentGameRoute');
 					document.body.removeChild(overlay);
 					window.router?.navigateTo('/play');
 				}
