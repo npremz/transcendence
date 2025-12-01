@@ -108,6 +108,11 @@ export class Game3DEngine {
 				rightActive: false,
 				rightRemainingMs: 0
 			};
+
+			if (side !== 'spectator') {
+                console.log('3D Engine ready. Sending READY signal.');
+                this.networkManager.sendReady();
+            }
 		};
 
 		this.networkManager.onGameOver = (winner, isTournament, tournamentId) => {

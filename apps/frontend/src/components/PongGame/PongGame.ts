@@ -628,7 +628,7 @@ export class PongGame implements Component {
 	}
 
 	private createWelcomeHandler(client: WSClient) {
-		return (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => {
+		return async (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => {
 			console.log('Welcome received:', { side, playerNames });
 
 			const resolvedLeftName = playerNames?.left ?? this.localConfig?.left.username;
@@ -671,7 +671,14 @@ export class PongGame implements Component {
 				}
 			}
 
-
+            if (!this.assets.isLoaded()) {
+                await this.assets.loadAll();
+            }
+            
+            if (side !== 'spectator') {
+                console.log('Assets loaded and connection established. Sending READY.');
+                client.sendReady();
+            }
 		};
 	}
 

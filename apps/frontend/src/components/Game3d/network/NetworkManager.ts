@@ -88,6 +88,11 @@ export class NetworkManager  {
 		this.wsClient.sendInput(up, down);
 	}
 
+	public sendReady(): void {
+		if (!this.isConnected) return;
+		this.wsClient.sendReady();
+	}
+
 	public useSkill(): void {
 		if (!this.isConnected) return;
 		this.wsClient.useSkill();

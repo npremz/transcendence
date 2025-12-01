@@ -382,13 +382,6 @@ export class Router {
 			title: 'Admin Users'
 		});
 
-		// Start Game - Lazy
-		this.routes.push({
-			path: '/startgame',
-            lazyView: () => import('../views/StartGameView'),
-			title: 'Test'
-		});
-
 		// Dev 3D - Lazy
 		this.routes.push({
 			path: '/dev3d',
