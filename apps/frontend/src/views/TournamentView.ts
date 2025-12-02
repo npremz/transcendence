@@ -1,3 +1,4 @@
+// apps/frontend/src/views/TournamentView.ts
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
 import { Layout } from "../components/Layout";
@@ -6,9 +7,8 @@ import { createCleanupManager } from "../utils/CleanupManager";
 export const TournamentView: ViewFunction = () => {
     const content = `
             <div class="flex-1 flex items-center justify-center px-4 py-12">
-                <div class="w-full max-w-4xl">
+                 <div class="w-full max-w-6xl">
                     
-					<!-- Titre principal -->
 					<div class="text-center mb-12">
 						<h1 class="pixel-font text-6xl md:text-8xl text-blue-400 mb-4" 
 							style="animation: neonPulse 2s ease-in-out infinite;"
@@ -20,9 +20,7 @@ export const TournamentView: ViewFunction = () => {
 						</p>
 					</div>
 
-                    <!-- Cartes de tournois -->
-					<div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="tournament-cards">
-						<!-- 4 Players -->
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="tournament-cards">
 						<div 
 							class="tournament-card neon-border rounded-lg p-8 relative flex flex-col items-center"
 							data-component="joinTournament"
@@ -30,17 +28,14 @@ export const TournamentView: ViewFunction = () => {
 							data-tournament-id=""
 							id="tournament-4"
 						>
-							<!-- Badge de statut -->
 							<div class="absolute top-4 right-4 pixel-font text-xs text-green-400 bg-green-500/20 px-3 py-1 rounded border border-green-500/50">
 								OPEN
 							</div>
 
-							<!-- Icône -->
 							<div class="text-6xl md:text-7xl mb-6 text-blue-500">
 								⚡
 							</div>
 							
-							<!-- Titre -->
 							<h3 class="pixel-font text-4xl text-blue-400 mb-2">
 								4
 							</h3>
@@ -48,24 +43,20 @@ export const TournamentView: ViewFunction = () => {
 								PLAYERS
 							</p>
 							
-							<!-- Compteur -->
 							<div class="mb-6">
 								<span class="pixel-font text-3xl text-yellow-400" data-player-count>0/4</span>
 							</div>
 
-							<!-- Description -->
 							<p class="pixel-font text-xs text-blue-300/60 text-center mb-8">
 								Quick bracket - 2 rounds
 							</p>
 
-							<!-- Flèches décoratives symétriques -->
 							<div class="absolute bottom-4 left-0 right-0 flex justify-between px-4">
 								<span class="text-red-500 text-2xl opacity-50">←</span>
 								<span class="text-red-500 text-2xl opacity-50">→</span>
 							</div>
 						</div>
 
-						<!-- 8 Players -->
 						<div 
 							class="tournament-card neon-border rounded-lg p-8 relative flex flex-col items-center"
 							data-component="joinTournament"
@@ -73,17 +64,14 @@ export const TournamentView: ViewFunction = () => {
 							data-tournament-id=""
 							id="tournament-8"
 						>
-							<!-- Badge de statut -->
 							<div class="absolute top-4 right-4 pixel-font text-xs text-green-400 bg-green-500/20 px-3 py-1 rounded border border-green-500/50">
 								OPEN
 							</div>
 
-							<!-- Icône -->
 							<div class="text-6xl md:text-7xl mb-6 text-blue-500">
 								⚡
 							</div>
 							
-							<!-- Titre -->
 							<h3 class="pixel-font text-4xl text-blue-400 mb-2">
 								8
 							</h3>
@@ -91,24 +79,20 @@ export const TournamentView: ViewFunction = () => {
 								PLAYERS
 							</p>
 							
-							<!-- Compteur -->
 							<div class="mb-6">
 								<span class="pixel-font text-3xl text-yellow-400" data-player-count>0/8</span>
 							</div>
 
-							<!-- Description -->
 							<p class="pixel-font text-xs text-blue-300/60 text-center mb-8">
 								Standard bracket - 3 rounds
 							</p>
 
-							<!-- Flèches décoratives symétriques -->
 							<div class="absolute bottom-4 left-0 right-0 flex justify-between px-4">
 								<span class="text-blue-500 text-2xl opacity-80">←</span>
 								<span class="text-blue-500 text-2xl opacity-80">→</span>
 							</div>
 						</div>
 
-						<!-- 16 Players -->
 						<div 
 							class="tournament-card neon-border rounded-lg p-8 relative flex flex-col items-center"
 							data-component="joinTournament"
@@ -116,17 +100,14 @@ export const TournamentView: ViewFunction = () => {
 							data-tournament-id=""
 							id="tournament-16"
 						>
-							<!-- Badge de statut -->
 							<div class="absolute top-4 right-4 pixel-font text-xs text-green-400 bg-green-500/20 px-3 py-1 rounded border border-green-500/50">
 								OPEN
 							</div>
 
-							<!-- Icône -->
 							<div class="text-6xl md:text-7xl mb-6 text-blue-500">
 								⚡
 							</div>
 							
-							<!-- Titre -->
 							<h3 class="pixel-font text-4xl text-blue-400 mb-2">
 								16
 							</h3>
@@ -134,17 +115,14 @@ export const TournamentView: ViewFunction = () => {
 								PLAYERS
 							</p>
 							
-							<!-- Compteur -->
 							<div class="mb-6">
 								<span class="pixel-font text-3xl text-yellow-400" data-player-count>0/16</span>
 							</div>
 
-							<!-- Description -->
 							<p class="pixel-font text-xs text-blue-300/60 text-center mb-8">
 								Epic bracket - 4 rounds
 							</p>
 
-							<!-- Flèches décoratives symétriques -->
 							<div class="absolute bottom-4 left-0 right-0 flex justify-between px-4">
 								<span class="text-red-500 text-2xl opacity-50">←</span>
 								<span class="text-red-500 text-2xl opacity-50">→</span>
@@ -152,20 +130,55 @@ export const TournamentView: ViewFunction = () => {
 						</div>
 					</div>
 
+                    <div class="flex justify-center">
+                        <div class="w-full md:w-1/3 min-w-[280px]">
+                            <div 
+                                class="tournament-card neon-border rounded-lg p-8 relative flex flex-col items-center cursor-pointer h-full"
+                                id="play-local-tournament"
+                            >
+                                <div class="absolute top-4 right-4 pixel-font text-xs text-purple-400 bg-purple-500/20 px-3 py-1 rounded border border-purple-500/50">
+                                    LOCAL
+                                </div>
+
+                                <div class="text-6xl md:text-7xl mb-6 text-purple-500">
+                                    🎮
+                                </div>
+                                
+                                <h3 class="pixel-font text-2xl text-purple-400 mb-2 text-center">
+                                    LOCAL<br>CUP
+                                </h3>
+                                <p class="pixel-font text-sm text-purple-300 mb-6 opacity-80">
+                                    MULTIPLAYER
+                                </p>
+                                
+                                <div class="mb-6">
+                                    <span class="pixel-font text-3xl text-white">OFFLINE</span>
+                                </div>
+
+                                <p class="pixel-font text-xs text-purple-300/60 text-center mb-8">
+                                    4 or 8 players<br>Same screen
+                                </p>
+
+                                <div class="absolute bottom-4 left-0 right-0 flex justify-between px-4">
+                                    <span class="text-purple-500 text-2xl opacity-50">←</span>
+                                    <span class="text-purple-500 text-2xl opacity-50">→</span>
+                                </div>
+                            </div>
+                        </div>
+					</div>
 
                 </div>
             </div>
 
-		<!-- Modal de countdown (caché par défaut) -->
-        <div id="countdown" class="fixed inset-0 bg-black/80 countdown-modal hidden flex items-center justify-center z-50">
+		<div id="countdown" class="fixed inset-0 bg-black/80 countdown-modal hidden flex items-center justify-center z-50">
             <div class="neon-border bg-black/90 backdrop-blur-sm rounded-lg p-12 text-center">
-                <h2 class="pixel-font text-3xl text-blue-400 mb-6">
+                 <h2 class="pixel-font text-3xl text-blue-400 mb-6">
                     TOURNAMENT IS STARTING...
                 </h2>
-                <div id="countdown-text" class="pixel-font text-8xl text-pink-500 mb-4" style="animation: neonPulse 1s ease-in-out infinite;">
+                 <div id="countdown-text" class="pixel-font text-8xl text-pink-500 mb-4" style="animation: neonPulse 1s ease-in-out infinite;">
                     3
                 </div>
-                <p class="pixel-font text-sm text-blue-300/60">
+               <p class="pixel-font text-sm text-blue-300/60">
                     Get ready for battle!
                 </p>
             </div>
@@ -174,7 +187,7 @@ export const TournamentView: ViewFunction = () => {
 
     return Layout.render(content, {
         showBackButton: true,
-        showSignInButton: true,
+         showSignInButton: true,
         showFooter: true
     });
 };
@@ -184,6 +197,7 @@ export const tournamentLogic = (): CleanupFunction => {
 
 	const cleanupManager = createCleanupManager();
     const tournamentBtns = document.querySelectorAll('[data-component="joinTournament"]');
+    const localTournamentBtn = document.getElementById('play-local-tournament');
 
     let pollInterval: number | null = null;
     let currentTournamentId: string | null = null;
@@ -365,7 +379,7 @@ export const tournamentLogic = (): CleanupFunction => {
         console.log('⏱️ Countdown started');
     };
 
-    // Fonction pour rejoindre un tournoi
+    // Fonction pour rejoindre un tournoi ONLINE
     const handleJoinTournament = async (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
@@ -430,15 +444,40 @@ export const tournamentLogic = (): CleanupFunction => {
         }
     };
 
+    // Fonction pour le tournoi LOCAL
+    const handleLocalTournament = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const target = e.currentTarget as HTMLElement;
+        
+        gsap.to(target, {
+            scale: 0.95,
+            duration: 0.1,
+            yoyo: true,
+            repeat: 1,
+            onComplete: () => {
+                window.router.navigate('/local-tournament-setup');
+            }
+        });
+    };
+
     // ✅ Stocker les handlers pour pouvoir les retirer
     const handlers = new Map<Element, EventListener>();
 
-    // Attacher les event listeners
+    // Attacher les event listeners pour les tournois ONLINE
     tournamentBtns.forEach(tournamentBtn => {
         const handler = handleJoinTournament as EventListener;
         tournamentBtn.addEventListener("click", handler, { capture: true });
         handlers.set(tournamentBtn, handler);
     });
+
+    // Attacher le listener pour le tournoi LOCAL
+    if (localTournamentBtn) {
+        const handler = handleLocalTournament as EventListener;
+        localTournamentBtn.addEventListener('click', handler);
+        handlers.set(localTournamentBtn, handler);
+    }
 
     // Polling initial et régulier pour les stats
     fetchTournaments();
@@ -454,6 +493,7 @@ export const tournamentLogic = (): CleanupFunction => {
 		}
 		handlers.forEach((handler, element) => {
 			element.removeEventListener("click", handler, { capture: true });
+            element.removeEventListener("click", handler); // Safe for non-capture listeners
 		});
 		handlers.clear();
 	});

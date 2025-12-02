@@ -198,8 +198,7 @@ export class Router {
             return '/play';
         }
 
-        // Waiting room → retour à la sélection du mode
-        if (currentPath === '/play/waiting') {
+		if (currentPath === '/play/waiting') {
             return '/play';
         }
 
@@ -213,9 +212,9 @@ export class Router {
             return '/local-tournament-setup';
         }
 
-        // Tournoi local - setup → retour à la sélection du mode
+        // Tournoi local - setup → retour à la liste des tournois (MODIFIÉ)
         if (currentPath === '/local-tournament-setup') {
-            return '/play';
+            return '/tournament';
         }
 
         // Tournoi en ligne - bracket → retour à la liste des tournois

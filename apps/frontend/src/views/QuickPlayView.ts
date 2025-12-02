@@ -145,24 +145,7 @@ export const QuickPlayView: ViewFunction = () => {
 								<span class="text-2xl group-hover:translate-x-2 transition-transform">→</span>
 							</div>
 						</button>
-
-						<button
-							id="play-local-tournament"
-							class="mode-button w-full p-6 neon-border rounded-lg pixel-font text-lg text-blue-400 hover:text-white transition-all relative group"
-						>
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-4">
-									<span class="text-3xl">🏆</span>
-									<div class="text-left">
-										<div class="text-xl">LOCAL TOURNAMENT</div>
-										<div class="text-xs opacity-60 font-normal">4 or 8 players championship</div>
-									</div>
-								</div>
-								<span class="text-2xl group-hover:translate-x-2 transition-transform">→</span>
-							</div>
-						</button>
-
-						</div>
+					</div>
 
 				</div>
 			</div>
@@ -211,9 +194,7 @@ export const quickPlayLogic = (): CleanupFunction => {
 		document.querySelectorAll<HTMLButtonElement>('[data-skill-option]')
 	);
 	const playButton = document.getElementById('play-online') as HTMLButtonElement | null;
-	// SUPPRIMÉ : playVsAIButton selector
 	const localButton = document.getElementById('play-local') as HTMLButtonElement | null;
-	const localTournamentButton = document.getElementById('play-local-tournament') as HTMLButtonElement | null;
 	const label = document.getElementById('selected-skill-label');
 	const toggleButton = document.getElementById('view-mode-toggle') as HTMLInputElement | null;
 	const toggleContainer = document.getElementById('view-mode-toggle-container');
@@ -316,8 +297,6 @@ export const quickPlayLogic = (): CleanupFunction => {
 		listeners.push({ element: playButton, handler: playHandler as unknown as (e: Event) => void });
 	}
 
-    // SUPPRIMÉ : Gestionnaire d'événement pour le bouton "Play vs AI"
-
 	if (localButton) {
 		const localHandler = (event: MouseEvent) => {
 			event.preventDefault();
@@ -333,23 +312,6 @@ export const quickPlayLogic = (): CleanupFunction => {
 		};
 		localButton.addEventListener('click', localHandler);
 		listeners.push({ element: localButton, handler: localHandler as unknown as (e: Event) => void });
-	}
-
-	if (localTournamentButton) {
-		const localTournamentHandler = (event: MouseEvent) => {
-			event.preventDefault();
-			gsap.to(localTournamentButton, {
-				scale: 0.95,
-				duration: 0.1,
-				yoyo: true,
-				repeat: 1,
-				onComplete: () => {
-					window.router?.navigateTo('/local-tournament-setup');
-				}
-			});
-		};
-		localTournamentButton.addEventListener('click', localTournamentHandler);
-		listeners.push({ element: localTournamentButton, handler: localTournamentHandler as unknown as (e: Event) => void });
 	}
 
 	updateUI();
