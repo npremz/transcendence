@@ -20,22 +20,6 @@ export const TournamentView: ViewFunction = () => {
 						</p>
 					</div>
 
-                    <!-- Input Username -->
-                    <div class="mb-8 neon-border bg-black/50 backdrop-blur-sm rounded-lg p-6" id="username-section">
-                        <label for="usernameInput" class="block mb-3 pixel-font text-sm text-blue-300 text-center">
-                            ENTER YOUR USERNAME:
-                        </label>
-                        <input 
-                            type="text" 
-                            name="username" 
-                            id="usernameInput" 
-                            value="Anon"
-                            maxlength="20"
-                            class="w-full p-3 rounded pixel-font text-center text-lg neon-input"
-                            placeholder="Your username..."
-                        />
-                    </div>
-
                     <!-- Cartes de tournois -->
 					<div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="tournament-cards">
 						<!-- 4 Players -->
@@ -200,7 +184,6 @@ export const tournamentLogic = (): CleanupFunction => {
 
 	const cleanupManager = createCleanupManager();
     const tournamentBtns = document.querySelectorAll('[data-component="joinTournament"]');
-    const usernameInput = document.getElementById("usernameInput") as HTMLInputElement;
 
     let pollInterval: number | null = null;
     let currentTournamentId: string | null = null;
@@ -397,7 +380,7 @@ export const tournamentLogic = (): CleanupFunction => {
             return;
         }
 
-        const username = usernameInput.value.trim() || 'Anon';
+        const username = window.simpleAuth.getUsername() || 'Anon';
         window.simpleAuth.setUsername(username);
         
         const tournamentId = target.getAttribute('data-tournament-id');
