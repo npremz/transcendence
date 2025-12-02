@@ -57,7 +57,13 @@ export class ChatWidget implements Component {
     private renderUserView(): void {
         this.element.innerHTML = `
             <button id="chat-toggle-btn" class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg neon-border flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer group">
-                <span class="text-2xl group-hover:animate-bounce">💬</span>
+                <span class="w-3/4 ml-px">
+					<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<g clip-path="url(#clip0_15_90)">
+						<path d="M20 12C20 16.4183 16.4183 20 12 20C10.5937 20 9.27223 19.6372 8.12398 19C7.53267 18.6719 4.48731 20.4615 3.99998 20C3.44096 19.4706 5.4583 16.6708 5.07024 16C4.38956 14.8233 3.99999 13.4571 3.99999 12C3.99999 7.58172 7.58171 4 12 4C16.4183 4 20 7.58172 20 12Z" fill="white" stroke-linejoin="round"/>
+						</g>
+					</svg>
+				</span>
                 <div id="chat-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center hidden pixel-font border border-black">0</div>
             </button>
 
