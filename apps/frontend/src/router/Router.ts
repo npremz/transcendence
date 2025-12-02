@@ -473,6 +473,14 @@ export class Router {
     {
         window.addEventListener('popstate', (event: PopStateEvent) => {
             const targetPath = window.location.pathname;
+			const currentPath = this.currentRoute?.path || '/';
+
+			if (currentPath.startsWith('/game/') || currentPath.startsWith('/game3d/'))
+			{
+                window.history.pushState(null, '', currentPath);
+                console.log('Navigation back blocked during game');
+                return;
+            }
 
             if (event.state && typeof event.state.navIndex === 'number') {
                 this.historyPointer = event.state.navIndex;

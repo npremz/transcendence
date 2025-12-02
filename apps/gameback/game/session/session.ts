@@ -169,14 +169,23 @@ class GameSession {
 		}
 		if (this.expected.left?.id || this.expected.right?.id) 
         {
-            if (playerId && this.expected.left?.id === playerId && !this.leftCtrl)
+            if (playerId && this.expected.left?.id === playerId)
             {
+                if (this.leftCtrl && this.leftCtrl !== ws) {
+                    this.roles.set(this.leftCtrl, 'spectator'); 
+                    this.log?.info({ roomId: this.roomId }, 'Left player hot-reconnected, overwriting old socket');
+                }
                 this.leftCtrl = ws;
                 this.leftCtrlDisconnectedAt = null;
                 return ('left');
             }
-            if (playerId && this.expected.right?.id === playerId && !this.rightCtrl)
+            
+            if (playerId && this.expected.right?.id === playerId)
             {
+                if (this.rightCtrl && this.rightCtrl !== ws) {
+                    this.roles.set(this.rightCtrl, 'spectator');
+                    this.log?.info({ roomId: this.roomId }, 'Right player hot-reconnected, overwriting old socket');
+                }
                 this.rightCtrl = ws;
                 this.rightCtrlDisconnectedAt = null;
                 return ('right');

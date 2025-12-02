@@ -59,7 +59,7 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 					`INSERT INTO games (
 						id, room_id, game_type, player_left_id, player_right_id,
 						tournament_id, tournament_round, match_position, status
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting')`,
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting')`,
 					[
 						id, room_id, game_type, player_left_id, player_right_id,
 						tournament_id || null, tournament_round || null, match_position || null
