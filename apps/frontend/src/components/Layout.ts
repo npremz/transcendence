@@ -46,6 +46,10 @@ export class Layout {
 			containerClass = ''
 		} = options;
 
+		const chatWidgetHTML = `
+            <div data-component="chat-widget"></div>
+        `;
+
 		return `
 			<!-- Fond avec grille animée -->
 			<div class="fixed inset-0 bg-black overflow-hidden">
@@ -77,6 +81,7 @@ export class Layout {
 
 				${showFooter ? this.renderFooter(footerText) : ''}
 			</div>
+			${chatWidgetHTML}
 		`;
 	}
 
