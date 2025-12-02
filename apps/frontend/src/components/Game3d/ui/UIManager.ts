@@ -142,7 +142,7 @@ export class UIManager {
 				const secondsRemaining = Math.ceil(opponentRemainingMs / 1000);
 				text = `⚠️ <span style="color:#ff4d4f">Opponent disconnected.</span> <br> Forfeit in ${secondsRemaining}s`;
 			} else {
-				text = 'Game Paused';
+				text = `Game Paused<br>Press P or ESC to resume`;
 			}
 		}
 		if (text.length > 0) {

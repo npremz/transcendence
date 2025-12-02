@@ -89,3 +89,8 @@ export const CAMERA = {
 	FPS_BETA: Math.PI / 2.5,
 	FPS_RADIUS: 20
 } as const;
+
+export const KEY = {
+	CAMERA: 'v',
+	PAUSE: ['Escape', 'p', 'P']
+}
