@@ -50,29 +50,6 @@ services:
       retries: 5
       start_period: 40s
 
-  chatback:
-    container_name: chatback
-    networks:
-      - transcendence
-    build:
-      context: apps/chatback
-      dockerfile: ../../infra/docker/chatback/Dockerfile
-    env_file: .env
-    volumes:
-      - ./apps/chatback:/chatback
-      - chatback_node_modules:/chatback/node_modules
-    restart: unless-stopped
-    expose:
-      - "3000"
-    environment:
-      - PORT=3000
-    depends_on:
-      database:
-        condition: service_healthy
-    healthcheck:
-      <<: *healthcheck-wget
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
-
   userback:
     container_name: userback
     networks:
@@ -205,8 +182,6 @@ services:
         condition: service_healthy
       database:
         condition: service_healthy
-      chatback:
-        condition: service_healthy
       gameback:
         condition: service_healthy
       quickplayback:
@@ -227,7 +202,6 @@ networks:
 
 volumes:
   front_node_modules:
-  chatback_node_modules:
   userback_node_modules:
   gameback_node_modules:
   quickplayback_node_modules:
