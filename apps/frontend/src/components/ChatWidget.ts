@@ -1,9 +1,11 @@
 import type { Component } from "./types";
 import { gsap } from "gsap";
+import { v4 as uuidv4 } from "uuid"; // Nécessaire pour générer un ID joueur temporaire si besoin
 
 type ChatMessage = {
     username: string;
     content: string;
+    avatar?: string;
     created_at: string;
     type?: 'text' | 'system';
 };
@@ -18,11 +20,10 @@ export class ChatWidget implements Component {
     private badgeElement: HTMLElement | null = null;
     private wsStatusElement: HTMLElement | null = null;
     private auth: any;
-    
-    // Gestion du polling et des doublons
+    private pendingMessages: Set<string> = new Set();
+    private sentMessagesSignature: Set<string> = new Set();
     private pollInterval: ReturnType<typeof setInterval> | null = null;
-    private lastMessageTimestamp: number = 0; // Pour ne charger que les nouveaux messages
-    private sentMessagesSignature: Set<string> = new Set(); // Pour éviter d'afficher nos propres messages en double
+    private lastMessageTimestamp: number = 0;
 
     constructor(element: HTMLElement) {
         this.element = element;
@@ -37,16 +38,9 @@ export class ChatWidget implements Component {
         }
 
         this.renderUserView();
-        
-        // 1. Charger l'historique initial
         this.loadMessages();
-        
-        // 2. Connexion WebSocket
         this.connectWebSocket();
-        
-        // 3. Fallback : Polling toutes les 3s (assure la réception même si WS échoue)
         this.pollInterval = setInterval(() => this.loadMessages(), 3000);
-        
         this.setupEventListeners();
     }
 
@@ -57,19 +51,13 @@ export class ChatWidget implements Component {
     private renderUserView(): void {
         this.element.innerHTML = `
             <button id="chat-toggle-btn" class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg neon-border flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer group">
-                <span class="w-3/4 ml-px">
-					<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<g clip-path="url(#clip0_15_90)">
-						<path d="M20 12C20 16.4183 16.4183 20 12 20C10.5937 20 9.27223 19.6372 8.12398 19C7.53267 18.6719 4.48731 20.4615 3.99998 20C3.44096 19.4706 5.4583 16.6708 5.07024 16C4.38956 14.8233 3.99999 13.4571 3.99999 12C3.99999 7.58172 7.58171 4 12 4C16.4183 4 20 7.58172 20 12Z" fill="white" stroke-linejoin="round"/>
-						</g>
-					</svg>
-				</span>
+                <img src="${this.getAvatar({username: this.auth.getUsername()})}" class="w-full h-full rounded-full object-cover p-0.5" />
                 <div id="chat-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center hidden pixel-font border border-black">0</div>
             </button>
 
-            <div id="chat-panel" class="fixed bottom-24 right-6 w-80 md:w-96 h-[500px] bg-[#0a0a1f]/95 backdrop-blur-md border border-blue-500/30 rounded-xl shadow-2xl z-50 flex flex-col transform translate-x-[120%] transition-transform duration-300 ease-out">
+            <div id="chat-panel" class="fixed bottom-24 right-6 w-80 md:w-96 h-[500px] bg-[#0a0a1f]/95 backdrop-blur-md border border-blue-500/30 rounded-xl shadow-2xl z-50 flex flex-col transform translate-x-[120%] transition-transform duration-300 ease-out overflow-hidden">
                 
-                <div class="flex items-center justify-between p-4 border-b border-blue-500/20 bg-blue-900/20 rounded-t-xl">
+                <div class="flex items-center justify-between p-4 border-b border-blue-500/20 bg-blue-900/20 rounded-t-xl relative z-20">
                     <div class="flex items-center gap-2">
                         <div id="ws-status-dot" class="w-2 h-2 rounded-full bg-red-500" title="Offline (Polling active)"></div>
                         <h3 class="pixel-font text-sm text-blue-200 tracking-wide">GLOBAL CHAT</h3>
@@ -77,13 +65,16 @@ export class ChatWidget implements Component {
                     <button id="chat-close-btn" class="text-blue-400 hover:text-white transition-colors cursor-pointer text-lg">✕</button>
                 </div>
 
-                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-blue-500/20 scrollbar-track-transparent">
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-blue-500/20 scrollbar-track-transparent relative z-10">
                     <div class="text-center text-xs text-blue-300/40 mt-4 mb-8 pixel-font">
                         — Welcome, ${this.sanitizedUsername()} —
                     </div>
                 </div>
 
-                <form id="chat-form" class="p-3 border-t border-blue-500/20 bg-black/40 rounded-b-xl flex gap-2">
+                <div id="user-menu-overlay" class="absolute inset-0 bg-[#0a0a1f]/95 z-30 transform translate-y-full transition-transform duration-300 flex flex-col">
+                    </div>
+
+                <form id="chat-form" class="p-3 border-t border-blue-500/20 bg-black/40 rounded-b-xl flex gap-2 relative z-20">
                     <input 
                         type="text" 
                         id="chat-input" 
@@ -105,11 +96,165 @@ export class ChatWidget implements Component {
         this.wsStatusElement = this.element.querySelector('#ws-status-dot');
     }
 
+    // --- LOGIQUE MENU UTILISATEUR ---
+
+    private openUserMenu(targetUsername: string, avatarUrl: string): void {
+        const overlay = this.element.querySelector('#user-menu-overlay') as HTMLElement;
+        if (!overlay) return;
+
+        // Génération du contenu du menu
+        overlay.innerHTML = `
+            <div class="flex-1 flex flex-col items-center justify-center p-6 space-y-6">
+                <div class="relative">
+                    <div class="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-blue-500 to-purple-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]">
+                        <img src="${avatarUrl}" class="w-full h-full rounded-full object-cover bg-black" />
+                    </div>
+                    <button id="close-menu-btn" class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 hover:bg-red-400 text-white rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110">✕</button>
+                </div>
+                
+                <h3 class="pixel-font text-2xl text-white tracking-wide">${targetUsername}</h3>
+                
+                <div class="grid grid-cols-1 w-full gap-3">
+                    <button data-action="profile" class="pixel-font w-full py-3 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-300 rounded-lg transition-all flex items-center justify-center gap-2 group">
+                        <span>👤</span> Voir le profil
+                    </button>
+                    
+                    <button data-action="duel" class="pixel-font w-full py-3 bg-yellow-600/20 hover:bg-yellow-600/40 border border-yellow-500/50 text-yellow-300 rounded-lg transition-all flex items-center justify-center gap-2 group">
+                        <span class="group-hover:animate-bounce">⚔️</span> Inviter en Duel
+                    </button>
+                    
+                    <div class="flex gap-3">
+                        <button data-action="friend" class="pixel-font flex-1 py-3 bg-green-600/20 hover:bg-green-600/40 border border-green-500/50 text-green-300 rounded-lg transition-all">
+                            + Ami
+                        </button>
+                        <button data-action="block" class="pixel-font flex-1 py-3 bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 text-red-300 rounded-lg transition-all">
+                            🚫 Bloquer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Animation d'entrée
+        overlay.classList.remove('translate-y-full');
+
+        // Gestionnaires d'événements du menu
+        const closeBtn = overlay.querySelector('#close-menu-btn');
+        closeBtn?.addEventListener('click', () => {
+            overlay.classList.add('translate-y-full');
+        });
+
+        const buttons = overlay.querySelectorAll('button[data-action]');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = (e.currentTarget as HTMLElement).dataset.action;
+                this.handleUserAction(action, targetUsername, overlay);
+            });
+        });
+    }
+
+    private async handleUserAction(action: string | undefined, username: string, overlay: HTMLElement): Promise<void> {
+        switch (action) {
+            case 'profile':
+                // Astuce pour UserDashboardView : on set le localStorage avant de naviguer
+                localStorage.setItem("pong:last-dashboard-user", username);
+                if (window.router) window.router.navigate('/dashboard');
+                else window.location.href = '/dashboard';
+                break;
+
+            case 'duel':
+                await this.initiateDuel(username, overlay);
+                break;
+
+            case 'friend':
+                alert(`Demande d'ami envoyée à ${username} ! (Simulation)`);
+                overlay.classList.add('translate-y-full');
+                break;
+
+            case 'block':
+                if (confirm(`Bloquer ${username} ? Vous ne verrez plus ses messages.`)) {
+                    // Logique de blocage locale (pourrait être stockée dans localStorage)
+                    alert(`${username} a été bloqué.`);
+                    overlay.classList.add('translate-y-full');
+                }
+                break;
+        }
+    }
+
+    // --- LOGIQUE DUEL (Réintégrée de l'ancien ChatView) ---
+    private async initiateDuel(targetUsername: string, overlay: HTMLElement): Promise<void> {
+        const btn = overlay.querySelector('button[data-action="duel"]') as HTMLButtonElement;
+        const originalText = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = `<span class="animate-spin">⌛</span> Création...`;
+
+        try {
+            // 1. Créer une room QuickPlay privée
+            const host = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
+            const myId = this.auth.getPlayerId();
+            const mySkill = sessionStorage.getItem('selectedSkill') || 'smash'; // Défaut
+
+            const response = await fetch(`https://${host}/quickplay/join`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    username: this.auth.getUsername(), 
+                    playerId: myId, 
+                    selectedSkill: mySkill 
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.roomId) {
+                // 2. Envoyer l'invitation via le chat (message système caché ou formaté)
+                const inviteMsg = `__DUEL_INVITE__|${this.auth.getUsername()}|${targetUsername}|${data.roomId}`;
+                await this.sendDirectMessage(inviteMsg);
+                
+                alert(`Invitation envoyée à ${targetUsername} !`);
+                overlay.classList.add('translate-y-full');
+            } else {
+                throw new Error(data.error || "Erreur création room");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Impossible de créer le duel. Vérifiez votre connexion.");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    private async sendDirectMessage(content: string): Promise<void> {
+        const username = this.auth.getUsername();
+        try {
+            const url = `${this.getApiBaseUrl()}/userback/chat/messages`;
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, content })
+            });
+        } catch (e) {
+            console.error("Send DM failed", e);
+        }
+    }
+
+    // ---------------------------
+
     private sanitizedUsername(): string {
         const user = this.auth.getUsername();
         const div = document.createElement('div');
         div.textContent = user;
         return div.innerHTML;
+    }
+
+    private getAvatar(msg: any): string {
+        if (msg.avatar) return msg.avatar;
+        if (msg.username === this.auth.getUsername()) {
+            return localStorage.getItem('player_avatar') || '/sprites/cat.gif';
+        }
+        return '/sprites/cat.gif';
     }
 
     private getApiBaseUrl(): string {
@@ -119,40 +264,27 @@ export class ChatWidget implements Component {
         return `${protocol}//${host}`;
     }
 
-    // Fonction unifiée pour traiter les messages entrants (WS ou HTTP)
     private processIncomingMessages(messages: ChatMessage[]) {
         let hasNew = false;
 
         messages.forEach(msg => {
             const msgDate = new Date(msg.created_at).getTime();
-            
-            // 1. Ignore si plus vieux que ce qu'on a déjà affiché
             if (msgDate <= this.lastMessageTimestamp) return;
-
-            // 2. Ignore les messages système techniques
             if (msg.content.startsWith('__DUEL_ACCEPT__')) return;
 
-            // 3. Gestion des invitations Duel
             if (msg.content.startsWith('__DUEL_INVITE__')) {
                 this.renderInviteMessage(msg);
                 this.lastMessageTimestamp = Math.max(this.lastMessageTimestamp, msgDate);
                 return;
             }
 
-            // 4. Dédoublonnage pour mes propres messages (envoyés en Optimistic UI)
-            // On crée une signature unique pour ce message
             const signature = `${msg.username}:${msg.content}`;
-            
-            // Si c'est mon message et qu'il est dans la liste des "en attente de confirmation"
             if (msg.username === this.auth.getUsername() && this.sentMessagesSignature.has(signature)) {
-                // Le serveur l'a bien reçu, on le retire de la liste d'attente
-                // On ne le réaffiche pas pour éviter le saut visuel, on met juste à jour le timestamp
                 this.sentMessagesSignature.delete(signature);
                 this.lastMessageTimestamp = Math.max(this.lastMessageTimestamp, msgDate);
                 return;
             }
 
-            // 5. Affichage normal
             this.renderTextMessage(msg, true);
             this.lastMessageTimestamp = Math.max(this.lastMessageTimestamp, msgDate);
             hasNew = true;
@@ -177,9 +309,7 @@ export class ChatWidget implements Component {
             if (data.success && Array.isArray(data.messages)) {
                 this.processIncomingMessages(data.messages);
             }
-        } catch (err) {
-            // Silencieux car c'est du polling
-        }
+        } catch (err) { }
     }
 
     private connectWebSocket(): void {
@@ -190,42 +320,24 @@ export class ChatWidget implements Component {
 
         try {
             this.socket = new WebSocket(wsUrl);
-            
-            this.socket.onopen = () => {
-                this.updateConnectionStatus(true);
-            };
-
+            this.socket.onopen = () => this.updateConnectionStatus(true);
             this.socket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    // Le backend envoie un objet unique { username, content, created_at }
-                    if (data.username && data.content) {
-                        this.processIncomingMessages([data]);
-                    }
-                } catch (e) {
-                    console.error("[Chat] Parse error", e);
-                }
+                    if (data.username && data.content) this.processIncomingMessages([data]);
+                } catch (e) { console.error("[Chat] Parse error", e); }
             };
-
             this.socket.onclose = () => {
                 this.updateConnectionStatus(false);
-                // Reconnexion lente pour ne pas spammer, car le polling prend le relais
                 setTimeout(() => this.connectWebSocket(), 10000);
             };
-
-            this.socket.onerror = () => {
-                this.socket?.close();
-            };
-
-        } catch (err) {
-            console.error("[Chat] Connection failed", err);
-        }
+        } catch (err) { console.error("[Chat] Connection failed", err); }
     }
 
     private updateConnectionStatus(connected: boolean): void {
         if (this.wsStatusElement) {
             this.wsStatusElement.className = `w-2 h-2 rounded-full ${connected ? 'bg-green-400 shadow-[0_0_8px_#4ade80]' : 'bg-yellow-500'}`;
-            this.wsStatusElement.setAttribute('title', connected ? 'Live (WebSocket)' : 'Backup Mode (Polling)');
+            this.wsStatusElement.setAttribute('title', connected ? 'Live' : 'Polling Mode');
         }
     }
 
@@ -233,33 +345,16 @@ export class ChatWidget implements Component {
         if (!this.inputElement) return;
         const content = this.inputElement.value.trim();
         if (!content) return;
-
-        if (content.length > 200) {
-            alert("Message too long");
-            return;
-        }
+        if (content.length > 200) { alert("Message too long"); return; }
 
         const username = this.auth.getUsername();
+        const tempMsg: ChatMessage = { username, content, created_at: new Date().toISOString() };
         
-        // 1. UI Optimiste : Affichage immédiat
-        const tempMsg: ChatMessage = {
-            username,
-            content,
-            created_at: new Date().toISOString()
-        };
-        
-        // On affiche tout de suite
         this.renderTextMessage(tempMsg, true);
-        
-        // On ajoute la signature dans notre liste "en vol"
-        // Cela empêchera le polling/websocket de réafficher ce message quand il reviendra du serveur
         this.sentMessagesSignature.add(`${username}:${content}`);
-        
-        // On vide l'input tout de suite
         this.inputElement.value = '';
         this.scrollToBottom();
 
-        // 2. Envoi via HTTP POST (Fiabilité)
         try {
             const url = `${this.getApiBaseUrl()}/userback/chat/messages`;
             await fetch(url, {
@@ -267,11 +362,7 @@ export class ChatWidget implements Component {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, content })
             });
-            // Si succès, le message reviendra via polling/ws et sera ignoré grâce à sentMessagesSignature
-        } catch (error) {
-            console.error("Failed to send message", error);
-            // Optionnel : marquer le message comme "échoué" visuellement
-        }
+        } catch (error) { console.error("Failed to send message", error); }
     }
 
     private updateBadge(): void {
@@ -289,24 +380,62 @@ export class ChatWidget implements Component {
         if (!this.messagesContainer) return;
 
         const isMe = msg.username === this.auth.getUsername();
-        const wrapper = document.createElement('div');
-        
-        wrapper.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-3`;
+        const avatarUrl = this.getAvatar(msg);
+
+        // Conteneur principal (Ligne)
+        const row = document.createElement('div');
+        row.className = `flex gap-3 mb-4 items-end ${isMe ? 'flex-row-reverse' : 'flex-row'}`;
         
         if (animate) {
-            wrapper.classList.add('opacity-0', 'translate-y-2');
+            row.classList.add('opacity-0', 'translate-y-2');
         }
+
+        // 1. Avatar (Uniquement pour les autres)
+        if (!isMe) {
+            const avatarContainer = document.createElement('div');
+            // Modification: Ajout de cursor-pointer et hover effect
+            avatarContainer.className = `w-8 h-8 flex-shrink-0 rounded-full bg-blue-900/50 border border-blue-500/30 overflow-hidden shadow-lg order-0 cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all`;
+            
+            // --- EVENT CLICK POUR LE MENU ---
+            avatarContainer.addEventListener('click', (e) => {
+                e.stopPropagation(); // Empêcher la fermeture si on clique
+                this.openUserMenu(msg.username, avatarUrl);
+            });
+            // --------------------------------
+
+            const img = document.createElement('img');
+            img.src = avatarUrl;
+            img.className = "w-full h-full object-cover";
+            img.alt = msg.username;
+            img.onerror = () => { img.src = '/sprites/cat.gif'; };
+            
+            avatarContainer.appendChild(img);
+            row.appendChild(avatarContainer);
+        }
+
+        // 2. Colonne Message
+        const messageCol = document.createElement('div');
+        messageCol.className = `flex flex-col max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`;
 
         const date = new Date(msg.created_at);
         const timeStr = isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         
         const meta = document.createElement('div');
-        meta.className = "flex gap-2 text-[10px] text-blue-300/50 mb-1 pixel-font items-baseline";
+        meta.className = "flex gap-2 text-[10px] text-blue-300/50 mb-1 pixel-font items-center";
         
         const nameSpan = document.createElement('span');
         nameSpan.textContent = isMe ? 'YOU' : msg.username;
-        nameSpan.className = isMe ? "text-blue-400" : "text-pink-400";
+        nameSpan.className = `font-bold ${isMe ? "text-blue-400" : "text-pink-400"} cursor-pointer hover:underline`;
         
+        // --- EVENT CLICK SUR LE NOM AUSSI ---
+        if (!isMe) {
+            nameSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openUserMenu(msg.username, avatarUrl);
+            });
+        }
+        // ------------------------------------
+
         const timeSpan = document.createElement('span');
         timeSpan.textContent = timeStr;
         
@@ -319,22 +448,25 @@ export class ChatWidget implements Component {
         }
 
         const bubble = document.createElement('div');
-        // Protection XSS : textContent utilisé plus bas
-        bubble.className = `max-w-[85%] px-3 py-2 rounded-lg text-sm break-words shadow-sm ${
+        bubble.className = `px-3 py-2 rounded-lg text-sm break-words shadow-md leading-relaxed ${
             isMe 
-            ? 'bg-blue-600 text-white rounded-tr-none border border-blue-400/50' 
-            : 'bg-gray-800 text-blue-100 rounded-tl-none border border-blue-500/20'
+            ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-none border border-blue-400/50' 
+            : 'bg-gradient-to-br from-gray-800 to-gray-900 text-blue-100 rounded-tl-none border border-blue-500/20'
         }`;
         
         bubble.textContent = msg.content;
 
-        wrapper.appendChild(meta);
-        wrapper.appendChild(bubble);
-        this.messagesContainer.appendChild(wrapper);
+        messageCol.appendChild(meta);
+        messageCol.appendChild(bubble);
+
+        row.appendChild(messageCol);
+
+        this.messagesContainer.appendChild(row);
         
         if (animate) {
-            gsap.to(wrapper, { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" });
+            gsap.to(row, { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" });
         }
+        this.scrollToBottom();
     }
 
     private renderInviteMessage(msg: ChatMessage): void {
@@ -342,31 +474,42 @@ export class ChatWidget implements Component {
 
         const parts = msg.content.split('|');
         if (parts.length < 4) return;
-        
         const [_, from, to, roomId] = parts;
         const myName = this.auth.getUsername();
 
         if (to !== myName) return;
 
         const wrapper = document.createElement('div');
-        wrapper.className = "mb-4 w-full opacity-0 translate-y-2";
+        wrapper.className = "mb-4 w-full opacity-0 translate-y-2 flex justify-center";
 
         const card = document.createElement('div');
-        card.className = "neon-border bg-black/60 p-4 rounded-lg border border-yellow-500/50 flex flex-col gap-3 shadow-[0_0_15px_rgba(234,179,8,0.2)]";
+        card.className = "w-[90%] neon-border bg-black/80 p-3 rounded-lg border border-yellow-500/50 flex flex-col gap-2 shadow-[0_0_15px_rgba(234,179,8,0.1)]";
 
+        const header = document.createElement('div');
+        header.className = "flex items-center gap-3 border-b border-white/10 pb-2";
+        
+        const avatarImg = document.createElement('img');
+        avatarImg.src = this.getAvatar({ username: from, avatar: undefined }); 
+        avatarImg.className = "w-8 h-8 rounded-full border border-yellow-500";
+        
+        const titleContainer = document.createElement('div');
         const title = document.createElement('div');
-        title.className = "flex items-center gap-2 text-yellow-400 pixel-font text-xs tracking-wider";
-        title.innerHTML = `<span class="animate-pulse">⚔️</span> <span>DUEL REQUEST</span>`; 
+        title.className = "text-yellow-400 pixel-font text-xs tracking-wider font-bold";
+        title.innerHTML = `⚔️ DUEL REQUEST`;
+        const sub = document.createElement('div');
+        sub.className = "text-[10px] text-white/60";
+        sub.textContent = `from ${from}`;
 
-        const text = document.createElement('p');
-        text.className = "text-sm text-white font-medium";
-        text.textContent = `${from} challenges you!`;
+        titleContainer.appendChild(title);
+        titleContainer.appendChild(sub);
+        header.appendChild(avatarImg);
+        header.appendChild(titleContainer);
 
         const actions = document.createElement('div');
         actions.className = "flex gap-2 mt-1";
 
         const acceptBtn = document.createElement('button');
-        acceptBtn.className = "flex-1 bg-green-600 hover:bg-green-500 text-white text-xs py-2 rounded pixel-font transition-all transform active:scale-95 shadow-lg shadow-green-900/50 cursor-pointer";
+        acceptBtn.className = "flex-1 bg-green-600 hover:bg-green-500 text-white text-xs py-2 rounded pixel-font transition-all shadow-lg cursor-pointer";
         acceptBtn.textContent = "ACCEPT";
         acceptBtn.onclick = () => {
             this.acceptDuel(from, roomId);
@@ -383,8 +526,7 @@ export class ChatWidget implements Component {
         actions.appendChild(acceptBtn);
         actions.appendChild(declineBtn);
 
-        card.appendChild(title);
-        card.appendChild(text);
+        card.appendChild(header);
         card.appendChild(actions);
         wrapper.appendChild(card);
 
@@ -424,8 +566,10 @@ export class ChatWidget implements Component {
                 panel?.classList.add('translate-x-0');
                 this.unreadCount = 0;
                 this.updateBadge();
-                setTimeout(() => this.inputElement?.focus(), 100);
-                this.scrollToBottom();
+                setTimeout(() => {
+                    this.inputElement?.focus();
+                    this.scrollToBottom();
+                }, 100);
             } else {
                 panel?.classList.add('translate-x-[120%]');
                 panel?.classList.remove('translate-x-0');

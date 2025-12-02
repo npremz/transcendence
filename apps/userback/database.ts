@@ -12,6 +12,13 @@ export async function initDatabase(): Promise<sqlite3.Database> {
 	const db = new sqlite3.Database(DB_FILE);
 	await applySchema(db);
 
+	await new Promise<void>((resolve) => {
+        db.run(`ALTER TABLE users ADD COLUMN avatar TEXT`, (err) => {
+            // Si erreur, c'est probablement qu'elle existe déjà, on ignore
+            resolve();
+        });
+    });
+
 	return db;
 }
 

@@ -1,30 +1,30 @@
 import { v4 as uuidv4 } from 'uuid'
 
 class CookieManager {
-    static setCookie(name: string, value: string | null, days: number = 7): void
-{
-        const expires = new Date();
-        expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
-        document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
-    }
+	static setCookie(name: string, value: string | null, days: number = 7): void
+	{
+		const expires = new Date();
+		expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+		document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+	}
 
-    static getCookie(name: string): string | null
-{
-        const nameEQ = name + "=";
-        const ca = document.cookie.split(';');
-        for (let i = 0; i < ca.length; i++)
-{
-            let c = ca[i];
-            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-        }
-        return null;
-    }
+	static getCookie(name: string): string | null
+	{
+		const nameEQ = name + "=";
+		const ca = document.cookie.split(';');
+		for (let i = 0; i < ca.length; i++)
+		{
+			let c = ca[i];
+			while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+			if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+		}
+		return null;
+	}
 
-    static deleteCookie(name: string): void
-{
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    }
+	static deleteCookie(name: string): void
+	{
+		document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+	}
 }
 
 export class SimpleAuth
@@ -69,13 +69,35 @@ export class SimpleAuth
         localStorage.removeItem(SimpleAuth.USERNAME_KEY);
     }
 
-    private setAvatar(dataUrl: string | null): void {
+    private async setAvatar(dataUrl: string | null): Promise<void> {
         this.avatarDataUrl = dataUrl;
+        
         if (dataUrl) {
             localStorage.setItem(SimpleAuth.AVATAR_KEY, dataUrl);
+            
+            if (this.username && this.username !== 'Anon') {
+                try {
+                    const hostRaw = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
+                    const host = (hostRaw || '').replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
+                    const protocol = window.location.protocol;
+
+                    await fetch(`${protocol}//${host}/userback/users/avatar`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            username: this.username, 
+                            avatar: dataUrl 
+                        })
+                    });
+                    console.log('Avatar synced with server');
+                } catch (e) {
+                    console.error('Failed to sync avatar', e);
+                }
+            }
         } else {
             localStorage.removeItem(SimpleAuth.AVATAR_KEY);
         }
+        
         this.syncAuthDom();
     }
 

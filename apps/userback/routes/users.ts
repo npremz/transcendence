@@ -279,4 +279,33 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
 			friends: (friends as any)?.error ? [] : friends
 		});
 	});
+
+	fastify.put<{ Body: { username: string; avatar: string } }>('/users/avatar', async (request, reply) => {
+        const { username, avatar } = request.body;
+
+        if (!username || !avatar) {
+            return reply.status(400).send({ success: false, error: 'Missing fields' });
+        }
+
+        // Limitation simple de la taille (Base64) pour ne pas exploser la DB
+        if (avatar.length > 500000) { // ~350KB
+            return reply.status(400).send({ success: false, error: 'Image too large' });
+        }
+
+        return new Promise((resolve) => {
+            fastify.db.run(
+                `UPDATE users SET avatar = ? WHERE username = ?`,
+                [avatar, username],
+                function(err) {
+                    if (err) {
+                        resolve(reply.status(500).send({ success: false, error: err.message }));
+                    } else if (this.changes === 0) {
+                        resolve(reply.status(404).send({ success: false, error: 'User not found' }));
+                    } else {
+                        resolve(reply.send({ success: true }));
+                    }
+                }
+            );
+        });
+    });
 }

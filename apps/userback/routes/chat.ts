@@ -9,6 +9,7 @@ type IncomingChatMessage = {
 type OutgoingChatMessage = {
 	username: string;
 	content: string;
+	avatar?: string;
 	created_at: string;
 };
 
@@ -24,21 +25,37 @@ export function registerChatRoutes(fastify: FastifyInstance): void {
 		}
 	};
 
+	const getUserAvatar = (username: string): Promise<string | undefined> => {
+        return new Promise((resolve) => {
+            fastify.db.get(
+                `SELECT avatar FROM users WHERE username = ?`, 
+                [username], 
+                (err, row: any) => {
+                    resolve(row?.avatar || undefined);
+                }
+            );
+        });
+    };
+
+// GET - Historique avec Avatars (JOIN)
 	fastify.get('/chat/messages', async (_request, reply) => {
 		return new Promise((resolve) => {
 			fastify.db.all(
-				`SELECT username, content, created_at FROM chat_messages ORDER BY created_at DESC LIMIT 50`,
+				`SELECT 
+                    cm.username, 
+                    cm.content, 
+                    cm.created_at,
+                    u.avatar
+                FROM chat_messages cm
+                LEFT JOIN users u ON cm.username = u.username
+                ORDER BY cm.created_at DESC 
+                LIMIT 50`,
 				[],
 				(err, rows) => {
 					if (err) {
-						resolve(reply.status(500).send({
-							success: false,
-							error: err.message
-						}));
+						resolve(reply.status(500).send({ success: false, error: err.message }));
 						return;
 					}
-
-					// Renvoie dans l'ordre chronologique
 					const messages = (rows || []).reverse();
 					resolve(reply.send({ success: true, messages }));
 				}
@@ -60,7 +77,8 @@ export function registerChatRoutes(fastify: FastifyInstance): void {
 		}
 
 		const created_at = new Date().toISOString();
-		const outgoing: OutgoingChatMessage = { username, content, created_at };
+		const avatar = await getUserAvatar(username);
+		const outgoing: OutgoingChatMessage = { username, content, created_at, avatar };
 
 		return new Promise((resolve) => {
 			fastify.db.run(
@@ -80,61 +98,34 @@ export function registerChatRoutes(fastify: FastifyInstance): void {
 		});
 	});
 
+	// WebSocket (Lecture seule pour les clients, ou envoi legacy)
 	fastify.get('/chat', { websocket: true }, (connection, req: FastifyRequest) => {
-		if (!connection || !connection.socket) {
-			fastify.log.error('ws connection missing socket');
-			return;
-		}
-
 		const socket = connection.socket;
 		clients.add(socket);
-		fastify.log.info({ client: req.ip }, 'chat ws connected');
 
-		socket.on('message', (raw: RawData) => {
-			let payload: IncomingChatMessage | null = null;
+		socket.on('message', async (raw: RawData) => {
+            // Fallback pour les clients qui envoient encore via WS
 			try {
-				payload = JSON.parse(raw.toString());
-			} catch (err) {
-				fastify.log.warn({ err }, 'chat ws invalid json');
-				return;
-			}
-
-			const username = (payload?.username || '').trim();
-			const content = (payload?.content || '').trim();
-
-			if (!username || !content) {
-				fastify.log.warn('chat ws missing username/content');
-				return;
-			}
-
-			if (username.length > 32 || content.length > 500) {
-				fastify.log.warn('chat ws invalid lengths');
-				return;
-			}
-
-			const created_at = new Date().toISOString();
-			const outgoing: OutgoingChatMessage = { username, content, created_at };
-
-			fastify.db.run(
-				`INSERT INTO chat_messages (username, content, created_at) VALUES (?, ?, ?)`,
-				[username, content, created_at],
-				(err) => {
-					if (err) {
-						fastify.log.error({ err }, 'failed to insert chat message');
-					}
-				}
-			);
-
-			broadcast(outgoing);
+                const payload = JSON.parse(raw.toString()) as IncomingChatMessage;
+                const username = (payload.username || '').trim();
+                const content = (payload.content || '').trim();
+                
+                if (username && content) {
+                    const created_at = new Date().toISOString();
+                    const avatar = await getUserAvatar(username);
+                    
+                    // Sauvegarde DB
+                    fastify.db.run(
+                        `INSERT INTO chat_messages (username, content, created_at) VALUES (?, ?, ?)`,
+                        [username, content, created_at]
+                    );
+                    
+                    // Diffusion
+                    broadcast({ username, content, created_at, avatar });
+                }
+            } catch (e) {}
 		});
 
-		socket.on('close', () => {
-			clients.delete(socket);
-			fastify.log.info({ client: req.ip }, 'chat ws disconnected');
-		});
-
-		socket.on('error', (err) => {
-			fastify.log.error({ err }, 'chat ws error');
-		});
+		socket.on('close', () => clients.delete(socket));
 	});
 }
