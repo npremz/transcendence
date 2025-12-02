@@ -49,6 +49,5 @@ export class Game3D {
 		}
 		sessionStorage.removeItem('gameWsURL');
 		sessionStorage.removeItem('currentGameRoute');
-		sessionStorage.removeItem('viewMode');
 	}
 }
