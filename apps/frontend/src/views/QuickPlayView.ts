@@ -13,7 +13,7 @@ export const QuickPlayView: ViewFunction = () => {
 						<h1 class="pixel-font text-5xl md:text-6xl text-blue-400 mb-4" 
 							style="animation: neonPulse 2s ease-in-out infinite;"
 							id="quickplay-title">
-							⚡ QUICKPLAY ⚡
+							⚡ SELECT MODE ⚡
 						</h1>
 						<p class="pixel-font text-lg text-blue-300 opacity-80">
 							>>> SELECT YOUR SKILL <<<
