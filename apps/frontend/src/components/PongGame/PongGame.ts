@@ -1,3 +1,5 @@
+// apps/frontend/src/components/PongGame/PongGame.ts
+
 import type { Component } from "../types";
 import { WSClient, type PublicState } from "../../net/wsClient";
 import type { TimeoutStatus } from "./types";
@@ -79,6 +81,7 @@ export class PongGame implements Component {
 	private lastPingTime: number = 0;
 	private statsUpdateInterval: number | null = null;
     private aiControllers: { left?: PongAI; right?: PongAI } = {};
+	private pingInterval: number | null = null;
 
 	private state: PublicState = {
 		leftPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
@@ -849,9 +852,22 @@ export class PongGame implements Component {
 			this.aiNet.cleanup();
 			this.aiNet = undefined;
 		}
+		
 		if (this.isLocalMode) {
 			sessionStorage.removeItem('localGameConfig');
+			sessionStorage.removeItem('gameWsURL');
+			sessionStorage.removeItem('currentGameRoute');
+
+            if (this.localConfig?.roomId) {
+                const host = import.meta.env.VITE_HOST || 'localhost:8443';
+                const endpoint = import.meta.env.VITE_GAME_ENDPOINT || '/gameback/game';
+                fetch(`https://${host}${endpoint}/${this.localConfig.roomId}`, {
+                    method: 'DELETE',
+                    keepalive: true
+                }).catch(err => console.warn('Failed to delete local game session on server', err));
+            }
 		}
+
 		if (this.debugContainer && this.debugContainer.parentNode) {
 			this.debugContainer.parentNode.removeChild(this.debugContainer);
 			this.debugContainer = undefined;
