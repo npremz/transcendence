@@ -103,6 +103,16 @@ export class NetworkManager  {
 		this.wsClient.forfeit();
 	}
 
+	public resume(): void {
+		if (!this.isConnected) return;
+		this.wsClient.resume();
+	}
+
+	public pause(): void {
+		if (!this.isConnected) return;
+		this.wsClient.pause();
+	}
+
 	public getSide(): 'left' | 'right' | 'spectator' {
 		return this.wsClient.side;
 	}

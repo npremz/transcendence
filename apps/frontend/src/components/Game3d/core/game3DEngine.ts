@@ -171,6 +171,7 @@ export class Game3DEngine {
 		this.sceneManager.playCameraIntro();
 		this.networkManager.connect();
 		this.setupForfeitButton();
+		this.setupPauseListener();
 
 		window.addEventListener('resize', this.handleResize);
 	}
@@ -179,6 +180,18 @@ export class Game3DEngine {
 		const forfeitBtn = document.getElementById('forfeit-btn');
 		if (forfeitBtn) {
 			forfeitBtn.addEventListener('click', this.handleForfeit);
+		}
+	}
+
+	private setupPauseListener(): void {
+		window.addEventListener('game3d:togglePause', this.handlePause);
+	}
+
+	private handlePause = (): void => {
+		if (this.gameStatusInfo.isPaused) {
+			this.networkManager.resume();
+		} else {
+			this.networkManager.pause();
 		}
 	}
 
@@ -196,6 +209,12 @@ export class Game3DEngine {
 		if (this.inputSystem.isCameraToggleKeyPressed()) {
 			this.sceneManager.toggleCameraView(this.networkManager.getSide());
 		}
+
+		// PAUSE KEY
+		if (this.inputSystem.isPauseKeyPressed()) {
+			window.dispatchEvent(new CustomEvent('game3d:togglePause'));
+		}
+		
 	}
 
 	private handleResize = (): void => {
@@ -236,6 +255,8 @@ export class Game3DEngine {
 			forfeitBtn.removeEventListener('click', this.handleForfeit);
 		}
 		
+		window.removeEventListener('game3d:togglePause', this.handlePause);
+
 		this.inputSystem.dispose();
 		this.networkManager.disconnect();
 		this.uiManager.dispose();
