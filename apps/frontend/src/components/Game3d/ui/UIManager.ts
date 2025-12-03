@@ -1,14 +1,24 @@
 import type { GameStatusInfo, TimeoutStatus, Game3DState} from "../types";
 
+declare global {
+	interface Window {
+		simpleAuth?: {
+			getUsername?: () => string;
+		};
+	}
+}
+
 export class UIManager {
 	private previousCount: number = 0;
 
 	constructor() {
 	}
 
-	public updatePlayerNames(side: 'left' | 'right' | 'spectator', playerNames?: { left?: string; right?: string }): void {
+	public updatePlayerNames(side: 'left' | 'right' | 'spectator', playerNames?: { left?: string; right?: string }, playerAvatars?: { left?: string; right?: string }): void {
 		const leftNameEl = document.getElementById('player-left-name');
 		const rightNameEl = document.getElementById('player-right-name');
+		const leftAvatarEl = document.getElementById('player-left-avatar') as HTMLImageElement | null;
+		const rightAvatarEl = document.getElementById('player-right-avatar') as HTMLImageElement | null;
 		
 		if (leftNameEl && playerNames?.left) {
 			leftNameEl.textContent = playerNames.left;
@@ -26,6 +36,24 @@ export class UIManager {
 			} else {
 				rightNameEl.classList.remove('emphasize-side-player');
 			}
+		}
+
+		// Mise à jour des avatars
+		if (leftAvatarEl && playerAvatars?.left) {
+			leftAvatarEl.src = playerAvatars.left;
+		}
+		if (rightAvatarEl && playerAvatars?.right) {
+			rightAvatarEl.src = playerAvatars.right;
+		}
+
+		// Pour le joueur local, utiliser son propre avatar
+		const myUsername = window.simpleAuth?.getUsername?.();
+		const myAvatar = localStorage.getItem('player_avatar') || '/sprites/cat.gif';
+		
+		if (side === 'left' && myUsername === playerNames?.left) {
+			if (leftAvatarEl) leftAvatarEl.src = myAvatar;
+		} else if (side === 'right' && myUsername === playerNames?.right) {
+			if (rightAvatarEl) rightAvatarEl.src = myAvatar;
 		}
 	}
 

@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS users (
 	id TEXT PRIMARY KEY,
 	username TEXT NOT NULL,
+	avatar TEXT,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	last_seen DATETIME,
 	total_games INTEGER DEFAULT 0,

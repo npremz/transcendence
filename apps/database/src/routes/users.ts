@@ -244,7 +244,7 @@ export function registerUserRoutes(fastify: FastifyInstance): void
 		return new Promise((resolve) => {
 			fastify.db.all(
 				`SELECT 
-					id, username, total_games, total_wins, total_losses,
+					id, username, avatar, total_games, total_wins, total_losses,
 					ROUND(CAST(total_wins AS FLOAT) / NULLIF(total_games, 0) * 100, 2) as win_rate
 				FROM users
 				WHERE total_games > 0
@@ -281,6 +281,43 @@ export function registerUserRoutes(fastify: FastifyInstance): void
 				fastify.db.run(
 					`DELETE FROM users WHERE id = ?`,
 					[id],
+					function(err)
+					{
+						if (err)
+						{
+							resolve(reply.status(500).send({
+								success: false,
+								error: err.message
+							}));
+						}
+						else if (this.changes === 0)
+						{
+							resolve(reply.status(404).send({
+								success: false,
+								error: 'User not found'
+							}));
+						}
+						else
+						{
+							resolve(reply.send({ success: true }));
+						}
+					}
+				);
+			});
+		}
+	);
+
+	// UPDATE - Mettre à jour l'avatar d'un utilisateur
+	fastify.patch<{ Params: { id: string }; Body: { avatar: string } }>(
+		'/users/:id/avatar',
+		async (request, reply) => {
+			const { id } = request.params;
+			const { avatar } = request.body;
+
+			return new Promise((resolve) => {
+				fastify.db.run(
+					`UPDATE users SET avatar = ? WHERE id = ?`,
+					[avatar, id],
 					function(err)
 					{
 						if (err)

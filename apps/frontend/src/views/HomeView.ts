@@ -119,11 +119,6 @@ export const HomeView: ViewFunction = () => {
                         <p class="pixel-font text-sm text-blue-300 text-center py-4">Loading...</p>
                     </div>
                 </div>
-				<div class="mt-8">
-					<a href="/blockchain" class="pixel-font text-purple-400 hover:text-purple-300 text-sm flex items-center justify-center gap-2 transition-colors">
-						<span>VIEW BLOCKCHAIN REGISTRY</span>
-					</a>
-				</div>
             </div>
     `;
 
@@ -235,9 +230,17 @@ export const homeLogic = (): CleanupFunction => {
                             ${topPlayers.map((user: any, index: number) => `
                                 <div class="flex items-center justify-between p-3 ${index % 2 === 0 ? 'bg-blue-950/20' : 'bg-transparent'} hover:bg-blue-900/30 transition-colors">
                                     <div class="flex items-center gap-4">
-                                        <span class="pixel-font text-xl ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-600' : 'text-blue-400'}">
+                                        <span class="pixel-font text-xl w-6 ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-600' : 'text-blue-400'}">
                                             ${index + 1}
                                         </span>
+                                        <div class="w-8 h-8 rounded-full overflow-hidden border border-blue-500/30 flex-shrink-0">
+                                            <img 
+                                                src="${user.avatar || '/sprites/cat.gif'}" 
+                                                alt="${user.username}" 
+                                                class="w-full h-full object-cover"
+                                                style="image-rendering: pixelated;"
+                                            />
+                                        </div>
                                         <span class="pixel-font text-sm text-blue-300">${user.username}</span>
                                     </div>
                                     <div class="flex gap-6 text-xs pixel-font">

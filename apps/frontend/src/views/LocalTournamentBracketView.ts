@@ -191,9 +191,19 @@ const generateMatchCard = (match: LocalMatch): string => {
 			<div class="space-y-2">
 				<!-- Player 1 -->
 				<div class="player-slot neon-border rounded p-2 ${player1Class}">
-					<div class="pixel-font text-sm text-blue-300">
-						${match.player1?.username || 'TBD'}
-						${isFinished && match.winner?.id === match.player1?.id ? ' 👑' : ''}
+					<div class="flex items-center gap-2">
+						<div class="w-8 h-8 rounded-full overflow-hidden border border-blue-500/30 flex-shrink-0">
+							<img 
+								src="/sprites/cat.gif" 
+								alt="${match.player1?.username || 'TBD'}" 
+								class="w-full h-full object-cover"
+								style="image-rendering: pixelated;"
+							/>
+						</div>
+						<span class="pixel-font text-sm text-blue-300 flex-1">
+							${match.player1?.username || 'TBD'}
+							${isFinished && match.winner?.id === match.player1?.id ? ' 👑' : ''}
+						</span>
 					</div>
 				</div>
 
@@ -201,9 +211,19 @@ const generateMatchCard = (match: LocalMatch): string => {
 
 				<!-- Player 2 -->
 				<div class="player-slot neon-border rounded p-2 ${player2Class}">
-					<div class="pixel-font text-sm text-blue-300">
-						${match.player2?.username || 'TBD'}
-						${isFinished && match.winner?.id === match.player2?.id ? ' 👑' : ''}
+					<div class="flex items-center gap-2">
+						<div class="w-8 h-8 rounded-full overflow-hidden border border-blue-500/30 flex-shrink-0">
+							<img 
+								src="/sprites/cat.gif" 
+								alt="${match.player2?.username || 'TBD'}" 
+								class="w-full h-full object-cover"
+								style="image-rendering: pixelated;"
+							/>
+						</div>
+						<span class="pixel-font text-sm text-blue-300 flex-1">
+							${match.player2?.username || 'TBD'}
+							${isFinished && match.winner?.id === match.player2?.id ? ' 👑' : ''}
+						</span>
 					</div>
 				</div>
 			</div>

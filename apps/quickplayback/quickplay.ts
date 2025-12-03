@@ -20,6 +20,22 @@ async function callDatabase(endpoint: string, method: string = 'GET', body?: any
 	return response.json();
 }
 
+async function callUserback(endpoint: string, method: string = 'GET', body?: any) {
+	const url = `http://userback:3060${endpoint}`;
+	
+	const options: RequestInit = {
+		method,
+	};
+
+	if (body && method !== 'GET') {
+		options.headers = { 'Content-Type': 'application/json' };
+		options.body = JSON.stringify(body);
+	}
+	
+	const response = await fetch(url, options);
+	return response.json();
+}
+
 export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManager)
 {
 	fastify.post('/join', async (request, reply) => {
@@ -32,6 +48,8 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 		const normalizedSkill: 'smash' | 'dash' =
 			selectedSkill === 'dash' ? 'dash' : 'smash';
 
+		let avatar: string | undefined;
+
 		try
 		{
 			const userResult = await callDatabase('/users', 'POST', {
@@ -42,20 +60,26 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 			if (!userResult.success)
 			{
 				fastify.log.warn({ playerId, username, error: userResult.error }, 'Failed to create user in DB');
-				
-				// Vérifier si l'utilisateur existe déjà avec cet ID
-				const existingUser = await callDatabase(`/users/${playerId}`);
-				//if (!existingUser.success)
-				// {
-				// 	// L'utilisateur n'existe pas avec cet ID, on ne peut pas continuer
-				// 	return reply.code(500).send({ error: 'Failed to create or find user in database' });
-				// }
 			}
 		}
 		catch (err)
 		{
 			fastify.log.error({ playerId, username, err }, 'User creation request failed');
 			return reply.code(500).send({ error: 'Failed to create user' });
+		}
+
+		// Récupérer l'avatar depuis userback
+		try {
+			const userbackResult = await callUserback(`/users?username=${encodeURIComponent(username)}`);
+			if (userbackResult.success && userbackResult.user) {
+				avatar = userbackResult.user.avatar;
+				// Synchroniser l'avatar dans la base de données des games
+				if (avatar) {
+					await callDatabase(`/users/${playerId}/avatar`, 'PATCH', { avatar });
+				}
+			}
+		} catch (err) {
+			fastify.log.warn({ username, err }, 'Failed to get avatar from userback');
 		}
 
 		try
@@ -70,6 +94,7 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 		const player: Player = {
 			id: playerId,
 			username,
+			avatar,
 			isReady: false,
 			selectedSkill: normalizedSkill
 		};
@@ -127,11 +152,13 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 						player1: { 
 							id: leftPlayer.id, 
 							username: leftPlayer.username,
+							avatar: leftPlayer.avatar,
 							selectedSkill: leftPlayer.selectedSkill || 'smash'
 						},
 						player2: { 
 							id: rightPlayer.id, 
 							username: rightPlayer.username,
+							avatar: rightPlayer.avatar,
 							selectedSkill: rightPlayer.selectedSkill || 'smash'
 						},
 					}),

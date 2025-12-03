@@ -67,7 +67,15 @@ class Database implements DatabaseInterface
 				else
 				{
 					console.log('Db schema initialized')
-					resolve()
+					// Ajouter la colonne avatar si elle n'existe pas (migration)
+					this.db!.run(`ALTER TABLE users ADD COLUMN avatar TEXT`, (alterErr) => {
+						if (alterErr && !alterErr.message.includes('duplicate column')) {
+							console.error('Failed to add avatar column:', alterErr);
+						} else if (!alterErr) {
+							console.log('Added avatar column to users table');
+						}
+						resolve();
+					});
 				}
 			})
 		})

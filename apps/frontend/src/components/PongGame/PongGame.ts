@@ -638,15 +638,17 @@ export class PongGame implements Component {
 	}
 
 	private createWelcomeHandler(client: WSClient) {
-		return async (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => {
-			console.log('Welcome received:', { side, playerNames });
+		return async (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}, playerAvatars?: {left?: string; right?: string}) => {
+			console.log('Welcome received:', { side, playerNames, playerAvatars });
 
 			const resolvedLeftName = playerNames?.left ?? this.localConfig?.left.username;
 			const resolvedRightName = playerNames?.right ?? this.localConfig?.right.username;
 
-			const updateNames = () => {
+			const updateNamesAndAvatars = () => {
 				const leftNameEl = document.getElementById('player-left-name');
 				const rightNameEl = document.getElementById('player-right-name');
+				const leftAvatarEl = document.getElementById('player-left-avatar') as HTMLImageElement | null;
+				const rightAvatarEl = document.getElementById('player-right-avatar') as HTMLImageElement | null;
 
 				if (leftNameEl && resolvedLeftName) {
 					leftNameEl.textContent = resolvedLeftName;
@@ -655,12 +657,33 @@ export class PongGame implements Component {
 					rightNameEl.textContent = resolvedRightName;
 				}
 
+				// Mise à jour des avatars
+				if (leftAvatarEl && playerAvatars?.left) {
+					leftAvatarEl.src = playerAvatars.left;
+				}
+				if (rightAvatarEl && playerAvatars?.right) {
+					rightAvatarEl.src = playerAvatars.right;
+				}
+
+				// Si éléments pas encore dans le DOM, réessayer
 				if ((!leftNameEl || !rightNameEl) && (resolvedLeftName || resolvedRightName)) {
-					setTimeout(updateNames, 100);
+					setTimeout(updateNamesAndAvatars, 100);
 				}
 			};
 
-			updateNames();
+			updateNamesAndAvatars();
+
+			// Pour le joueur local, utiliser son propre avatar
+			const myUsername = window.simpleAuth?.getUsername?.();
+			const myAvatar = localStorage.getItem('player_avatar') || '/sprites/cat.gif';
+			
+			if (side === 'left' && myUsername === resolvedLeftName) {
+				const leftAvatarEl = document.getElementById('player-left-avatar') as HTMLImageElement | null;
+				if (leftAvatarEl) leftAvatarEl.src = myAvatar;
+			} else if (side === 'right' && myUsername === resolvedRightName) {
+				const rightAvatarEl = document.getElementById('player-right-avatar') as HTMLImageElement | null;
+				if (rightAvatarEl) rightAvatarEl.src = myAvatar;
+			}
 
 			if (this.isLocalMode) {
 				if (side === 'left') {
