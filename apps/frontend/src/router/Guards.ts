@@ -48,12 +48,18 @@ export const roomExistsGuard: NavigationGuard = async (to, from, params) => {
             return true;
         } else if (data.status === 'waiting') {
             console.log('Room is waiting for players, redirection');
+            sessionStorage.removeItem('gameWsURL');
+            sessionStorage.removeItem('currentGameRoute');
             return '/play';
         } else if (data.status === 'finished') {
             console.log('Room is finished, redirection');
+            sessionStorage.removeItem('gameWsURL');
+            sessionStorage.removeItem('currentGameRoute');
             return '/play';
         } else {
             console.log('Invalid room status:', data.status);
+            sessionStorage.removeItem('gameWsURL');
+            sessionStorage.removeItem('currentGameRoute');
             return '/play';
         }
     } catch (err) {
