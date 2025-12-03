@@ -530,6 +530,10 @@ export class PongGame implements Component {
 		this.state.isGameOver = true;
 		this.state.winner = winner;
 
+		// Nettoyer immédiatement le sessionStorage pour débloquer la navigation
+		sessionStorage.removeItem('gameWsURL');
+		sessionStorage.removeItem('currentGameRoute');
+
 		const overlay = document.createElement('div');
 		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
 		overlay.innerHTML = `
@@ -540,7 +544,7 @@ export class PongGame implements Component {
 				<p class="text-white/80 text-xl mb-6">
 					Score: ${this.state.score.left} - ${this.state.score.right}
 				</p>
-				<button 
+				<button
 					id="return-to-lobby"
 					class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all cursor-pointer"
 				>
@@ -548,7 +552,7 @@ export class PongGame implements Component {
 				</button>
 			</div>
 		`;
-		
+
 		document.body.appendChild(overlay);
 
 		overlay.addEventListener('click', (e) => {
@@ -556,8 +560,6 @@ export class PongGame implements Component {
 			if (target.id === 'return-to-lobby' || target.closest('#return-to-lobby')) {
 				console.log('Return to lobby clicked');
 				e.stopPropagation();
-				sessionStorage.removeItem('gameWsURL');
-				sessionStorage.removeItem('currentGameRoute');
 				document.body.removeChild(overlay);
 				window.router?.navigateTo('/play');
 			}
@@ -672,7 +674,7 @@ export class PongGame implements Component {
 
 			if (!this.isDebugMode) {
 				const username = window.simpleAuth?.getUsername?.();
-				if (username === 'admindebug') {
+				if (username === 'debugadmin') {
 					this.enableDebugMode();
 				}
 			}

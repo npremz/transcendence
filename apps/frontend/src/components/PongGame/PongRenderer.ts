@@ -351,143 +351,63 @@ export class PongRenderer {
 		const cx = state.blackholeCenterX;
 		const cy = state.blackholeCenterY;
 		const p = Math.max(0, Math.min(1, state.blackholeProgress));
-		const baseR = 260;
-		const r = baseR * (0.8 + 0.6 * p);
+		const baseR = 180;
+		const r = baseR * (0.8 + 0.4 * p);
+		const time = state.clock;
 
-		const pulse = Math.sin(state.clock * 3) * 0.15 + 1;
-		const effectiveRadius = r * pulse;
-
-		const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, effectiveRadius);
-		g.addColorStop(0.0, 'rgba(0,0,0,1)');
-		g.addColorStop(0.3, 'rgba(10,5,30,0.95)');
-		g.addColorStop(0.6, 'rgba(20,10,50,0.7)');
-		g.addColorStop(1.0, 'rgba(0,0,0,0.1)');
-		ctx.fillStyle = g;
+		// Horizon du trou noir (centre noir absolu)
+		const eventHorizonRadius = r * 0.25;
+		ctx.fillStyle = '#000000';
 		ctx.beginPath();
-		ctx.arc(cx, cy, effectiveRadius, 0, Math.PI * 2);
+		ctx.arc(cx, cy, eventHorizonRadius, 0, Math.PI * 2);
 		ctx.fill();
 
+		// Disque d'accrétion (matière chaude en rotation)
+		const accretionGradient = ctx.createRadialGradient(cx, cy, eventHorizonRadius, cx, cy, r);
+		accretionGradient.addColorStop(0, 'rgba(255, 200, 100, 0.9)');
+		accretionGradient.addColorStop(0.4, 'rgba(255, 120, 30, 0.6)');
+		accretionGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+		ctx.fillStyle = accretionGradient;
+		ctx.beginPath();
+		ctx.arc(cx, cy, r, 0, Math.PI * 2);
+		ctx.fill();
+
+		// Anneaux de matière en rotation (simplifié)
 		ctx.save();
 		ctx.globalCompositeOperation = 'lighter';
 
-		const ringCount = 8;
-		for (let i = 0; i < ringCount; i++) 
-		{
-			const ringProgress = i / ringCount;
-			const ringRadius = effectiveRadius * (0.3 + ringProgress * 0.7);
-			const ringPulse = Math.sin(state.clock * 4 - ringProgress * Math.PI * 2) * 0.1 + 1;
-			const actualRadius = ringRadius * ringPulse;
-			
-			const hue = 220 + ringProgress * 60;
-			const alpha = (0.4 - ringProgress * 0.3) * (1 - p * 0.5);
-			
-			ctx.strokeStyle = `hsla(${hue}, 80%, 60%, ${alpha})`;
-			ctx.lineWidth = 3 - ringProgress * 2;
-			
-			ctx.beginPath();
-			const segments = 60;
-			for (let s = 0; s <= segments; s++) 
-			{
-				const angle = (s / segments) * Math.PI * 2;
-				const distortion = Math.sin(angle * 3 + state.clock * 2 + ringProgress * Math.PI) * (5 + ringProgress * 10);
-				const x = cx + Math.cos(angle) * (actualRadius + distortion);
-				const y = cy + Math.sin(angle) * (actualRadius + distortion);
-				
-				if (s === 0) ctx.moveTo(x, y);
-				else ctx.lineTo(x, y);
-			}
-			ctx.closePath();
-			ctx.stroke();
-		}
+		const ring1 = r * 0.5;
+		const ring2 = r * 0.75;
 
-		const spiralCount = 5;
-		for (let i = 0; i < spiralCount; i++) 
-		{
-			const spiralOffset = (i / spiralCount) * Math.PI * 2;
-			const spiralProgress = (state.clock * 2 + spiralOffset) % (Math.PI * 2);
-			
-			ctx.strokeStyle = `rgba(100, 150, 255, ${0.6 * (1 - p * 0.3)})`;
-			ctx.lineWidth = 2;
-			ctx.beginPath();
-			
-			const spiralSegments = 40;
-			for (let s = 0; s < spiralSegments; s++) 
-			{
-				const t = s / spiralSegments;
-				const angle = spiralProgress + t * Math.PI * 4;
-				const radius = effectiveRadius * (0.2 + t * 0.8);
-				const x = cx + Math.cos(angle) * radius;
-				const y = cy + Math.sin(angle) * radius;
-				
-				if (s === 0) ctx.moveTo(x, y);
-				else ctx.lineTo(x, y);
-			}
-			ctx.stroke();
-		}
-
-		const particleCount = 30;
-		for (let i = 0; i < particleCount; i++) 
-		{
-			const particleAngle = (i / particleCount) * Math.PI * 2 + state.clock * 1.5;
-			const orbitRadius = effectiveRadius * (0.5 + (i % 3) * 0.2);
-			const wobble = Math.sin(state.clock * 3 + i) * 10;
-			
-			const px = cx + Math.cos(particleAngle) * (orbitRadius + wobble);
-			const py = cy + Math.sin(particleAngle) * (orbitRadius + wobble);
-			
-			const particleSize = 2 + Math.sin(state.clock * 4 + i) * 1.5;
-			const particleAlpha = 0.6 + Math.sin(state.clock * 5 + i) * 0.4;
-			
-			ctx.fillStyle = `rgba(150, 200, 255, ${particleAlpha})`;
-			ctx.beginPath();
-			ctx.arc(px, py, particleSize, 0, Math.PI * 2);
-			ctx.fill();
-			
-			ctx.strokeStyle = `rgba(150, 200, 255, ${particleAlpha * 0.3})`;
-			ctx.lineWidth = 1;
-			ctx.beginPath();
-			const trailLength = 15;
-			const trailX = px - Math.cos(particleAngle) * trailLength;
-			const trailY = py - Math.sin(particleAngle) * trailLength;
-			ctx.moveTo(px, py);
-			ctx.lineTo(trailX, trailY);
-			ctx.stroke();
-		}
-
-		const coreSize = 20 * pulse;
-		const coreGradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreSize);
-		coreGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-		coreGradient.addColorStop(0.3, 'rgba(150, 200, 255, 0.8)');
-		coreGradient.addColorStop(0.7, 'rgba(50, 100, 200, 0.4)');
-		coreGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-		
-		ctx.fillStyle = coreGradient;
-		ctx.beginPath();
-		ctx.arc(cx, cy, coreSize, 0, Math.PI * 2);
-		ctx.fill();
-
-		ctx.strokeStyle = `rgba(100, 150, 255, ${0.3 * pulse})`;
+		ctx.strokeStyle = 'rgba(255, 150, 50, 0.5)';
 		ctx.lineWidth = 3;
 		ctx.beginPath();
-		ctx.arc(cx, cy, effectiveRadius * 0.95, 0, Math.PI * 2);
+		ctx.arc(cx, cy, ring1, 0, Math.PI * 2);
 		ctx.stroke();
 
-		ctx.restore();
+		ctx.strokeStyle = 'rgba(255, 100, 30, 0.3)';
+		ctx.lineWidth = 2;
+		ctx.beginPath();
+		ctx.arc(cx, cy, ring2, 0, Math.PI * 2);
+		ctx.stroke();
 
-		const shockwaveInterval = 2;
-		const timeSinceLastShock = state.clock % shockwaveInterval;
-		if (timeSinceLastShock < 0.5) 
-		{
-			const shockProgress = timeSinceLastShock / 0.5;
-			const shockRadius = effectiveRadius * shockProgress;
-			const shockAlpha = (1 - shockProgress) * 0.6;
-			
-			ctx.strokeStyle = `rgba(200, 220, 255, ${shockAlpha})`;
-			ctx.lineWidth = 4 * (1 - shockProgress);
+		// Particules de matière (6 particules, bien centrées)
+		const particleCount = 6;
+		for (let i = 0; i < particleCount; i++) {
+			const angle = (i / particleCount) * Math.PI * 2 + time * 1.5;
+			const orbitRadius = r * 0.6;
+
+			const px = cx + Math.cos(angle) * orbitRadius;
+			const py = cy + Math.sin(angle) * orbitRadius;
+
+			ctx.fillStyle = 'rgba(255, 180, 80, 0.8)';
 			ctx.beginPath();
-			ctx.arc(cx, cy, shockRadius, 0, Math.PI * 2);
-			ctx.stroke();
+			ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+			ctx.fill();
 		}
+
+		ctx.restore();
 	}
 
 	private renderOverlays(ctx: CanvasRenderingContext2D, state: PongGameState, timeoutStatus: TimeoutStatus, side: 'left' | 'right' | 'spectator', W: number, H: number): void {

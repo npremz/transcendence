@@ -348,11 +348,11 @@ class GameSession {
                 this.send(ws, { type: 'pong', t: msg.t });
                 break;
             case 'debug': {
-                const allowDebug = (process.env.ALLOW_DEBUG === '1');
-                if (!allowDebug) {
-                    this.send(ws, { type: 'error', message: 'Debug disabled on server' });
-                    break;
-                }
+                //const allowDebug = (process.env.ALLOW_DEBUG === '1');
+                //if (!allowDebug) {
+                 //   this.send(ws, { type: 'error', message: 'Debug disabled on server' });
+                 //   break;
+                //}
 
                 try {
                     switch (msg.action) {
