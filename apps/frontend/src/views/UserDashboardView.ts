@@ -28,143 +28,89 @@ type GameHistory = {
 export const UserDashboardView: ViewFunction = () => {
 	const content = `
 		<div class="flex-1 w-full max-w-6xl mx-auto px-4 py-10 space-y-8">
-			<div class="flex items-center justify-between gap-4">
+			<!-- Header with search -->
+			<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
 				<div>
 					<p class="pixel-font text-xs text-blue-300/70 tracking-[0.2em] mb-1">PLAYER INSIGHT</p>
 					<h1 class="pixel-font text-4xl md:text-5xl text-blue-400" id="dashboard-title" style="animation: neonPulse 2s ease-in-out infinite;">
 						USER DASHBOARD
 					</h1>
-					<p class="pixel-font text-sm text-blue-300/70 mt-2">
-						Visualisez un joueur, ses stats et ses dernières parties.
+					<p class="pixel-font text-sm text-blue-300/70 mt-2" id="dashboard-subtitle">
+						Visualisez vos stats ou recherchez un autre joueur.
 					</p>
 				</div>
-				<div class="hidden md:flex items-center gap-3">
-					<div class="h-10 w-10 rounded-full bg-blue-500/20 border border-blue-500/50 flex items-center justify-center text-blue-300 text-xl">
-						👾
-					</div>
-					<div>
-						<p class="pixel-font text-xs text-blue-300/60">MODE</p>
-						<p class="pixel-font text-sm text-blue-200">ANALYTICS</p>
-					</div>
-				</div>
-			</div>
 
-			<div class="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6">
-				<!-- Bloc recherche + profil -->
-				<div class="neon-border bg-black/50 backdrop-blur-sm rounded-xl p-6 space-y-6">
-					<div class="flex items-center justify-between gap-3 flex-wrap">
-						<div>
-							<p class="pixel-font text-[11px] text-blue-300/70 uppercase tracking-[0.25em]">Rechercher</p>
-							<h2 class="pixel-font text-2xl text-blue-300">Utilisateur</h2>
-						</div>
+				<!-- Compact search bar -->
+				<div class="flex flex-col gap-2 w-full md:w-auto">
+					<form id="user-search-form" class="flex gap-2">
+						<input
+							type="text"
+							id="user-search-input"
+							class="pixel-font text-xs px-3 py-2 rounded neon-input w-full md:w-48"
+							placeholder="Rechercher un joueur..."
+							autocomplete="off"
+						/>
+						<button
+							type="submit"
+							class="pixel-font text-xs px-4 py-2 neon-border bg-blue-500/20 text-blue-200 hover:bg-blue-500/40 transition-all whitespace-nowrap"
+							id="user-search-btn"
+						>
+							🔍 GO
+						</button>
+					</form>
+					<div class="flex gap-2 justify-end">
 						<button
 							type="button"
-							class="pixel-font text-xs px-4 py-2 neon-border bg-blue-500/10 text-blue-200 hover:bg-blue-500/20 transition-all"
+							class="pixel-font text-[10px] px-3 py-1 neon-border bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 transition-all"
+							id="show-self"
+						>
+							Mon profil
+						</button>
+						<button
+							type="button"
+							class="pixel-font text-[10px] px-3 py-1 neon-border bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-all"
 							id="reset-dashboard"
 						>
 							Clear
 						</button>
 					</div>
-
-					<form id="user-search-form" class="flex flex-col md:flex-row gap-3">
-						<input
-							type="text"
-							id="user-search-input"
-							class="flex-1 pixel-font text-sm px-4 py-3 rounded neon-input"
-							placeholder="Ex: player1"
-							autocomplete="off"
-						/>
-						<button
-							type="submit"
-							class="pixel-font text-sm px-6 py-3 neon-border bg-blue-500/20 text-blue-200 hover:bg-blue-500/40 transition-all"
-							id="user-search-btn"
-						>
-							>>> CHARGER <<<
-						</button>
-					</form>
-
-					<div id="dashboard-status" class="pixel-font text-sm text-blue-300/80"></div>
-
-					<div id="user-meta" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<div class="p-4 rounded-lg bg-blue-950/30 border border-blue-500/30 flex items-center justify-center">
-							<div class="w-24 h-24 rounded-full overflow-hidden border border-blue-500/50 bg-blue-900/50 shadow-lg">
-								<img
-									src="/sprites/cat.gif"
-									alt="Avatar par défaut"
-									class="w-full h-full object-cover"
-									style="image-rendering: pixelated;"
-								/>
-							</div>
-						</div>
-						<div class="p-4 rounded-lg bg-blue-950/30 border border-blue-500/30">
-							<p class="pixel-font text-[11px] text-blue-300/70">USERNAME</p>
-							<p class="pixel-font text-lg text-blue-100 mt-1" data-meta-username>—</p>
-						</div>
-						<div class="p-4 rounded-lg bg-blue-950/30 border border-blue-500/30">
-							<p class="pixel-font text-[11px] text-blue-300/70">INSCRIT</p>
-							<p class="pixel-font text-lg text-blue-100 mt-1" data-meta-created>—</p>
-						</div>
-						<div class="p-4 rounded-lg bg-blue-950/30 border border-blue-500/30">
-							<p class="pixel-font text-[11px] text-blue-300/70">DERNIER PASSAGE</p>
-							<p class="pixel-font text-lg text-blue-100 mt-1" data-meta-last-seen>—</p>
-						</div>
-					</div>
 				</div>
+			</div>
 
-				<!-- Bloc profil personnel -->
-				<div class="neon-border bg-gradient-to-br from-blue-900/40 via-black/60 to-black rounded-xl p-6 space-y-4">
-					<div class="flex items-center justify-between gap-3">
-						<div>
-							<p class="pixel-font text-[11px] text-blue-300/70 uppercase tracking-[0.25em]">Mon profil</p>
-							<h3 class="pixel-font text-xl text-blue-200">Stats personnelles</h3>
-						</div>
-						<button
-							type="button"
-							class="relative w-12 h-12 rounded-full overflow-hidden border border-blue-500/60 bg-blue-900/60 shadow-lg hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-blue-400"
-							data-avatar-change
-							title="Changer ma photo"
-						>
-							<img 
+			<div id="dashboard-status" class="pixel-font text-sm text-center text-blue-300/80"></div>
+
+			<!-- Main profile card (full width) -->
+			<div class="neon-border bg-gradient-to-br from-blue-900/40 via-black/60 to-black rounded-xl p-8 space-y-6" id="main-profile">
+				<div class="flex flex-col md:flex-row items-center md:items-start gap-6">
+					<!-- Avatar -->
+					<div class="flex-shrink-0">
+						<div class="relative w-32 h-32 rounded-full overflow-hidden border-2 border-blue-500/60 bg-blue-900/60 shadow-lg">
+							<img
 								src="/sprites/cat.gif"
 								alt="Avatar"
 								class="w-full h-full object-cover"
 								style="image-rendering: pixelated;"
-								data-auth-avatar
+								id="profile-avatar"
 							/>
-							<span class="absolute inset-0 flex items-center justify-center text-[10px] text-blue-200 bg-black/40 opacity-0 hover:opacity-100 transition-opacity pixel-font">
-								EDIT
-							</span>
-						</button>
-					</div>
-
-					<div id="self-status" class="pixel-font text-sm text-blue-300/80"></div>
-
-					<div class="grid grid-cols-1 gap-3">
-						<div class="p-4 rounded-lg bg-blue-950/30 border border-blue-500/30">
-							<p class="pixel-font text-[11px] text-blue-300/70">USERNAME</p>
-							<p class="pixel-font text-lg text-blue-100 mt-1" data-self-username>Anon</p>
-						</div>
-						<div class="p-4 rounded-lg bg-blue-950/30 border border-blue-500/30">
-							<p class="pixel-font text-[11px] text-blue-300/70">INSCRIT</p>
-							<p class="pixel-font text-lg text-blue-100 mt-1" data-self-created>—</p>
-						</div>
-						<div class="p-4 rounded-lg bg-blue-950/30 border border-blue-500/30">
-							<p class="pixel-font text-[11px] text-blue-300/70">DERNIER PASSAGE</p>
-							<p class="pixel-font text-lg text-blue-100 mt-1" data-self-last-seen>—</p>
 						</div>
 					</div>
 
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-						<div class="p-4 rounded-xl neon-border bg-blue-950/20">
-							<p class="pixel-font text-[11px] text-blue-300/70 uppercase tracking-[0.25em]">Parties</p>
-							<p class="pixel-font text-3xl text-blue-100 mt-2" data-self-total>—</p>
-							<p class="pixel-font text-xs text-blue-300/70 mt-1">Total jouées</p>
+					<!-- User info -->
+					<div class="flex-1 space-y-4 text-center md:text-left">
+						<div>
+							<p class="pixel-font text-xs text-blue-300/70 uppercase tracking-[0.25em]" id="profile-label">Profil</p>
+							<h2 class="pixel-font text-4xl text-blue-100 mt-2" id="profile-username">—</h2>
 						</div>
-						<div class="p-4 rounded-xl neon-border bg-blue-950/20">
-							<p class="pixel-font text-[11px] text-green-300/70 uppercase tracking-[0.25em]">Winrate</p>
-							<p class="pixel-font text-3xl text-green-300 mt-2" data-self-winrate>—</p>
-							<p class="pixel-font text-xs text-green-200/70 mt-1">Victoires / défaites</p>
-							<p class="pixel-font text-xs text-green-200/70 mt-1" data-self-wins>—</p>
+
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<div class="p-4 rounded-lg bg-blue-950/30 border border-blue-500/30">
+								<p class="pixel-font text-[11px] text-blue-300/70">INSCRIT LE</p>
+								<p class="pixel-font text-sm text-blue-100 mt-1" id="profile-created">—</p>
+							</div>
+							<div class="p-4 rounded-lg bg-blue-950/30 border border-blue-500/30">
+								<p class="pixel-font text-[11px] text-blue-300/70">DERNIÈRE VISITE</p>
+								<p class="pixel-font text-sm text-blue-100 mt-1" id="profile-last-seen">—</p>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -219,22 +165,19 @@ export const userDashboardLogic = (): (() => void) => {
 	const input = document.getElementById("user-search-input") as HTMLInputElement | null;
 	const statusEl = document.getElementById("dashboard-status");
 	const resetBtn = document.getElementById("reset-dashboard");
-	const userMeta = document.getElementById("user-meta");
-	const metaUsername = document.querySelector("[data-meta-username]");
-	const metaCreated = document.querySelector("[data-meta-created]");
-	const metaLastSeen = document.querySelector("[data-meta-last-seen]");
+	const showSelfBtn = document.getElementById("show-self");
+	const profileLabel = document.getElementById("profile-label");
+	const profileUsername = document.getElementById("profile-username");
+	const profileCreated = document.getElementById("profile-created");
+	const profileLastSeen = document.getElementById("profile-last-seen");
+	const profileAvatar = document.getElementById("profile-avatar") as HTMLImageElement | null;
 	const statTotal = document.querySelector("[data-stat-total]");
 	const statWins = document.querySelector("[data-stat-wins]");
 	const statWinrate = document.querySelector("[data-stat-winrate]");
 	const recentGamesContainer = document.getElementById("recent-games");
 	const recentCount = document.getElementById("recent-count");
-	const selfStatus = document.getElementById("self-status");
-	const selfUsernameEl = document.querySelector("[data-self-username]");
-	const selfCreatedEl = document.querySelector("[data-self-created]");
-	const selfLastSeenEl = document.querySelector("[data-self-last-seen]");
-	const selfTotalEl = document.querySelector("[data-self-total]");
-	const selfWinrateEl = document.querySelector("[data-self-winrate]");
-	const selfWinsEl = document.querySelector("[data-self-wins]");
+
+	let currentDisplayedUser: string | null = null;
 
 	const setStatus = (text: string, tone: "info" | "error" = "info") => {
 		if (!statusEl) return;
@@ -251,16 +194,27 @@ export const userDashboardLogic = (): (() => void) => {
 		return isNaN(date.getTime()) ? value : date.toLocaleString();
 	};
 
-	const renderUserMeta = (user: UserRecord | null) => {
-		if (!userMeta) return;
+	const getCurrentUsername = (): string | null => {
+		const auth = (window as any).simpleAuth;
+		const username = auth?.getUsername?.() || null;
+		const loggedIn = auth?.isLoggedIn?.() ?? false;
+		return loggedIn && username && username !== 'Anon' ? username : null;
+	};
+
+	const renderProfile = (user: UserRecord | null, isSelf: boolean = false) => {
 		if (!user) {
-			userMeta.classList.add("hidden");
+			if (profileLabel) profileLabel.textContent = "Profil";
+			if (profileUsername) profileUsername.textContent = "Aucun profil chargé";
+			if (profileCreated) profileCreated.textContent = "—";
+			if (profileLastSeen) profileLastSeen.textContent = "—";
 			return;
 		}
-		if (metaUsername) metaUsername.textContent = user.username;
-		if (metaCreated) metaCreated.textContent = formatDate(user.created_at);
-		if (metaLastSeen) metaLastSeen.textContent = formatDate(user.last_seen);
-		userMeta.classList.remove("hidden");
+
+		currentDisplayedUser = user.username;
+		if (profileLabel) profileLabel.textContent = isSelf ? "Mon profil" : "Profil de " + user.username;
+		if (profileUsername) profileUsername.textContent = user.username;
+		if (profileCreated) profileCreated.textContent = formatDate(user.created_at);
+		if (profileLastSeen) profileLastSeen.textContent = formatDate(user.last_seen);
 	};
 
 	const renderStats = (games: GameHistory[], username: string) => {
@@ -324,38 +278,15 @@ export const userDashboardLogic = (): (() => void) => {
 		if (recentCount) recentCount.textContent = `${Math.min(games.length, 6)} sur ${games.length}`;
 	};
 
-	const renderSelfMeta = (user: UserRecord | null) => {
-		if (!selfUsernameEl || !selfCreatedEl || !selfLastSeenEl) return;
-		if (!user) {
-			selfUsernameEl.textContent = 'Anon';
-			selfCreatedEl.textContent = '—';
-			selfLastSeenEl.textContent = '—';
-			return;
-		}
-		selfUsernameEl.textContent = user.username;
-		selfCreatedEl.textContent = formatDate(user.created_at);
-		selfLastSeenEl.textContent = formatDate(user.last_seen);
-	};
 
-	const renderSelfStats = (games: GameHistory[], username: string) => {
-		const total = games.length;
-		const wins = games.filter(g => g.winner_username === username).length;
-		const losses = total - wins;
-		const winrate = total > 0 ? Math.round((wins / total) * 100) : 0;
-
-		if (selfTotalEl) selfTotalEl.textContent = total ? String(total) : "0";
-		if (selfWinrateEl) selfWinrateEl.textContent = `${winrate}%`;
-		if (selfWinsEl) selfWinsEl.textContent = `${wins} / ${losses}`;
-	};
-
-	const loadDashboard = async (username: string) => {
+	const loadProfile = async (username: string, isSelf: boolean = false) => {
 		if (!username) {
 			setStatus("Merci de saisir un username.", "error");
 			return;
 		}
 
 		setStatus("Chargement en cours...");
-		renderUserMeta(null);
+		renderProfile(null);
 		renderStats([], username);
 		renderRecentGames([], username);
 
@@ -382,83 +313,54 @@ export const userDashboardLogic = (): (() => void) => {
 					g.winner_username === username
 			);
 
-			renderUserMeta(userData.user as UserRecord);
+			renderProfile(userData.user as UserRecord, isSelf);
 			renderStats(games, username);
 			renderRecentGames(games, username);
-			setStatus(`Profil chargé pour ${username}`);
-			localStorage.setItem("pong:last-dashboard-user", username);
+			setStatus(isSelf ? "Votre profil est chargé" : `Profil de ${username} chargé`);
+
+			if (!isSelf) {
+				localStorage.setItem("pong:last-dashboard-user", username);
+			}
 		} catch (err) {
 			console.error(err);
 			setStatus(err instanceof Error ? err.message : "Erreur inattendue", "error");
 		}
 	};
 
-	const loadSelfProfile = async () => {
-		const auth = (window as any).simpleAuth;
-		const username = auth?.getUsername?.() || 'Anon';
-		const loggedIn = auth?.isLoggedIn?.() ?? false;
-
-		if (!loggedIn || !username || username === 'Anon') {
-			if (selfStatus) selfStatus.textContent = "Connecte-toi pour voir tes stats.";
-			renderSelfMeta(null);
-			renderSelfStats([], "");
-			return;
-		}
-
-		if (selfStatus) selfStatus.textContent = "Chargement de ton profil...";
-
-		try {
-			const [userRes, historyRes] = await Promise.all([
-				fetch(`https://${host}/userback/users?username=${encodeURIComponent(username)}`, { credentials: 'include' }),
-				fetch(`https://${host}/gamedb/games/history`, { credentials: 'include' })
-			]);
-
-			const userData = await userRes.json().catch(() => ({}));
-			const historyData = await historyRes.json().catch(() => ({}));
-
-			if (!userRes.ok || !userData?.success) {
-				throw new Error(userData?.error || "Utilisateur introuvable");
-			}
-			if (!historyRes.ok || !historyData?.success) {
-				throw new Error(historyData?.error || "Impossible de charger l'historique");
-			}
-
-			const games: GameHistory[] = (historyData.games || []).filter(
-				(g: GameHistory) =>
-					g.player_left_username === username ||
-					g.player_right_username === username ||
-					g.winner_username === username
-			);
-
-			renderSelfMeta(userData.user as UserRecord);
-			renderSelfStats(games, username);
-			if (selfStatus) selfStatus.textContent = "Profil personnel chargé.";
-		} catch (err) {
-			console.error(err);
-			if (selfStatus) selfStatus.textContent = err instanceof Error ? err.message : "Erreur inattendue";
-			renderSelfMeta(null);
-			renderSelfStats([], "");
-		}
-	};
-
 	const handleSubmit = (event: Event) => {
 		event.preventDefault();
 		const username = input?.value.trim() || "";
-		void loadDashboard(username);
+		void loadProfile(username, false);
+	};
+
+	const handleShowSelf = () => {
+		const selfUsername = getCurrentUsername();
+		if (!selfUsername) {
+			setStatus("Connectez-vous pour voir votre profil", "error");
+			return;
+		}
+		if (input) input.value = "";
+		void loadProfile(selfUsername, true);
 	};
 
 	const handleReset = () => {
 		if (input) input.value = "";
-		renderUserMeta(null);
+		renderProfile(null);
 		renderStats([], "");
 		renderRecentGames([], "");
 		clearStatus();
 		localStorage.removeItem("pong:last-dashboard-user");
+		currentDisplayedUser = null;
 	};
 
 	if (form) {
 		form.addEventListener("submit", handleSubmit);
 		cleanupManager.onCleanup(() => form.removeEventListener("submit", handleSubmit));
+	}
+
+	if (showSelfBtn) {
+		showSelfBtn.addEventListener("click", handleShowSelf);
+		cleanupManager.onCleanup(() => showSelfBtn.removeEventListener("click", handleShowSelf));
 	}
 
 	if (resetBtn) {
@@ -469,18 +371,26 @@ export const userDashboardLogic = (): (() => void) => {
 	// Animations d'entrée
 	cleanupManager.registerGsapTarget("#dashboard-title");
 	cleanupManager.registerGsapTarget("#stat-cards .neon-border");
+	cleanupManager.registerGsapTarget("#main-profile");
 	gsap.from("#dashboard-title", { opacity: 0, y: -10, duration: 0.6, ease: "power2.out" });
-	gsap.from("#stat-cards .neon-border", { opacity: 0, y: 30, duration: 0.8, ease: "power2.out", stagger: 0.1, delay: 0.2 });
+	gsap.from("#main-profile", { opacity: 0, scale: 0.95, duration: 0.8, ease: "power2.out", delay: 0.2 });
+	gsap.from("#stat-cards .neon-border", { opacity: 0, y: 30, duration: 0.8, ease: "power2.out", stagger: 0.1, delay: 0.4 });
 
-	// Recharger le dernier utilisateur consulté si disponible
+	// Charger le profil au démarrage
 	const lastUser = localStorage.getItem("pong:last-dashboard-user");
-	if (lastUser && input) {
-		input.value = lastUser;
-		void loadDashboard(lastUser);
-	}
+	const selfUsername = getCurrentUsername();
 
-	// Charger le profil personnel si connecté
-	void loadSelfProfile();
+	if (lastUser && input) {
+		// Si on a un dernier utilisateur recherché, le charger
+		input.value = lastUser;
+		void loadProfile(lastUser, false);
+	} else if (selfUsername) {
+		// Sinon, charger le profil de l'utilisateur connecté
+		void loadProfile(selfUsername, true);
+	} else {
+		// Sinon, afficher un message pour se connecter
+		setStatus("Connectez-vous ou recherchez un joueur pour voir son profil", "info");
+	}
 
 	return cleanupManager.getCleanupFunction();
 };
