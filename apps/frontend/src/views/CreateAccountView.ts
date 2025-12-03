@@ -13,9 +13,9 @@ export const CreateAccountView: ViewFunction = () => {
                         <div class="relative w-full h-full min-h-[500px] neon-border bg-black/50 backdrop-blur-sm rounded-lg overflow-hidden flex items-center justify-center">
                             <!-- GIF ou animation -->
                             <img 
-                                src="/sprites/dancing-cat.gif" 
+                                src="/sprites/smile-cat.gif" 
                                 alt="Animation"
-                                class="w-full h-full object-contain"
+                                class="w-full h-full object-cover"
                                 style="image-rendering: pixelated;"
                             />
                             
