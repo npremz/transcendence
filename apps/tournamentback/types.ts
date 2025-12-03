@@ -2,6 +2,7 @@ export interface Player
 {
 	id: string;
 	username: string;
+	avatar?: string;
 	currentTournament?: string;
 	isEleminated: boolean;
 }

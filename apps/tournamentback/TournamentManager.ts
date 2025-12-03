@@ -23,6 +23,23 @@ async function callDatabase(endpoint: string, method: string = 'GET', body?: any
 	return response.json();
 }
 
+async function callUserback(endpoint: string, method: string = 'GET', body?: any)
+{
+	const url = `http://userback:3060${endpoint}`;
+	
+	const options: RequestInit = {
+		method,
+	};
+
+	if (body && method !== 'GET') {
+		options.headers = { 'Content-Type': 'application/json' };
+		options.body = JSON.stringify(body);
+	}
+	
+	const response = await fetch(url, options);
+	return response.json();
+}
+
 export class TournamentManager
 {
 	private tournaments = new Map<string, Tournament>()
@@ -99,6 +116,18 @@ export class TournamentManager
 		catch (err)
 		{
 			console.log('User already exists or DB error:', err);
+		}
+
+		// Récupérer l'avatar depuis userback
+		try {
+			const userbackResult = await callUserback(`/users?username=${encodeURIComponent(newPlayer.username)}`);
+			if (userbackResult.success && userbackResult.user?.avatar) {
+				newPlayer.avatar = userbackResult.user.avatar;
+				// Synchroniser dans database
+				await callDatabase(`/users/${newPlayer.id}/avatar`, 'PATCH', { avatar: newPlayer.avatar });
+			}
+		} catch (err) {
+			console.log('Failed to get avatar from userback:', err);
 		}
 
 		try
@@ -268,11 +297,13 @@ export class TournamentManager
 					tournamentId: tournament.id,
 					player1: {
 						id: nextMatch.player1!.id,
-						username: nextMatch.player1!.username
+						username: nextMatch.player1!.username,
+						avatar: nextMatch.player1!.avatar
 					},
 					player2: {
 						id: nextMatch.player2!.id,
-						username: nextMatch.player2!.username
+						username: nextMatch.player2!.username,
+						avatar: nextMatch.player2!.avatar
 					}
 				}),
 			});
