@@ -17,12 +17,7 @@ export class Router {
     private currentRoute?: Route;
     private globalBeforeEach?: NavigationGuard;
 	private navigationHistory: string[] = [];
-	private historyPointer: number = -1;
     private readonly MAX_HISTORY = 10;
-
-	// Cache pour les modules lazy-loaded
-	private moduleCache: Map<string, ViewModule> = new Map();
-	private loadingPromises: Map<string, Promise<ViewModule>> = new Map();
     
     constructor()
     {
@@ -238,6 +233,35 @@ export class Router {
         }
 
         // Fallback → accueil
+        return '/';
+    }
+
+	public getPreviousRoute(): string {
+        if (this.navigationHistory.length >= 2) {
+            return this.navigationHistory[this.navigationHistory.length - 2];
+        }
+        return this.getDefaultBackRoute(this.currentRoute?.path || '/');
+    }
+
+	private getDefaultBackRoute(currentPath: string): string {
+        if (currentPath.startsWith('/game/') || currentPath.startsWith('/game3d/')) {
+            return '/play';
+        }
+        if (currentPath === '/play/waiting') {
+            return '/play';
+        }
+        if (currentPath === '/local') {
+            return '/play';
+        }
+        if (currentPath.startsWith('/tournament/') && currentPath !== '/tournament') {
+            return '/tournament';
+        }
+        if (currentPath.startsWith('/history/')) {
+            return '/history';
+        }
+        if (['/play', '/tournament', '/history', '/login', '/create'].includes(currentPath)) {
+            return '/';
+        }
         return '/';
     }
     
@@ -573,9 +597,21 @@ export class Router {
                 }
             }
 
-			const shouldRecordHistory = recordHistory || this.historyPointer === -1;
-            if (shouldRecordHistory) {
-                this.recordNavigation(path);
+			this.navigationHistory.push(path);
+            if (this.navigationHistory.length > this.MAX_HISTORY) {
+                this.navigationHistory.shift();
+            }
+            
+            const htmlContent = route.view(params);
+            const app = document.getElementById('app');
+            if (app) {
+                app.innerHTML = htmlContent;
+            }
+            
+            document.title = route.title || 'Transcendence';
+            
+            if (updateHistory && window.location.pathname !== path) {
+                window.history.pushState({}, '', path);
             }
 
             const historyState = { navIndex: this.historyPointer };
@@ -644,18 +680,8 @@ export class Router {
     }
 
 	public goBack(): void {
-        if (this.historyPointer > 0) {
-            this.historyPointer -= 1;
-            const previousRoute = this.navigationHistory[this.historyPointer];
-            window.history.replaceState({ navIndex: this.historyPointer }, '', previousRoute);
-            this.navigate(previousRoute, false, false);
-            return;
-        }
-
-        const fallbackRoute = this.getDefaultBackRoute(this.currentRoute?.path || '/');
-        this.navigationHistory = [];
-        this.historyPointer = -1;
-        this.navigateTo(fallbackRoute);
+        const previousRoute = this.getPreviousRoute();
+        this.navigateTo(previousRoute);
     }
 
 	private cleanup(): void

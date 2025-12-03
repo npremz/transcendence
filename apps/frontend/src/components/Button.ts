@@ -133,8 +133,6 @@ export function BackButton({
     return `
         <button 
             id="back-button"
-            type="button"
-            data-smart-back="${fallbackHref}"
             class="
                 ${variant === 'primary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}
                 ${variant === 'secondary' ? 'bg-gray-200 hover:bg-gray-300 text-gray-800' : ''}

@@ -282,13 +282,10 @@ export const waitingRoomLogic = (): CleanupFunction => {
                     
                     stopPolling();
                     sessionStorage.setItem('gameWsURL', data.gameServerURL);
-
-                    cleanupManager.setTimeout(() => {
-						// set "game3d/" path or "game/"
-						const viewMode = sessionStorage.getItem('viewMode') || '2d';
-						const viewPath = viewMode === '3d' ? 'game3d' : 'game';
-                        window.router.navigate(`/${viewPath}/${roomId}`);
-                    }, 1000);
+                    
+                    setTimeout(() => {
+                        window.router.navigate(`/game/${roomId}`);
+                    }, 1500);
                 }
             } catch (err) {
                 console.error('Polling error:', err);
