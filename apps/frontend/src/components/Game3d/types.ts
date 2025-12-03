@@ -78,3 +78,19 @@ export interface InputState {
 	left: boolean;
 	right: boolean;
 }
+
+export interface GameStatusInfo {
+	isPaused?: boolean;
+	countdownValue?: number;
+	isGameOver?: boolean;
+	winner?: '' | 'left' | 'right';
+	score?: {left: number; right: number};
+}
+
+
+export interface TimeoutStatus {
+	leftActive: boolean;
+	leftRemainingMs: number;
+	rightActive: boolean;
+	rightRemainingMs: number;
+}

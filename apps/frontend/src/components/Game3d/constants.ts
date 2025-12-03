@@ -1,16 +1,8 @@
-/**
- * Game3d Constants
- * 
- * These constants define the dimensions and properties of the 3D game world
- */
-
-// Stadium dimensions (should match your stadium.gltf model)
 export const STADIUM_WIDTH = 1920;
 export const STADIUM_HEIGHT = 1080;
 
-// Paddle dimensions
-export const PADDLE_DEPTH = 100; // Z-axis size
-export const PADDLE_WIDTH = 15;  // X-axis thickness
+export const PADDLE_DEPTH = 100; // length
+export const PADDLE_WIDTH = 15;  // thickness
 
 // Ball properties
 export const BALL_DIAMETER = 30;
@@ -64,7 +56,13 @@ export const MATERIALS = {
 	BALL_COLOR: '#FFFFFF',
 	POWERUP_SPLIT: '#FFD700',
 	POWERUP_BLACKOUT: '#1522da',
-	POWERUP_BLACKHOLE: '#12012e'
+	POWERUP_BLACKHOLE: '#12012e',
+	BORDER: '#3CFFE2',
+	CABLE: '#ADFFE6',
+	poleCylinder:'#2E2E2E',
+	poleTop:'#00FFBC',
+	poleMid:'#2E2E2E',
+	poleBot:'#2E2E2E'
 } as const;
 
 export const CAMERA = {
@@ -91,3 +89,8 @@ export const CAMERA = {
 	FPS_BETA: Math.PI / 2.5,
 	FPS_RADIUS: 20
 } as const;
+
+export const KEY = {
+	CAMERA: 'v',
+	PAUSE: ['Escape', 'p', 'P']
+}

@@ -1,111 +1,10 @@
 import type { ViewFunction } from "../router/types";
 import { gsap } from "gsap";
+import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const CreateAccountView: ViewFunction = () => {
-    return `
-        <!-- Fond avec grille animée (même que HomeView) -->
-        <div class="fixed inset-0 bg-black overflow-hidden">
-            <!-- Grille de fond -->
-            <div class="absolute inset-0" style="
-                background-image: 
-                    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-                background-size: 50px 50px;
-                animation: gridMove 20s linear infinite;
-            "></div>
-            
-            <style>
-                @keyframes gridMove {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(50px); }
-                }
-                
-                @keyframes neonPulse {
-                    0%, 100% { 
-                        text-shadow: 
-                            0 0 10px rgba(59, 130, 246, 0.8),
-                            0 0 20px rgba(59, 130, 246, 0.6),
-                            0 0 30px rgba(59, 130, 246, 0.4);
-                    }
-                    50% { 
-                        text-shadow: 
-                            0 0 20px rgba(59, 130, 246, 1),
-                            0 0 30px rgba(59, 130, 246, 0.8),
-                            0 0 40px rgba(59, 130, 246, 0.6);
-                    }
-                }
-                
-                @keyframes scanline {
-                    0% { transform: translateY(-100%); }
-                    100% { transform: translateY(100vh); }
-                }
-                
-                .pixel-font {
-                    font-family: 'Courier New', monospace;
-                    font-weight: bold;
-                    letter-spacing: 0.1em;
-                }
-                
-                .neon-border {
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    border: 3px solid rgba(59, 130, 246, 0.8);
-                }
-                
-                .neon-border:hover {
-                    box-shadow: 
-                        0 0 20px rgba(59, 130, 246, 0.8),
-                        inset 0 0 20px rgba(59, 130, 246, 0.3);
-                    border-color: rgba(59, 130, 246, 1);
-                }
-                
-                .neon-input {
-                    background: rgba(15, 23, 42, 0.6);
-                    border: 2px solid rgba(59, 130, 246, 0.5);
-                    color: #60A5FA;
-                    transition: all 0.3s ease;
-                }
-                
-                .neon-input:focus {
-                    outline: none;
-                    border-color: rgba(59, 130, 246, 1);
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    background: rgba(15, 23, 42, 0.8);
-                }
-                
-                .neon-input::placeholder {
-                    color: rgba(96, 165, 250, 0.4);
-                }
-
-                .neon-input.error {
-                    border-color: rgba(239, 68, 68, 0.8);
-                    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
-                }
-            </style>
-            
-            <!-- Scanline effect -->
-            <div class="absolute inset-0 pointer-events-none opacity-10">
-                <div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
-            </div>
-        </div>
-
-        <!-- Contenu principal -->
-        <div class="relative z-10 min-h-screen flex flex-col">
-            <!-- Header avec BackButton -->
-            <div class="p-8">
-                <button 
-                    onclick="history.back()" 
-                    class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
-                    id="back-button"
-                >
-                    ← BACK
-                </button>
-            </div>
-
-            <!-- Zone centrale -->
+    const content = `
             <div class="flex-1 flex items-center justify-center px-4 py-12">
                 <div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8">
                     
@@ -147,7 +46,7 @@ export const CreateAccountView: ViewFunction = () => {
                         </div>
 
                         <!-- Formulaire -->
-                        <form action="/create" method="POST" id="createForm" class="space-y-6">
+                        <form id="createForm" class="space-y-6">
                             <!-- Username -->
                             <div>
                                 <label for="username" class="block mb-2 pixel-font text-sm text-blue-300">
@@ -170,15 +69,24 @@ export const CreateAccountView: ViewFunction = () => {
                                 <label for="password" class="block mb-2 pixel-font text-sm text-blue-300">
                                     PASSWORD:
                                 </label>
-                                <input 
-                                    type="password" 
-                                    id="password" 
-                                    name="password"
-                                    placeholder="Enter password"
-                                    required
-                                    minlength="6"
-                                    class="w-full p-3 rounded pixel-font text-sm neon-input"
-                                >
+                                <div class="relative">
+                                    <input 
+                                        type="password" 
+                                        id="password" 
+                                        name="password"
+                                        placeholder="Enter password"
+                                        required
+                                        minlength="6"
+                                        class="w-full p-3 rounded pixel-font text-sm neon-input pr-12"
+                                    >
+                                    <button
+                                        type="button"
+                                        class="absolute inset-y-0 right-2 px-2 text-blue-300 text-xs pixel-font hover:text-white"
+                                        data-toggle-password="create-password"
+                                    >
+                                        SHOW
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Confirm Password -->
@@ -186,19 +94,28 @@ export const CreateAccountView: ViewFunction = () => {
                                 <label for="confirmpassword" class="block mb-2 pixel-font text-sm text-blue-300">
                                     CONFIRM PASSWORD:
                                 </label>
-                                <input 
-                                    type="password" 
-                                    id="confirmpassword" 
-                                    name="confirmpassword"
-                                    placeholder="Confirm your password"
-                                    required
-                                    class="w-full p-3 rounded pixel-font text-sm neon-input"
-                                >
+                                <div class="relative">
+                                    <input 
+                                        type="password" 
+                                        id="confirmpassword" 
+                                        name="confirmpassword"
+                                        placeholder="Confirm your password"
+                                        required
+                                        class="w-full p-3 rounded pixel-font text-sm neon-input pr-12"
+                                    >
+                                    <button
+                                        type="button"
+                                        class="absolute inset-y-0 right-2 px-2 text-blue-300 text-xs pixel-font hover:text-white"
+                                        data-toggle-password="create-confirm"
+                                    >
+                                        SHOW
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Bouton Submit -->
                             <button 
-                                type="submit" 
+                                type="button" 
                                 class="w-full py-3 pixel-font text-sm neon-border bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 hover:text-white transition-all"
                                 id="submit-btn"
                             >
@@ -221,17 +138,31 @@ export const CreateAccountView: ViewFunction = () => {
                     </div>
                 </div>
             </div>
-
-            <!-- Footer -->
-            <footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
-                <p>© 2025 PONG - SKILL ISSUE</p>
-            </footer>
-        </div>
+            <div 
+                id="create-toast" 
+                class="fixed bottom-6 right-6 z-50 px-4 py-3 neon-border bg-emerald-500/20 text-emerald-200 rounded shadow-2xl opacity-0 pointer-events-none translate-y-4"
+                aria-live="polite"
+            >
+                <span class="pixel-font text-sm"></span>
+            </div>
     `;
+
+    return Layout.render(content, {
+        showBackButton: true,
+        showFooter: true
+    });
 };
 
 export const createAccountLogic = (): (() => void) => {
-    // Animations d'entrée avec GSAP
+    const cleanupManager = createCleanupManager();
+
+    // Enregistrer les cibles GSAP
+    cleanupManager.registerGsapTarget('#create-title');
+    cleanupManager.registerGsapTarget('#left-panel');
+    cleanupManager.registerGsapTarget('#right-panel');
+    cleanupManager.registerGsapTarget('#error-message');
+    cleanupManager.registerGsapTarget('#create-toast');
+
     gsap.from('#create-title', {
         scale: 0.5,
         opacity: 0,
@@ -254,9 +185,19 @@ export const createAccountLogic = (): (() => void) => {
     });
 
     // Gestion du formulaire
-    const form = document.getElementById('createForm') as HTMLFormElement;
+    const form = document.getElementById('createForm') as HTMLFormElement | null;
     const errorMessage = document.getElementById('error-message');
     const errorText = errorMessage?.querySelector('p');
+    const hostRaw = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
+    const host = (hostRaw || '').replace(/^https?:\/\//, '').trim();
+    const submitBtn = document.getElementById('submit-btn');
+    const toast = document.getElementById('create-toast');
+    const toastText = toast?.querySelector('span');
+    const passwordInput = document.getElementById('password') as HTMLInputElement | null;
+    const confirmPasswordInput = document.getElementById('confirmpassword') as HTMLInputElement | null;
+    const passwordToggle = document.querySelector('[data-toggle-password="create-password"]') as HTMLButtonElement | null;
+    const confirmToggle = document.querySelector('[data-toggle-password="create-confirm"]') as HTMLButtonElement | null;
+    const passwordToggleHandlers: Array<{ button: HTMLButtonElement; handler: () => void }> = [];
     
     const showError = (message: string) => {
         if (errorMessage && errorText) {
@@ -277,8 +218,46 @@ export const createAccountLogic = (): (() => void) => {
         }
     };
 
-    const handleSubmit = (e: Event) => {
-        e.preventDefault();
+    const hideToast = () => {
+        if (!toast) return;
+        gsap.to(toast, {
+            opacity: 0,
+            y: 20,
+            duration: 0.2,
+            ease: 'power2.in',
+            onComplete: () => {
+                toast.classList.add('pointer-events-none');
+            }
+        });
+    };
+
+    const showToast = (message: string) => {
+        if (!toast || !toastText) return;
+        toastText.textContent = message;
+        toast.classList.remove('pointer-events-none');
+        gsap.killTweensOf(toast);
+        gsap.fromTo(toast,
+            { opacity: 0, y: 20 },
+            { opacity: 1, y: 0, duration: 0.25, ease: 'power2.out' }
+        );
+        cleanupManager.setTimeout(hideToast, 2500);
+    };
+
+    const registerPasswordToggle = (button: HTMLButtonElement | null, input: HTMLInputElement | null) => {
+        if (!button || !input) return;
+        const handler = () => {
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            button.textContent = isHidden ? 'HIDE' : 'SHOW';
+        };
+        button.addEventListener('click', handler);
+        passwordToggleHandlers.push({ button, handler });
+    };
+
+    registerPasswordToggle(passwordToggle, passwordInput);
+    registerPasswordToggle(confirmToggle, confirmPasswordInput);
+
+    const handleSubmit = async () => {
         hideError();
         
         const username = (document.getElementById('username') as HTMLInputElement).value;
@@ -291,8 +270,12 @@ export const createAccountLogic = (): (() => void) => {
             return;
         }
 
-        if (password.length < 6) {
-            showError('⚠️ Password must be at least 6 characters');
+        const hasMinLength = password.length >= 6;
+        const hasDigit = /\d/.test(password);
+        const hasUpper = /[A-Z]/.test(password);
+
+        if (!hasMinLength || !hasDigit || !hasUpper) {
+            showError('⚠️ Password must be 6+ chars, include 1 digit and 1 uppercase');
             return;
         }
 
@@ -304,9 +287,9 @@ export const createAccountLogic = (): (() => void) => {
             const confirmInput = document.getElementById('confirmpassword') as HTMLInputElement;
             passwordInput?.classList.add('error');
             confirmInput?.classList.add('error');
-            
+
             // Retirer après 2 secondes
-            setTimeout(() => {
+            cleanupManager.setTimeout(() => {
                 passwordInput?.classList.remove('error');
                 confirmInput?.classList.remove('error');
             }, 2000);
@@ -315,7 +298,6 @@ export const createAccountLogic = (): (() => void) => {
         }
 
         // Animation du bouton
-        const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) {
             gsap.to(submitBtn, {
                 scale: 0.95,
@@ -323,32 +305,75 @@ export const createAccountLogic = (): (() => void) => {
                 yoyo: true,
                 repeat: 1
             });
+            submitBtn.setAttribute('disabled', 'true');
         }
 
-        // TODO: Logique de création de compte réelle
-        console.log('Create account attempt:', { username, password });
-        
-        // Animation de succès
-        gsap.to('#right-panel', {
-            scale: 1.05,
-            duration: 0.2,
-            yoyo: true,
-            repeat: 1,
-            onComplete: () => {
-                // Exemple de redirection après succès
-                // window.router.navigate('/login');
+        try {
+            const response = await fetch(`https://${host}/userback/users`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ username, password })
+            });
+
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                showError(payload?.error || 'Unable to create account, please try again.');
+                return;
             }
-        });
+
+            showToast('✅ Account created! Redirecting to login...');
+
+            gsap.to('#right-panel', {
+                scale: 1.05,
+                duration: 0.2,
+                yoyo: true,
+                repeat: 1,
+                onComplete: () => {
+                    setTimeout(() => {
+                        // @ts-ignore - router is injected globally by the app
+                        window.router?.navigate('/login');
+                    }, 300);
+                }
+            });
+        } catch (err) {
+            showError('Network error while creating account. Please try again.');
+        } finally {
+            if (submitBtn) {
+                submitBtn.removeAttribute('disabled');
+            }
+        }
+    };
+
+    const onFormSubmit = (e: Event) => {
+        e.preventDefault();
+        handleSubmit();
     };
 
     if (form) {
-        form.addEventListener('submit', handleSubmit);
+        form.addEventListener('submit', onFormSubmit);
     }
 
-    // Cleanup
-    return () => {
+    if (submitBtn) {
+        submitBtn.addEventListener('click', handleSubmit);
+    }
+
+    // Enregistrer le cleanup
+    cleanupManager.onCleanup(() => {
         if (form) {
-            form.removeEventListener('submit', handleSubmit);
+            form.removeEventListener('submit', onFormSubmit);
         }
-    };
+        if (submitBtn) {
+            submitBtn.removeEventListener('click', handleSubmit);
+        }
+        passwordToggleHandlers.forEach(({ button, handler }) => {
+            button.removeEventListener('click', handler);
+        });
+        passwordToggleHandlers.length = 0;
+    });
+
+    return cleanupManager.getCleanupFunction();
 };

@@ -1,9 +1,11 @@
 import type { ISystem, InputState } from '../types';
+import { KEY } from '../constants';
 
 export class InputSystem implements ISystem {
 	private keys: Map<string, boolean> = new Map();
 	private canvas: HTMLCanvasElement;
 	private vKeyWasPressed: boolean = false;
+	private pauseKeyWasPressed: boolean = false;
 
 	constructor(canvas: HTMLCanvasElement) {
 		this.canvas = canvas;
@@ -42,7 +44,7 @@ export class InputSystem implements ISystem {
 	}
 
 	public isCameraToggleKeyPressed(): boolean {
-		const isVPressed = this.isKeyPressed('v');
+		const isVPressed = this.isKeyPressed(KEY.CAMERA);
 		
 		if (isVPressed && !this.vKeyWasPressed) {
 			this.vKeyWasPressed = true;
@@ -56,6 +58,18 @@ export class InputSystem implements ISystem {
 		return false;
 	}
 
+	public isPauseKeyPressed(): boolean {
+		const isPausePressed = KEY.PAUSE.some(key => this.isKeyPressed(key));
+		if (isPausePressed && !this.pauseKeyWasPressed) {
+			this.pauseKeyWasPressed = true;
+			return true;
+		}
+		if (!isPausePressed) {
+			this.pauseKeyWasPressed = false;
+		}
+		return false;
+	}
+
 	public update(): void {
 	}
 
@@ -63,5 +77,6 @@ export class InputSystem implements ISystem {
 		window.removeEventListener('keydown', this.onKeyDown);
 		window.removeEventListener('keyup', this.onKeyUp);
 		this.keys.clear();
+		this.canvas.removeEventListener('contextmenu', (e) => e.preventDefault());
 	}
 }

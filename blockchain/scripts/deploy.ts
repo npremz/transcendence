@@ -40,7 +40,6 @@ async function deployContract(networkName: 'fuji' | 'mainnet') {
 	if (!privateKey) {
 		throw new Error('BLOCKCHAIN_PRIVATE_KEY not found in environment variables');
 	}
-	console.log(privateKey)
 	
 	// 3. Connexion au réseau
 	console.log('Connecting to network...');

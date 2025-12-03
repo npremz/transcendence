@@ -120,13 +120,15 @@ interface BackButtonProps {
     size?: 'sm' | 'md' | 'lg';
     text?: string;
     variant?: 'primary' | 'secondary' | 'danger' | 'default';
+    fallbackHref?: string;
 }
 
 export function BackButton({ 
     className = '', 
     size,
     text = "←",
-    variant = 'default'
+    variant = 'default',
+    fallbackHref = '/'
 }: BackButtonProps = {}): string {
     return `
         <button 

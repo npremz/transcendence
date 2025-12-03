@@ -1,117 +1,55 @@
 import type { ViewFunction } from "../router/types";
-import { Game3dComponent, Game3D } from "../components/Game3d/Game3d";
-import { gsap } from "gsap";
-import { BackButton } from "../components/Button";
 
- export const Game3dView: ViewFunction = () => {
-	setTimeout(() => {
-		const gameContainer = document.getElementById('game-content');
-		if (gameContainer) {
-			new Game3D(gameContainer);
-		} else
-			console.error('Game container not found');
-	}, 100);
-	// // Animation d'entrée
-	// setTimeout(() => {
-	// 	initGame3d();
+export const Game3dView: ViewFunction = () => {
 
-	// 	const tl = gsap.timeline();
-		
-	// 	// Récupérer les positions data-x et data-y
-	// 	const stars = document.querySelectorAll('.star-particle');
-	// 	stars.forEach((star) => {
-	// 		const targetX = parseFloat(star.getAttribute('data-x') || '0');
-	// 		const targetY = parseFloat(star.getAttribute('data-y') || '0');
-			
-	// 		gsap.fromTo(star,
-	// 			{ 
-	// 				x: 0,
-	// 				y: 0,
-	// 				scale: 0.1,
-	// 				opacity: 1
-	// 			},
-	// 			{ 
-	// 				x: targetX,
-	// 				y: targetY,
-	// 				scale: 1,
-	// 				opacity: 1,
-	// 				duration: 4,
-	// 				ease: "power2.out"
-	// 			}
-	// 		);
-	// 	});
-		
-	// 	// Faire disparaître la transition après l'animation
-	// 	tl.to("#space-transition", 
-	// 		{ 
-	// 			opacity: 0,
-	// 			duration: 1,
-	// 			delay: 2, // Attendre que les étoiles soient parties
-	// 			onComplete: () => {
-	// 				const transition = document.getElementById('space-transition');
-	// 				if (transition) transition.style.display = 'none';
-	// 			}
-	// 		}
-	// 	)
-	// 	.fromTo("#game-content", 
-	// 		{ opacity: 0, scale: 0.8 },
-	// 		{ opacity: 1, scale: 1, duration: 0.5, ease: "back.out" },
-	// 		"-=0.5"
-	// 	);
-	// }, 0);
-	// wip : temporaire, à enlever plus tard (display none dans le style de div space-transisiton)
 	return `
-		<div id="space-transition" class="fixed inset-0 z-50 bg-[#04071A] overflow-hidden" style="display: none;">
-			${Array.from({length: 300}, (_) => {
-				const angle = Math.random() * Math.PI * 2;
-				const distance = Math.random() * 1500 + 500;
-				const x = Math.cos(angle) * distance;
-				const y = Math.sin(angle) * distance;
-				const size = Math.random() * 4 + 1;
-				
-				return `
-					<div 
-						class="star-particle absolute bg-white rounded-full"
-						style="
-							width: ${size}px;
-							height: ${size}px;
-							left: 50%;
-							top: 50%;
-							transform: translate(-50%, -50%);
-							box-shadow: 0 0 ${size * 2}px rgba(255, 255, 255, 0.8);
-						"
-						data-x="${x}"
-						data-y="${y}"
-					></div>
-				`;
-			}).join('')}
-			
-			<!-- Lignes de vitesse -->
-			${Array.from({length: 50}, (_) => {
-				const angle = Math.random() * Math.PI * 2;
-				const length = Math.random() * 200 + 100;
-				const distance = Math.random() * 800;
-				
-				return `
-					<div 
-						class="absolute bg-gradient-to-r from-transparent via-white to-transparent opacity-30"
-						style="
-							width: ${length}px;
-							height: 1px;
-							left: 50%;
-							top: 50%;
-							transform: translate(-50%, -50%) 
-									  rotate(${angle}rad) 
-									  translateX(${distance}px);
-						"
-					></div>
-				`;
-			}).join('')}
-		</div>
-		<div id="game-content">
-			${BackButton()}
-			${Game3dComponent()}
-		</div>
-	`
+		<div class="fixed inset-0 w-full h-full" data-component="game3d">
+			<!-- Header HUD -->
+			<div class="game-hud border-b border-white/10">
+				<div class="container mx-auto px-4 py-4">
+					<div class="flex items-center justify-between gap-4">
 
-};
+						<!-- Player 1 Name -->
+						<div id="player-left-name" class="text-xl font-bold text-white drop-shadow-lg mx-4">Player 1</div>
+
+						<!-- Center: Status indicator -->
+						<div class="flex items-center gap-3">
+							<div id="connection-indicator" class="status-indicator w-3 h-3 bg-green-400 rounded-full"></div>
+							<span class="pixel-font text-sm text-blue-300">
+								LIVE MATCH
+							</span>
+						</div>
+
+						<!-- Player 2 Name -->
+						<div id="player-right-name" class="text-xl font-bold text-white drop-shadow-lg mx-4">Player 2</div>
+
+						<!-- Right: Forfeit button (si pas mode local) -->
+						<button
+							id="forfeit-btn"
+							class="action-button forfeit-button pixel-font px-4 py-2 neon-border-red bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all text-sm relative z-10"
+						>
+							<span class="relative z-10">🏳️ SURRENDER</span>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<canvas id="game3d-canvas" class="w-full h-full block"></canvas>
+
+				<!-- skill indicator -->
+			<div id="game3d-ui-skill">
+				<div id="game3d-skill-container" class="fixed left-1/2 bottom-6 transform -translate-x-1/2 z-50 pointer-events-none">
+					<div class="flex flex-col items-center">
+						<div id="skill-wrapper" class="skillLoader" aria-hidden="true"></div>
+						<div id="skill-cooldown" class="mt-2 text-white/90 text-sm select-none">Skill cooldown</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Camera View Indicator -->
+			<div class="absolute bottom-4 right-4 px-3 py-2 bg-black/50 text-white text-sm rounded pointer-events-none">
+				Press <span class="font-bold text-cyan-400">V</span> to toggle camera view
+			</div>
+		</div>
+	`;
+}

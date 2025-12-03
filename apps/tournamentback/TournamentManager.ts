@@ -1,19 +1,12 @@
 import type { Match, Player, registration, Tournament } from "./types";
 import { v4 as uuidv4 } from 'uuid'
-import https from 'https'
-
-const isDevelopment = process.env.NODE_ENV === 'development'
-const agent = isDevelopment ? new https.Agent({ rejectUnauthorized: false }) : undefined
 
 async function callDatabase(endpoint: string, method: string = 'GET', body?: any)
 {
-	const host = process.env.VITE_HOST || 'localhost:8443';
-	const url = `https://${host}/gamedb${endpoint}`;
+	const url = `http://database:3020${endpoint}`;
 	
 	const options: RequestInit = {
 		method,
-		// @ts-ignore
-		agent
 	};
 
 	if (body && method !== 'GET') {
@@ -251,9 +244,7 @@ export class TournamentManager
 
 		try
 		{
-			const host = process.env.VITE_HOST || 'localhost:8443';
-			const endpoint = '/quickplay/tournament-match';
-			const url = `https://${host}${endpoint}`;
+			const url = `http://quickplayback:3030/tournament-match`;
 
 			console.log(`Creating tournament match: ${nextMatch.player1?.username} vs ${nextMatch.player2?.username}`);
 
@@ -284,8 +275,6 @@ export class TournamentManager
 						username: nextMatch.player2!.username
 					}
 				}),
-				// @ts-ignore
-				agent
 			});
 
 			if (!response.ok)
@@ -479,8 +468,7 @@ export class TournamentManager
 		winnerUsername: string
 	): Promise<void> {
 		try {
-			const host = process.env.VITE_HOST || 'localhost:8443';
-			const url = `https://${host}/blockchainback/register-tournament`;
+			const url = `http://blockchainback:3070/register-tournament`;
 
 			console.log(`Registering tournament ${tournamentId} on blockchain...`);
 
@@ -494,8 +482,6 @@ export class TournamentManager
 					winnerId,
 					winnerUsername
 				}),
-				// @ts-ignore
-				agent
 			});
 
 			if (!response.ok) {
@@ -507,7 +493,6 @@ export class TournamentManager
 			console.log(`Tournament ${tournamentId} registered on blockchain: ${data.transactionHash}`);
 		} catch (error) {
 			console.error('Failed to register tournament on blockchain:', error);
-			// Don't throw - we don't want to fail the tournament completion if blockchain fails
 		}
 	}
 }

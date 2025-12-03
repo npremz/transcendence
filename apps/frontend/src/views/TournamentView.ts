@@ -1,137 +1,14 @@
+// apps/frontend/src/views/TournamentView.ts
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
+import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const TournamentView: ViewFunction = () => {
-    return `
-        <!-- Fond avec grille animée -->
-        <div class="fixed inset-0 bg-black overflow-hidden">
-            <!-- Grille de fond -->
-            <div class="absolute inset-0" style="
-                background-image: 
-                    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-                background-size: 50px 50px;
-                animation: gridMove 20s linear infinite;
-            "></div>
-            
-            <style>
-                @keyframes gridMove {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(50px); }
-                }
-                
-                @keyframes neonPulse {
-                    0%, 100% { 
-                        text-shadow: 
-                            0 0 10px rgba(59, 130, 246, 0.8),
-                            0 0 20px rgba(59, 130, 246, 0.6),
-                            0 0 30px rgba(59, 130, 246, 0.4);
-                    }
-                    50% { 
-                        text-shadow: 
-                            0 0 20px rgba(59, 130, 246, 1),
-                            0 0 30px rgba(59, 130, 246, 0.8),
-                            0 0 40px rgba(59, 130, 246, 0.6);
-                    }
-                }
-                
-                @keyframes scanline {
-                    0% { transform: translateY(-100%); }
-                    100% { transform: translateY(100vh); }
-                }
-                
-                .pixel-font {
-                    font-family: 'Courier New', monospace;
-                    font-weight: bold;
-                    letter-spacing: 0.1em;
-                }
-                
-                .neon-border {
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    border: 3px solid rgba(59, 130, 246, 0.8);
-                }
-                
-                .neon-border:hover {
-                    box-shadow: 
-                        0 0 20px rgba(59, 130, 246, 0.8),
-                        inset 0 0 20px rgba(59, 130, 246, 0.3);
-                    border-color: rgba(59, 130, 246, 1);
-                }
-
-                .tournament-card {
-                    transition: all 0.3s ease;
-                    background: rgba(15, 23, 42, 0.6);
-                    backdrop-filter: blur(10px);
-                    cursor: pointer;
-                }
-
-                .tournament-card:hover:not(.disabled) {
-                    transform: translateY(-5px) scale(1.02);
-                    background: rgba(30, 41, 59, 0.8);
-                }
-
-                .tournament-card.disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-
-                .neon-input {
-                    background: rgba(15, 23, 42, 0.6);
-                    border: 2px solid rgba(59, 130, 246, 0.5);
-                    color: #60A5FA;
-                    transition: all 0.3s ease;
-                }
-                
-                .neon-input:focus {
-                    outline: none;
-                    border-color: rgba(59, 130, 246, 1);
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    background: rgba(15, 23, 42, 0.8);
-                }
-                
-                .neon-input::placeholder {
-                    color: rgba(96, 165, 250, 0.4);
-                }
-
-                .countdown-modal {
-                    backdrop-filter: blur(10px);
-                }
-            </style>
-            
-            <!-- Scanline effect -->
-            <div class="absolute inset-0 pointer-events-none opacity-10">
-                <div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
-            </div>
-        </div>
-
-        <!-- Contenu principal -->
-        <div class="relative z-10 min-h-screen flex flex-col">
-            <!-- Header avec BackButton et Sign in -->
-            <header class="flex justify-between items-center px-8 py-6">
-                <button 
-                    onclick="history.back()" 
-                    class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
-                    id="back-button"
-                >
-                    ← BACK
-                </button>
-                
-                <!-- Bouton Sign in -->
-                <a href="/login" 
-                   class="pixel-font bg-blue-500 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
-                    <span>SIGN IN</span>
-                </a>
-            </header>
-
-            <!-- Zone centrale -->
+    const content = `
             <div class="flex-1 flex items-center justify-center px-4 py-12">
-                <div class="w-full max-w-4xl">
+                 <div class="w-full max-w-6xl">
                     
-					<!-- Titre principal -->
 					<div class="text-center mb-12">
 						<h1 class="pixel-font text-6xl md:text-8xl text-blue-400 mb-4" 
 							style="animation: neonPulse 2s ease-in-out infinite;"
@@ -143,25 +20,7 @@ export const TournamentView: ViewFunction = () => {
 						</p>
 					</div>
 
-                    <!-- Input Username -->
-                    <div class="mb-8 neon-border bg-black/50 backdrop-blur-sm rounded-lg p-6" id="username-section">
-                        <label for="usernameInput" class="block mb-3 pixel-font text-sm text-blue-300 text-center">
-                            ENTER YOUR USERNAME:
-                        </label>
-                        <input 
-                            type="text" 
-                            name="username" 
-                            id="usernameInput" 
-                            value="Anon"
-                            maxlength="20"
-                            class="w-full p-3 rounded pixel-font text-center text-lg neon-input"
-                            placeholder="Your username..."
-                        />
-                    </div>
-
-                    <!-- Cartes de tournois -->
-					<div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="tournament-cards">
-						<!-- 4 Players -->
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="tournament-cards">
 						<div 
 							class="tournament-card neon-border rounded-lg p-8 relative flex flex-col items-center"
 							data-component="joinTournament"
@@ -169,17 +28,14 @@ export const TournamentView: ViewFunction = () => {
 							data-tournament-id=""
 							id="tournament-4"
 						>
-							<!-- Badge de statut -->
 							<div class="absolute top-4 right-4 pixel-font text-xs text-green-400 bg-green-500/20 px-3 py-1 rounded border border-green-500/50">
 								OPEN
 							</div>
 
-							<!-- Icône -->
 							<div class="text-6xl md:text-7xl mb-6 text-blue-500">
 								⚡
 							</div>
 							
-							<!-- Titre -->
 							<h3 class="pixel-font text-4xl text-blue-400 mb-2">
 								4
 							</h3>
@@ -187,24 +43,20 @@ export const TournamentView: ViewFunction = () => {
 								PLAYERS
 							</p>
 							
-							<!-- Compteur -->
 							<div class="mb-6">
 								<span class="pixel-font text-3xl text-yellow-400" data-player-count>0/4</span>
 							</div>
 
-							<!-- Description -->
 							<p class="pixel-font text-xs text-blue-300/60 text-center mb-8">
 								Quick bracket - 2 rounds
 							</p>
 
-							<!-- Flèches décoratives symétriques -->
 							<div class="absolute bottom-4 left-0 right-0 flex justify-between px-4">
 								<span class="text-red-500 text-2xl opacity-50">←</span>
 								<span class="text-red-500 text-2xl opacity-50">→</span>
 							</div>
 						</div>
 
-						<!-- 8 Players -->
 						<div 
 							class="tournament-card neon-border rounded-lg p-8 relative flex flex-col items-center"
 							data-component="joinTournament"
@@ -212,17 +64,14 @@ export const TournamentView: ViewFunction = () => {
 							data-tournament-id=""
 							id="tournament-8"
 						>
-							<!-- Badge de statut -->
 							<div class="absolute top-4 right-4 pixel-font text-xs text-green-400 bg-green-500/20 px-3 py-1 rounded border border-green-500/50">
 								OPEN
 							</div>
 
-							<!-- Icône -->
 							<div class="text-6xl md:text-7xl mb-6 text-blue-500">
 								⚡
 							</div>
 							
-							<!-- Titre -->
 							<h3 class="pixel-font text-4xl text-blue-400 mb-2">
 								8
 							</h3>
@@ -230,24 +79,20 @@ export const TournamentView: ViewFunction = () => {
 								PLAYERS
 							</p>
 							
-							<!-- Compteur -->
 							<div class="mb-6">
 								<span class="pixel-font text-3xl text-yellow-400" data-player-count>0/8</span>
 							</div>
 
-							<!-- Description -->
 							<p class="pixel-font text-xs text-blue-300/60 text-center mb-8">
 								Standard bracket - 3 rounds
 							</p>
 
-							<!-- Flèches décoratives symétriques -->
 							<div class="absolute bottom-4 left-0 right-0 flex justify-between px-4">
 								<span class="text-blue-500 text-2xl opacity-80">←</span>
 								<span class="text-blue-500 text-2xl opacity-80">→</span>
 							</div>
 						</div>
 
-						<!-- 16 Players -->
 						<div 
 							class="tournament-card neon-border rounded-lg p-8 relative flex flex-col items-center"
 							data-component="joinTournament"
@@ -255,17 +100,14 @@ export const TournamentView: ViewFunction = () => {
 							data-tournament-id=""
 							id="tournament-16"
 						>
-							<!-- Badge de statut -->
 							<div class="absolute top-4 right-4 pixel-font text-xs text-green-400 bg-green-500/20 px-3 py-1 rounded border border-green-500/50">
 								OPEN
 							</div>
 
-							<!-- Icône -->
 							<div class="text-6xl md:text-7xl mb-6 text-blue-500">
 								⚡
 							</div>
 							
-							<!-- Titre -->
 							<h3 class="pixel-font text-4xl text-blue-400 mb-2">
 								16
 							</h3>
@@ -273,17 +115,14 @@ export const TournamentView: ViewFunction = () => {
 								PLAYERS
 							</p>
 							
-							<!-- Compteur -->
 							<div class="mb-6">
 								<span class="pixel-font text-3xl text-yellow-400" data-player-count>0/16</span>
 							</div>
 
-							<!-- Description -->
 							<p class="pixel-font text-xs text-blue-300/60 text-center mb-8">
 								Epic bracket - 4 rounds
 							</p>
 
-							<!-- Flèches décoratives symétriques -->
 							<div class="absolute bottom-4 left-0 right-0 flex justify-between px-4">
 								<span class="text-red-500 text-2xl opacity-50">←</span>
 								<span class="text-red-500 text-2xl opacity-50">→</span>
@@ -291,39 +130,75 @@ export const TournamentView: ViewFunction = () => {
 						</div>
 					</div>
 
+                    <div class="flex justify-center">
+                        <div class="w-full md:w-1/3 min-w-[280px]">
+                            <div 
+                                class="tournament-card neon-border rounded-lg p-8 relative flex flex-col items-center cursor-pointer h-full"
+                                id="play-local-tournament"
+                            >
+                                <div class="absolute top-4 right-4 pixel-font text-xs text-purple-400 bg-purple-500/20 px-3 py-1 rounded border border-purple-500/50">
+                                    LOCAL
+                                </div>
+
+                                <div class="text-6xl md:text-7xl mb-6 text-purple-500">
+                                    🎮
+                                </div>
+                                
+                                <h3 class="pixel-font text-2xl text-purple-400 mb-2 text-center">
+                                    LOCAL<br>CUP
+                                </h3>
+                                <p class="pixel-font text-sm text-purple-300 mb-6 opacity-80">
+                                    MULTIPLAYER
+                                </p>
+                                
+                                <div class="mb-6">
+                                    <span class="pixel-font text-3xl text-white">OFFLINE</span>
+                                </div>
+
+                                <p class="pixel-font text-xs text-purple-300/60 text-center mb-8">
+                                    4 or 8 players<br>Same screen
+                                </p>
+
+                                <div class="absolute bottom-4 left-0 right-0 flex justify-between px-4">
+                                    <span class="text-purple-500 text-2xl opacity-50">←</span>
+                                    <span class="text-purple-500 text-2xl opacity-50">→</span>
+                                </div>
+                            </div>
+                        </div>
+					</div>
 
                 </div>
             </div>
 
-            <!-- Footer -->
-            <footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
-                <p>© 2025 PONG - SKILL ISSUE</p>
-            </footer>
-        </div>
-
-        <!-- Modal de countdown (caché par défaut) -->
-        <div id="countdown" class="fixed inset-0 bg-black/80 countdown-modal hidden flex items-center justify-center z-50">
+		<div id="countdown" class="fixed inset-0 bg-black/80 countdown-modal hidden flex items-center justify-center z-50">
             <div class="neon-border bg-black/90 backdrop-blur-sm rounded-lg p-12 text-center">
-                <h2 class="pixel-font text-3xl text-blue-400 mb-6">
+                 <h2 class="pixel-font text-3xl text-blue-400 mb-6">
                     TOURNAMENT IS STARTING...
                 </h2>
-                <div id="countdown-text" class="pixel-font text-8xl text-pink-500 mb-4" style="animation: neonPulse 1s ease-in-out infinite;">
+                 <div id="countdown-text" class="pixel-font text-8xl text-pink-500 mb-4" style="animation: neonPulse 1s ease-in-out infinite;">
                     3
                 </div>
-                <p class="pixel-font text-sm text-blue-300/60">
+               <p class="pixel-font text-sm text-blue-300/60">
                     Get ready for battle!
                 </p>
             </div>
         </div>
     `;
+
+    return Layout.render(content, {
+        showBackButton: true,
+         showSignInButton: true,
+        showFooter: true
+    });
 };
 
 export const tournamentLogic = (): CleanupFunction => {
     console.log('🎮 TournamentView: Initializing...');
 
+	const cleanupManager = createCleanupManager();
     const tournamentBtns = document.querySelectorAll('[data-component="joinTournament"]');
-    const usernameInput = document.getElementById("usernameInput") as HTMLInputElement;
-    
+    const localTournamentBtn = document.getElementById('play-local-tournament');
+
     let pollInterval: number | null = null;
     let currentTournamentId: string | null = null;
     let countdownInterval: number | null = null;
@@ -336,25 +211,30 @@ export const tournamentLogic = (): CleanupFunction => {
         (btn as HTMLElement).style.zIndex = '10';
     });
 
+	// Enregistrer les cibles GSAP pour cleanup
+	cleanupManager.registerGsapTarget('#tournament-title');
+	cleanupManager.registerGsapTarget('#username-section');
+	cleanupManager.registerGsapTarget('.tournament-card');
+
     // Animations d'entrée
-    gsap.fromTo('#tournament-title', 
+    gsap.fromTo('#tournament-title',
         { scale: 0.5, opacity: 0 },
         { scale: 1, opacity: 1, duration: 1, ease: 'back.out(1.7)' }
     );
 
-    gsap.fromTo('#username-section', 
+    gsap.fromTo('#username-section',
         { y: 50, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, delay: 0.3, ease: 'power2.out' }
     );
 
-    gsap.fromTo('.tournament-card', 
+    gsap.fromTo('.tournament-card',
         { y: 100, opacity: 0 },
-        { 
-            y: 0, 
-            opacity: 1, 
-            duration: 1, 
-            stagger: 0.2, 
-            delay: 0.5, 
+        {
+            y: 0,
+            opacity: 1,
+            duration: 1,
+            stagger: 0.2,
+            delay: 0.5,
             ease: 'power3.out',
             onComplete: () => {
                 // ✅ Re-forcer après animation
@@ -492,14 +372,14 @@ export const tournamentLogic = (): CleanupFunction => {
                 cleanupIntervals(); // ✅ Nettoyer avant redirect
                 countdownModal.classList.add('hidden');
                 countdownModal.classList.remove('flex');
-                window.location.href = `/tournament/${tournamentId}`;
+                window.router.navigate(`/tournament/${tournamentId}`);
             }
         }, 1000);
         
         console.log('⏱️ Countdown started');
     };
 
-    // Fonction pour rejoindre un tournoi
+    // Fonction pour rejoindre un tournoi ONLINE
     const handleJoinTournament = async (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
@@ -514,7 +394,7 @@ export const tournamentLogic = (): CleanupFunction => {
             return;
         }
 
-        const username = usernameInput.value.trim() || 'Anon';
+        const username = window.simpleAuth.getUsername() || 'Anon';
         window.simpleAuth.setUsername(username);
         
         const tournamentId = target.getAttribute('data-tournament-id');
@@ -564,38 +444,64 @@ export const tournamentLogic = (): CleanupFunction => {
         }
     };
 
+    // Fonction pour le tournoi LOCAL
+    const handleLocalTournament = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const target = e.currentTarget as HTMLElement;
+        
+        gsap.to(target, {
+            scale: 0.95,
+            duration: 0.1,
+            yoyo: true,
+            repeat: 1,
+            onComplete: () => {
+                window.router.navigate('/local-tournament-setup');
+            }
+        });
+    };
+
     // ✅ Stocker les handlers pour pouvoir les retirer
     const handlers = new Map<Element, EventListener>();
 
-    // Attacher les event listeners
+    // Attacher les event listeners pour les tournois ONLINE
     tournamentBtns.forEach(tournamentBtn => {
         const handler = handleJoinTournament as EventListener;
         tournamentBtn.addEventListener("click", handler, { capture: true });
         handlers.set(tournamentBtn, handler);
     });
 
+    // Attacher le listener pour le tournoi LOCAL
+    if (localTournamentBtn) {
+        const handler = handleLocalTournament as EventListener;
+        localTournamentBtn.addEventListener('click', handler);
+        handlers.set(localTournamentBtn, handler);
+    }
+
     // Polling initial et régulier pour les stats
     fetchTournaments();
     const updateInterval = setInterval(fetchTournaments, 2000);
     console.log('🔄 Started tournament stats polling');
 
+	// Enregistrer les cleanups existants
+	cleanupManager.onCleanup(() => {
+		cleanupIntervals();
+		if (updateInterval) {
+			clearInterval(updateInterval);
+			console.log('🧹 Update interval cleared');
+		}
+		handlers.forEach((handler, element) => {
+			element.removeEventListener("click", handler, { capture: true });
+            element.removeEventListener("click", handler); // Safe for non-capture listeners
+		});
+		handlers.clear();
+	});
+
     // ✅ FONCTION DE CLEANUP COMPLÈTE
     return (): void => {
         console.log('🧹 TournamentView: Cleaning up...');
-
-        // 1. Nettoyer tous les intervals
-        cleanupIntervals();
-        
-        if (updateInterval) {
-            clearInterval(updateInterval);
-            console.log('🧹 Update interval cleared');
-        }
-
-        // 2. Retirer tous les event listeners
-        handlers.forEach((handler, element) => {
-            element.removeEventListener("click", handler, { capture: true });
-        });
-        handlers.clear();
+		cleanupManager.cleanup();
         console.log('🧹 Event listeners removed');
 
         // 3. Se désinscrire du tournoi si on quitte la page

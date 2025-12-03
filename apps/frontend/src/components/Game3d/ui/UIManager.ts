@@ -1,45 +1,9 @@
+import type { GameStatusInfo, TimeoutStatus, Game3DState} from "../types";
+
 export class UIManager {
-	private overlays: Set<HTMLElement> = new Set();
+	private previousCount: number = 0;
 
 	constructor() {
-		this.injectStyles();
-	}
-
-	private injectStyles(): void {
-		if (document.getElementById('game3d-ui-styles')) return;
-
-		const style = document.createElement('style');
-		style.id = 'game3d-ui-styles';
-		style.textContent = `
-			@keyframes fadeIn {
-				from {
-					opacity: 0;
-					transform: scale(0.9);
-				}
-				to {
-					opacity: 1;
-					transform: scale(1);
-				}
-			}
-
-			.animate-fade-in {
-				animation: fadeIn 0.3s ease-out;
-			}
-
-			@keyframes pulse {
-				0%, 100% {
-					opacity: 1;
-				}
-				50% {
-					opacity: 0.5;
-				}
-			}
-
-			.animate-pulse {
-				animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-			}
-		`;
-		document.head.appendChild(style);
 	}
 
 	public updatePlayerNames(side: 'left' | 'right' | 'spectator', playerNames?: { left?: string; right?: string }): void {
@@ -47,138 +11,185 @@ export class UIManager {
 		const rightNameEl = document.getElementById('player-right-name');
 		
 		if (leftNameEl && playerNames?.left) {
-			leftNameEl.textContent = side === 'left' 
-				? `${playerNames.left} 👈 (You)` 
-				: playerNames.left;
+			leftNameEl.textContent = playerNames.left;
+			if (side === 'left') {
+				leftNameEl.classList.add('emphasize-side-player');
+			} else {
+				leftNameEl.classList.remove('emphasize-side-player');
+			}
 		}
 		
 		if (rightNameEl && playerNames?.right) {
-			rightNameEl.textContent = side === 'right' 
-				? `(You) 👉 ${playerNames.right}` 
-				: playerNames.right;
+			rightNameEl.textContent = playerNames.right;
+			if (side === 'right') {
+				rightNameEl.classList.add('emphasize-side-player');
+			} else {
+				rightNameEl.classList.remove('emphasize-side-player');
+			}
 		}
 	}
 
-	public showGameOver(winner: 'left' | 'right', mySide: 'left' | 'right' | 'spectator'): HTMLElement {
-		const didIWin = mySide === winner;
-
+	public showGameOver(didIWin: boolean, score: { left: number; right: number }): HTMLElement {
 		const overlay = document.createElement('div');
+		overlay.id = 'game-over-overlay';
 		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
 		overlay.innerHTML = `
-			<div class="bg-gradient-to-br from-[#0C154D] to-[#1a1f4d] border-2 ${didIWin ? 'border-green-400' : 'border-red-400'} rounded-2xl p-12 text-center max-w-lg shadow-2xl animate-fade-in">
-				<div class="text-8xl mb-6 animate-pulse">
-					${didIWin ? '🏆' : '💀'}
-				</div>
-				<h2 class="text-6xl font-bold mb-4 ${didIWin ? 'text-green-400' : 'text-red-400'}">
-					${didIWin ? 'VICTORY!' : 'DEFEAT'}
+			<div class="bg-[#0C154D]/90 border-2 border-white/20 rounded-lg p-8 text-center max-w-md">
+				<h2 class="text-4xl font-bold mb-4 ${didIWin ? 'text-green-400' : 'text-red-400'}">
+					${didIWin ? '🏆 WIN !' : '💀 DEFEAT'}
 				</h2>
-				<p class="text-2xl mb-8 text-white/80">
-					${winner === 'left' ? 'Left Player' : 'Right Player'} wins!
+				<p class="text-white/80 text-xl mb-6">
+					Score: ${score.left} - ${score.right}
 				</p>
 				<button 
-					id="game-over-return-btn"
-					class="px-8 py-4 bg-white/10 hover:bg-white/20 border-2 border-white/30 hover:border-white/50 rounded-xl text-white text-xl font-bold transition-all cursor-pointer hover:scale-105 shadow-lg"
+					id="return-to-lobby"
+					class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all cursor-pointer"
 				>
 					Return to Lobby
 				</button>
 			</div>
 		`;
-		
-		document.body.appendChild(overlay);
-		this.overlays.add(overlay);
-
 		return overlay;
 	}
 
-	public showDisconnect(): HTMLElement {
+	public handleTournamentGameOver(didIWin: boolean, score: { left: number; right: number }): HTMLElement {
 		const overlay = document.createElement('div');
-		overlay.className = 'fixed inset-0 bg-black/90 flex items-center justify-center z-50';
+		overlay.id = 'tournament-game-over-overlay';
+		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
 		overlay.innerHTML = `
-			<div class="bg-gradient-to-br from-red-900 to-red-950 border-2 border-red-500 rounded-2xl p-12 text-center max-w-lg shadow-2xl animate-fade-in">
-				<div class="text-8xl mb-6 animate-pulse">
-					⚠️
-				</div>
-				<h2 class="text-5xl font-bold mb-4 text-white">Connection Lost</h2>
-				<p class="text-xl mb-8 text-white/80">Disconnected from server</p>
+			<div class="bg-[#0C154D]/90 border-2 border-white/20 rounded-lg p-8 text-center max-w-md">
+				<h2 class="text-4xl font-bold mb-4 ${didIWin ? 'text-green-400' : 'text-red-400'}">
+					${didIWin ? '🏆 TOURNAMENT WIN!' : '💀 TOURNAMENT DEFEAT!'}
+				</h2>
+				<p class="text-white/80 text-xl mb-6">
+					Score: ${score.left} - ${score.right}
+				</p>
 				<button 
-					id="disconnect-return-btn"
-					class="px-8 py-4 bg-white/10 hover:bg-white/20 border-2 border-white/30 hover:border-white/50 rounded-xl text-white text-xl font-bold transition-all cursor-pointer hover:scale-105 shadow-lg"
+					id="return-to-lobby"
+					class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all cursor-pointer"
 				>
-					Return to Home
+					Return to Lobby
 				</button>
 			</div>
 		`;
-		
-		document.body.appendChild(overlay);
-		this.overlays.add(overlay);
-
 		return overlay;
 	}
 
-	public showWaiting(): HTMLElement {
-		const overlay = document.createElement('div');
-		overlay.className = 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-40';
-		overlay.innerHTML = `
-			<div class="bg-gradient-to-br from-[#0C154D] to-[#1a1f4d] border-2 border-cyan-400 rounded-2xl p-12 text-center max-w-lg shadow-2xl animate-fade-in">
-				<div class="text-6xl mb-6 animate-pulse">
-					⏳
-				</div>
-				<h2 class="text-4xl font-bold mb-4 text-cyan-400">Waiting for Players</h2>
-				<p class="text-xl text-white/80">Connecting to game server...</p>
-				<div class="mt-8 flex justify-center gap-2">
-					<div class="w-3 h-3 bg-cyan-400 rounded-full animate-pulse" style="animation-delay: 0s"></div>
-					<div class="w-3 h-3 bg-cyan-400 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
-					<div class="w-3 h-3 bg-cyan-400 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
-				</div>
-			</div>
-		`;
-		
-		document.body.appendChild(overlay);
-		this.overlays.add(overlay);
+	private updateSkillOverlay(side: 'left' | 'right' | 'spectator', state: Game3DState | null): void {
+		if (!state) return;
+		const isBlackout = side === 'left' ? state.powerUpState.blackoutLeft : state.powerUpState.blackoutRight;
+		if (isBlackout) return;
+		const skillState = side === 'left' ? state.skillStates.left : state.skillStates.right;
+		const skillType = side === 'left' ? state.selectedSkills.left : state.skillStates.right;
+		const cooldown = skillType === 'smash' ? 3 : 5;
+		const progress = skillState.cooldownRemaining > 0
+			? Math.max(0, Math.min(1, 1 - skillState.cooldownRemaining / cooldown))
+			: 1;
+		const currentLoader = document.querySelector('.skillLoader') as HTMLElement;
+		if (currentLoader) {
+			const step = Math.floor(progress * 6);
+			let backgroundSize: string = '';
+			const color = step == 6 ? '#00e676': '#ffcc00'
+			switch (step) {
+				case 0:
+					backgroundSize = '0% 0%';
+					break;
+				case 1:
+					backgroundSize = '0% 0%';
+					break;
+				case 2:
+					backgroundSize = '20% 20%';
+					break;
+				case 3:
+					backgroundSize = '40% 40%';
+					break;
+				case 4:
+					backgroundSize = '60% 60%';
+					break;
+				case 5:
+					backgroundSize = '80% 80%';
+					break;
+				case 6:
+					backgroundSize = '100% 100%';
+					break;
+				default:
+					backgroundSize = '100% 100%';
+			}
+			currentLoader.style.setProperty('--skill-gradient-color', color);
+			currentLoader.style.backgroundSize = backgroundSize;
+		}
+	}
+	
+	public render(gameStatusInfo: GameStatusInfo, timeoutStatus: TimeoutStatus, side: 'left' | 'right' | 'spectator', state: Game3DState): void {
+		if (gameStatusInfo.isGameOver) {
+			this.clearOverlayById('generic-overlay');
+			return;
+		}
 
-		return overlay;
+		this.updateSkillOverlay(side, state);
+
+		let overlay: HTMLElement;
+		let text: string = '';
+		if ((gameStatusInfo.countdownValue ?? 0) > 0) {
+			if (this.previousCount === gameStatusInfo.countdownValue) return;
+			this.previousCount = gameStatusInfo.countdownValue ?? 0;
+			text = `${gameStatusInfo.countdownValue}`;
+		} else if (gameStatusInfo.isPaused) {
+			const iAmLeft = side === 'left';
+			const opponentDisconnected = iAmLeft ? timeoutStatus.rightActive : timeoutStatus.leftActive;
+			const opponentRemainingMs = iAmLeft ? timeoutStatus.rightRemainingMs : timeoutStatus.leftRemainingMs;
+			if (opponentDisconnected && opponentRemainingMs > 0) {
+				const secondsRemaining = Math.ceil(opponentRemainingMs / 1000);
+				text = `⚠️ <span style="color:#ff4d4f">Opponent disconnected.</span> <br> Forfeit in ${secondsRemaining}s`;
+			} else {
+				text = `Game Paused<br>Press P or ESC to resume`;
+			}
+		}
+		if (text.length > 0) {
+			overlay = this.generateOverlay(text);
+			if (!document.body.contains(overlay)) {
+				document.body.appendChild(overlay);
+			}
+		} else {
+			this.clearOverlayById('generic-overlay');
+			this.previousCount = 0;
+		}
 	}
 
-	public showCountdown(count: number): void {
-		const existing = document.getElementById('countdown-overlay');
+	private generateOverlay(text: string): HTMLElement {
+		const existing = document.getElementById('generic-overlay');
 		if (existing) {
-			existing.remove();
+			const genericText = existing.querySelector('.generic-text');
+			if (genericText) {
+				genericText.innerHTML = text;
+			}
+			return existing;
 		}
-
+		
 		const overlay = document.createElement('div');
-		overlay.id = 'countdown-overlay';
-		overlay.className = 'fixed inset-0 flex items-center justify-center z-50 pointer-events-none';
-		
-		const text = count > 0 ? count.toString() : 'GO!';
-		const color = count > 0 ? 'text-yellow-400' : 'text-green-400';
-		
+		overlay.id = 'generic-overlay';
+		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
 		overlay.innerHTML = `
-			<div class="text-[200px] font-bold ${color} animate-fade-in drop-shadow-2xl">
-				${text}
+			<div class="p-8 text-center max-w-md">
+				<h2 class="text-2xl font-bold text-white mb-4 generic-text">
+					${text}
+				</h2>
 			</div>
 		`;
-		
-		document.body.appendChild(overlay);
-
-		setTimeout(() => {
-			overlay.remove();
-		}, 1000);
+		return overlay;
 	}
-
-	public removeOverlay(overlay: HTMLElement): void {
-		if (overlay.parentElement) {
-			overlay.parentElement.removeChild(overlay);
+	
+	public clearOverlayById(overlayId: string): void {
+		const existing = document.getElementById(overlayId);
+		if (existing && existing.parentElement) {
+			existing.parentElement.removeChild(existing);
 		}
-		this.overlays.delete(overlay);
 	}
 
 	public clearAllOverlays(): void {
-		this.overlays.forEach(overlay => {
-			if (overlay.parentElement) {
-				overlay.parentElement.removeChild(overlay);
-			}
-		});
-		this.overlays.clear();
+		this.clearOverlayById('generic-overlay');
+		this.clearOverlayById('game-over-overlay');
+		this.clearOverlayById('tournament-game-over-overlay');
 	}
 
 	public dispose(): void {

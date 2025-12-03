@@ -1,62 +1,221 @@
 import { v4 as uuidv4 } from 'uuid'
 
 class CookieManager {
-    static setCookie(name: string, value: string | null, days: number = 7): void
+	static setCookie(name: string, value: string | null, days: number = 7): void
 	{
-        const expires = new Date();
-        expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
-        document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
-    }
+		const expires = new Date();
+		expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+		document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+	}
 
-    static getCookie(name: string): string | null
+	static getCookie(name: string): string | null
 	{
-        const nameEQ = name + "=";
-        const ca = document.cookie.split(';');
-        for (let i = 0; i < ca.length; i++)
+		const nameEQ = name + "=";
+		const ca = document.cookie.split(';');
+		for (let i = 0; i < ca.length; i++)
 		{
-            let c = ca[i];
-            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-        }
-        return null;
-    }
+			let c = ca[i];
+			while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+			if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+		}
+		return null;
+	}
 
-    static deleteCookie(name: string): void
+	static deleteCookie(name: string): void
 	{
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    }
+		document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+	}
 }
 
 export class SimpleAuth
 {
     private static readonly COOKIE_NAME = 'player_session';
     private static readonly USERNAME_KEY = 'player_username';
+    private static readonly AUTH_STATE_KEY = 'player_authenticated';
+    private static readonly AVATAR_KEY = 'player_avatar';
     private playerId: string | null;
     private username: string = 'Anon';
+    private isAuthenticated = false;
+    private avatarDataUrl: string | null = null;
+    private avatarPickerInitialized = false;
 
     constructor()
-	{
+{
         this.playerId = this.getOrCreatePlayerId();
         this.username = localStorage.getItem(SimpleAuth.USERNAME_KEY) || 'Anon';
+        this.isAuthenticated = localStorage.getItem(SimpleAuth.AUTH_STATE_KEY) === '1';
+        this.avatarDataUrl = localStorage.getItem(SimpleAuth.AVATAR_KEY);
+
+        if (typeof document !== 'undefined') {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    this.syncAuthDom();
+                    this.initAvatarPicker();
+                    this.validateSessionOnStartup();
+                });
+            } else {
+                this.syncAuthDom();
+                this.initAvatarPicker();
+                this.validateSessionOnStartup();
+            }
+        }
     }
 
-    setUsername(username: string): void {
+    /**
+     * Valide la session au démarrage de l'application
+     * Si la session n'est pas valide côté serveur, déconnecte l'utilisateur
+     */
+    private async validateSessionOnStartup(): Promise<void> {
+        // Ne valider que si l'utilisateur pense être connecté
+        if (!this.isAuthenticated) {
+            return;
+        }
+
+        try {
+            const hostRaw = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
+            const host = (hostRaw || '').replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
+            const protocol = window.location.protocol;
+
+            const response = await fetch(`${protocol}//${host}/userback/users/validate`, {
+                method: 'POST',
+                credentials: 'include' // Important pour envoyer les cookies
+            });
+
+            if (!response.ok) {
+                // Session invalide, déconnecter l'utilisateur
+                console.warn('Session validation failed, logging out');
+                this.forceLogout();
+            } else {
+                console.log('Session validated successfully');
+            }
+        } catch (error) {
+            console.error('Session validation error:', error);
+            // En cas d'erreur réseau, on garde l'utilisateur connecté
+            // pour ne pas le déconnecter si le serveur est temporairement indisponible
+        }
+    }
+
+    /**
+     * Déconnexion forcée (sans appel serveur, juste nettoyage local)
+     */
+    private forceLogout(): void {
+        this.clearStoredUsername();
+        this.setAvatar(null);
+        this.setAuthenticated(false);
+        // On garde le cookie player_session pour permettre une reconnexion
+    }
+
+    /**
+     * Vérifie une réponse fetch et déconnecte l'utilisateur si 401
+     * À appeler après chaque fetch pour gérer automatiquement les sessions expirées
+     */
+    public handleFetchResponse(response: Response): void {
+        if (response.status === 401) {
+            const sessionInvalid = response.headers.get('X-Session-Invalid') ||
+                                  response.url.includes('SESSION_INVALID') ||
+                                  response.url.includes('SESSION_MISSING');
+
+            if (sessionInvalid || this.isAuthenticated) {
+                console.warn('Session expired or invalid (401), logging out');
+                this.forceLogout();
+
+                // Rediriger vers la page de login
+                if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+                    window.location.href = '/login';
+                }
+            }
+        }
+    }
+
+    /**
+     * Wrapper pour fetch qui gère automatiquement les erreurs 401
+     */
+    public async fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+        // Toujours inclure les credentials pour envoyer les cookies
+        const fetchOptions: RequestInit = {
+            ...options,
+            credentials: 'include'
+        };
+
+        const response = await fetch(url, fetchOptions);
+        this.handleFetchResponse(response);
+        return response;
+    }
+
+    private updateStoredUsername(username: string): void {
         this.username = username;
         localStorage.setItem(SimpleAuth.USERNAME_KEY, username);
     }
 
+    private clearStoredUsername(): void {
+        this.username = 'Anon';
+        localStorage.removeItem(SimpleAuth.USERNAME_KEY);
+    }
+
+    private async setAvatar(dataUrl: string | null): Promise<void> {
+        this.avatarDataUrl = dataUrl;
+        
+        if (dataUrl) {
+            localStorage.setItem(SimpleAuth.AVATAR_KEY, dataUrl);
+            
+            if (this.username && this.username !== 'Anon') {
+                try {
+                    const hostRaw = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
+                    const host = (hostRaw || '').replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
+                    const protocol = window.location.protocol;
+
+                    await fetch(`${protocol}//${host}/userback/users/avatar`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            username: this.username, 
+                            avatar: dataUrl 
+                        })
+                    });
+                    console.log('Avatar synced with server');
+                } catch (e) {
+                    console.error('Failed to sync avatar', e);
+                }
+            }
+        } else {
+            localStorage.removeItem(SimpleAuth.AVATAR_KEY);
+        }
+        
+        this.syncAuthDom();
+    }
+
+    private notifyChange(): void {
+        this.syncAuthDom();
+    }
+
+    private setAuthenticated(state: boolean): void {
+        this.isAuthenticated = state;
+        localStorage.setItem(SimpleAuth.AUTH_STATE_KEY, state ? '1' : '0');
+        this.notifyChange();
+    }
+
+    setUsername(username: string): void {
+        this.updateStoredUsername(username);
+        this.notifyChange();
+    }
+
+    login(username: string): void {
+        this.updateStoredUsername(username);
+        this.setAuthenticated(true);
+    }
+
     private getOrCreatePlayerId(): string | null
-	{
+{
         let playerId = CookieManager.getCookie(SimpleAuth.COOKIE_NAME);
         
         if (!playerId)
-		{
+{
             playerId = uuidv4();
             CookieManager.setCookie(SimpleAuth.COOKIE_NAME, playerId, 30);
             console.log('New player ID created:', playerId);
         }
-		else
-		{
+else
+{
             console.log('Existing player ID found:', playerId);
         }
         
@@ -64,23 +223,112 @@ export class SimpleAuth
     }
 
     getPlayerId(): string | null
-	{
+{
         return this.playerId;
     }
 
     getUsername(): string {
-        return (this.username);
+        return this.username;
+    }
+
+    isLoggedIn(): boolean {
+        return this.isAuthenticated;
     }
 
     renewSession(): void
-	{
+{
         CookieManager.setCookie(SimpleAuth.COOKIE_NAME, this.playerId, 30);
     }
 
-    logout(): void
-	{
+    async logout(): Promise<void>
+{
+        // Appeler l'API pour supprimer la session côté serveur
+        try {
+            const hostRaw = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
+            const host = (hostRaw || '').replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
+            const protocol = window.location.protocol;
+
+            await fetch(`${protocol}//${host}/userback/users/logout`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            console.log('Session deleted on server');
+        } catch (error) {
+            console.error('Failed to logout on server:', error);
+        }
+
+        // Nettoyage local
         CookieManager.deleteCookie(SimpleAuth.COOKIE_NAME);
         this.playerId = uuidv4();
         CookieManager.setCookie(SimpleAuth.COOKIE_NAME, this.playerId, 30);
+        this.clearStoredUsername();
+        this.setAvatar(null);
+        this.setAuthenticated(false);
+    }
+
+    syncAuthDom(): void {
+        if (typeof document === 'undefined') {
+            return;
+        }
+
+        const username = this.username;
+
+        document.querySelectorAll<HTMLElement>('[data-auth-guest]').forEach((el) => {
+            if (this.isAuthenticated) {
+                el.classList.add('hidden');
+            } else {
+                el.classList.remove('hidden');
+            }
+        });
+
+        document.querySelectorAll<HTMLElement>('[data-auth-user]').forEach((el) => {
+            if (this.isAuthenticated) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        });
+
+        document.querySelectorAll<HTMLElement>('[data-auth-username]').forEach((el) => {
+            el.textContent = username;
+        });
+
+        const avatarSrc = this.avatarDataUrl || '/sprites/cat.gif';
+        document.querySelectorAll<HTMLImageElement>('[data-auth-avatar]').forEach((img) => {
+            img.src = avatarSrc;
+        });
+    }
+
+    private initAvatarPicker(): void {
+        if (this.avatarPickerInitialized || typeof document === 'undefined') return;
+        this.avatarPickerInitialized = true;
+
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.className = 'hidden';
+        input.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(input);
+
+        input.addEventListener('change', () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const result = reader.result;
+                if (typeof result === 'string') {
+                    this.setAvatar(result);
+                }
+            };
+            reader.readAsDataURL(file);
+            input.value = '';
+        });
+
+        document.addEventListener('click', (event) => {
+            const target = (event.target as HTMLElement | null)?.closest('[data-avatar-change]');
+            if (!target) return;
+            event.preventDefault();
+            input.click();
+        });
     }
 }

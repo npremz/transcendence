@@ -1,152 +1,10 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
+import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const WaitingRoomView: ViewFunction = () => {
-    return `
-        <!-- Fond avec grille animée -->
-        <div class="fixed inset-0 bg-black overflow-hidden">
-            <!-- Grille de fond -->
-            <div class="absolute inset-0" style="
-                background-image: 
-                    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-                background-size: 50px 50px;
-                animation: gridMove 20s linear infinite;
-            "></div>
-            
-            <style>
-                @keyframes gridMove {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(50px); }
-                }
-                
-                @keyframes neonPulse {
-                    0%, 100% { 
-                        text-shadow: 
-                            0 0 10px rgba(59, 130, 246, 0.8),
-                            0 0 20px rgba(59, 130, 246, 0.6),
-                            0 0 30px rgba(59, 130, 246, 0.4);
-                    }
-                    50% { 
-                        text-shadow: 
-                            0 0 20px rgba(59, 130, 246, 1),
-                            0 0 30px rgba(59, 130, 246, 0.8),
-                            0 0 40px rgba(59, 130, 246, 0.6);
-                    }
-                }
-                
-                @keyframes scanline {
-                    0% { transform: translateY(-100%); }
-                    100% { transform: translateY(100vh); }
-                }
-
-                @keyframes rotate {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-
-                @keyframes float {
-                    0%, 100% { transform: translateY(0px); }
-                    50% { transform: translateY(-20px); }
-                }
-
-                @keyframes ping {
-                    0% { transform: scale(1); opacity: 1; }
-                    75%, 100% { transform: scale(2); opacity: 0; }
-                }
-                
-                .pixel-font {
-                    font-family: 'Courier New', monospace;
-                    font-weight: bold;
-                    letter-spacing: 0.1em;
-                }
-                
-                .neon-border {
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    border: 3px solid rgba(59, 130, 246, 0.8);
-                }
-                
-                .neon-border:hover {
-                    box-shadow: 
-                        0 0 20px rgba(59, 130, 246, 0.8),
-                        inset 0 0 20px rgba(59, 130, 246, 0.3);
-                    border-color: rgba(59, 130, 246, 1);
-                }
-
-                .spinner {
-                    border: 4px solid rgba(59, 130, 246, 0.1);
-                    border-left-color: rgba(59, 130, 246, 1);
-                    border-radius: 50%;
-                    width: 120px;
-                    height: 120px;
-                    animation: rotate 1s linear infinite;
-                }
-
-                .pulse-ring {
-                    position: absolute;
-                    border: 4px solid rgba(59, 130, 246, 0.6);
-                    border-radius: 50%;
-                    animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
-                }
-
-                .player-card {
-                    transition: all 0.3s ease;
-                    background: rgba(15, 23, 42, 0.6);
-                    backdrop-filter: blur(10px);
-                }
-
-                .status-indicator {
-                    width: 12px;
-                    height: 12px;
-                    border-radius: 50%;
-                    background: #10b981;
-                    box-shadow: 0 0 10px #10b981;
-                    animation: neonPulse 2s ease-in-out infinite;
-                }
-            </style>
-            
-            <!-- Scanline effect -->
-            <div class="absolute inset-0 pointer-events-none opacity-10">
-                <div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
-            </div>
-
-            <!-- Particules flottantes -->
-            ${Array.from({length: 30}, (_, i) => `
-                <div 
-                    class="absolute bg-blue-400 rounded-full opacity-20"
-                    style="
-                        width: ${2 + Math.random() * 3}px;
-                        height: ${2 + Math.random() * 3}px;
-                        left: ${Math.random() * 100}%;
-                        top: ${Math.random() * 100}%;
-                        animation: float ${10 + Math.random() * 20}s ease-in-out ${Math.random() * 5}s infinite;
-                    "
-                ></div>
-            `).join('')}
-        </div>
-
-        <!-- Contenu principal -->
-        <div class="relative z-10 min-h-screen flex flex-col">
-            <!-- Header avec BackButton -->
-            <header class="flex justify-between items-center px-8 py-6">
-                <button 
-                    onclick="history.back()" 
-                    class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
-                    id="back-button"
-                >
-                    ← BACK
-                </button>
-                
-                <!-- Status indicator -->
-                <div class="flex items-center gap-3 neon-border bg-black/50 backdrop-blur-sm rounded-lg px-4 py-2">
-                    <div class="status-indicator"></div>
-                    <span class="pixel-font text-sm text-blue-300">SEARCHING</span>
-                </div>
-            </header>
-
-            <!-- Zone centrale -->
+    const content = `
             <div class="flex-1 flex items-center justify-center px-4 py-12">
                 <div class="w-full max-w-4xl">
                     
@@ -252,18 +110,20 @@ export const WaitingRoomView: ViewFunction = () => {
                     </div>
                 </div>
             </div>
-
-            <!-- Footer -->
-            <footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
-                <p>© 2025 PONG - SKILL ISSUE</p>
-            </footer>
-        </div>
     `;
+
+    return Layout.render(content, {
+        customHeader: Layout.renderWaitingRoomHeader(),
+        showFooter: true,
+        showParticles: true,
+        particleCount: 30
+    });
 };
 
 export const waitingRoomLogic = (): CleanupFunction => {
     console.log('🎮 WaitingRoomView: Initializing...');
 
+	const cleanupManager = createCleanupManager();
     let pollInterval: number | null = null;
     let roomId: string | null = null;
     const skill = (sessionStorage.getItem('selectedSkill') as 'smash' | 'dash' | null) || 'smash';
@@ -277,8 +137,17 @@ export const waitingRoomLogic = (): CleanupFunction => {
     gsap.set('#status-container', { y: 50, opacity: 0 });
     gsap.set('#cancel-btn', { y: 50, opacity: 0 });
 
+	// Enregistrer les cibles GSAP pour cleanup
+	cleanupManager.registerGsapTarget('#waiting-title');
+	cleanupManager.registerGsapTarget('#waiting-subtitle');
+	cleanupManager.registerGsapTarget('#search-animation');
+	cleanupManager.registerGsapTarget('#your-card');
+	cleanupManager.registerGsapTarget('#opponent-card');
+	cleanupManager.registerGsapTarget('#status-container');
+	cleanupManager.registerGsapTarget('#cancel-btn');
+
     // ✅ PUIS animer vers l'état final
-    setTimeout(() => {
+    cleanupManager.setTimeout(() => {
         gsap.to('#waiting-title', {
             scale: 1,
             opacity: 1,
@@ -450,7 +319,7 @@ export const waitingRoomLogic = (): CleanupFunction => {
     };
 
     // Démarrer après un court délai
-    setTimeout(() => {
+    cleanupManager.setTimeout(() => {
         updatePlayerInfo();
         handleJoin();
     }, 100);
@@ -459,14 +328,16 @@ export const waitingRoomLogic = (): CleanupFunction => {
     const cancelBtn = document.getElementById('cancel-btn');
     if (cancelBtn) {
         cancelBtn.addEventListener('click', handleCancel);
+		cleanupManager.onCleanup(() => {
+			cancelBtn.removeEventListener('click', handleCancel);
+		});
     }
 
+	// Enregistrer le cleanup du polling
+	cleanupManager.onCleanup(() => {
+		stopPolling();
+	});
+
     // Cleanup
-    return (): void => {
-        console.log('🧹 WaitingRoomView: Cleaning up...');
-        stopPolling();
-        if (cancelBtn) {
-            cancelBtn.removeEventListener('click', handleCancel);
-        }
-    };
+    return cleanupManager.getCleanupFunction();
 };

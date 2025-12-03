@@ -19,11 +19,11 @@ logs-front:
 logs-nginx:
 	docker exec -it nginx tail -f /var/log/nginx/access.log
 
-logs-chatback:
-	$(DC) logs -f chatback
-
 logs-gameback:
 	$(DC) logs -f gameback
+
+logs-userback:
+	$(DC) logs -f userback
 
 logs-quickplay:
 	$(DC) logs -f quickplayback

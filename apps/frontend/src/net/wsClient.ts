@@ -125,6 +125,11 @@ export class WSClient {
 		this.ws?.send(JSON.stringify({ type: 'input', up, down }));
 	}
 
+	sendReady() {
+		console.log('WSClient: Sending ready state to server');
+		this.ws?.send(JSON.stringify({ type: 'ready' }));
+	}
+
 	pause() {
 		this.ws?.send(JSON.stringify({ type: 'pause' }));
 	}

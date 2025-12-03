@@ -1,0 +1,323 @@
+/* ==================== ANIMATIONS GLOBALES ==================== */
+
+@keyframes gridMove {
+	0% { transform: translateY(0); }
+	100% { transform: translateY(50px); }
+}
+
+@keyframes neonPulse {
+	0%, 100% {
+		text-shadow:
+			0 0 10px rgba(59, 130, 246, 0.8),
+			0 0 20px rgba(59, 130, 246, 0.6),
+			0 0 30px rgba(59, 130, 246, 0.4);
+	}
+	50% {
+		text-shadow:
+			0 0 20px rgba(59, 130, 246, 1),
+			0 0 30px rgba(59, 130, 246, 0.8),
+			0 0 40px rgba(59, 130, 246, 0.6);
+	}
+}
+
+@keyframes scanline {
+	0% { transform: translateY(-100%); }
+	100% { transform: translateY(100vh); }
+}
+
+@keyframes rotate {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+@keyframes float {
+	0%, 100% { transform: translateY(0px); }
+	50% { transform: translateY(-20px); }
+}
+
+@keyframes ping {
+	0% { transform: scale(1); opacity: 1; }
+	75%, 100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes emphasizeTextPulse {
+	0%, 100% {
+		text-shadow: 0 0 8px #ff0a0a88, 0 0 16px #ff0a0a44;
+	}
+	50% {
+		text-shadow: 0 0 16px #ff0a0a, 0 0 32px #ff0a0a88;
+	}
+}
+
+/* ==================== TYPOGRAPHIE ==================== */
+
+.pixel-font {
+	font-family: 'Courier New', monospace;
+	font-weight: bold;
+	letter-spacing: 0.1em;
+}
+
+ /* ==================== GAME HUD ==================== */
+
+.game-hud {
+	background: rgba(4, 7, 26, 0.85);
+	backdrop-filter: blur(10px);
+}
+
+/* ==================== EFFETS NEON ==================== */
+
+.neon-border {
+	box-shadow:
+		0 0 10px rgba(59, 130, 246, 0.5),
+		inset 0 0 10px rgba(59, 130, 246, 0.2);
+	border: 3px solid rgba(59, 130, 246, 0.8);
+}
+
+.neon-border:hover {
+	box-shadow:
+		0 0 20px rgba(59, 130, 246, 0.8),
+		inset 0 0 20px rgba(59, 130, 246, 0.3);
+	border-color: rgba(59, 130, 246, 1);
+}
+
+.neon-border-red {
+	box-shadow: 
+		0 0 10px rgba(239, 68, 68, 0.5),
+		inset 0 0 10px rgba(239, 68, 68, 0.2);
+	border: 3px solid rgba(239, 68, 68, 0.8);
+}
+
+/* ==================== FORMULAIRES ==================== */
+
+.neon-input {
+	background: rgba(15, 23, 42, 0.6);
+	border: 2px solid rgba(59, 130, 246, 0.5);
+	color: #60A5FA;
+	transition: all 0.3s ease;
+}
+
+.neon-input:focus {
+	outline: none;
+	border-color: rgba(59, 130, 246, 1);
+	box-shadow:
+		0 0 10px rgba(59, 130, 246, 0.5),
+		inset 0 0 10px rgba(59, 130, 246, 0.2);
+	background: rgba(15, 23, 42, 0.8);
+}
+
+.neon-input::placeholder {
+	color: rgba(96, 165, 250, 0.4);
+}
+
+.neon-input.error {
+	border-color: rgba(239, 68, 68, 0.8);
+	box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+/* ==================== CARTES ==================== */
+
+.game-card {
+	transition: all 0.3s ease;
+	background: rgba(15, 23, 42, 0.8);
+	backdrop-filter: blur(10px);
+}
+
+.game-card:hover {
+	transform: translateY(-10px) scale(1.02);
+	background: rgba(30, 41, 59, 0.9);
+}
+
+.skill-card {
+	transition: all 0.3s ease;
+	background: rgba(15, 23, 42, 0.6);
+	backdrop-filter: blur(10px);
+	cursor: pointer;
+	min-height: 320px;
+	display: flex;
+	flex-direction: column;
+}
+
+.skill-card:hover {
+	transform: translateY(-5px);
+	background: rgba(30, 41, 59, 0.8);
+}
+
+.skill-card.selected {
+	background: rgba(59, 130, 246, 0.2);
+	border-color: rgba(59, 130, 246, 1);
+	box-shadow:
+		0 0 20px rgba(59, 130, 246, 0.6),
+		inset 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+.tournament-card {
+	transition: all 0.3s ease;
+	background: rgba(15, 23, 42, 0.6);
+	backdrop-filter: blur(10px);
+	cursor: pointer;
+}
+
+.tournament-card:hover:not(.disabled) {
+	transform: translateY(-5px) scale(1.02);
+	background: rgba(30, 41, 59, 0.8);
+}
+
+.tournament-card.disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.player-card {
+	transition: all 0.3s ease;
+	background: rgba(15, 23, 42, 0.6);
+	backdrop-filter: blur(10px);
+}
+
+/* ==================== BOUTONS ==================== */
+
+.mode-button {
+	transition: all 0.3s ease;
+	background: rgba(15, 23, 42, 0.6);
+	backdrop-filter: blur(10px);
+}
+
+.mode-button:hover:not(:disabled) {
+	transform: translateY(-3px);
+	background: rgba(30, 41, 59, 0.8);
+}
+
+.mode-button:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.action-button {
+	transition: all 0.2s ease;
+	position: relative;
+	overflow: hidden;
+}
+
+.action-button::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 0;
+	height: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.1);
+	transform: translate(-50%, -50%);
+	transition: width 0.6s, height 0.6s;
+}
+
+.action-button:hover::before {
+	width: 300px;
+	height: 300px;
+}
+
+.action-button:active {
+	transform: scale(0.95);
+}
+
+.forfeit-button:hover {
+	box-shadow: 
+		0 0 20px rgba(239, 68, 68, 0.6),
+		inset 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+/* ==================== SWITCH TOGGLE ==================== */
+
+.switch-button {
+	background: rgba(15, 23, 42, 0.6);
+	padding-left: 5px;
+	padding-right: 52px;
+	padding-top: 3px;
+	padding-bottom: 3px;
+}
+
+.switch-button:before{
+	content: "3D";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	width: 60px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 3;
+	pointer-events: none;
+}
+
+.switch-button-checkbox:checked + .switch-button-label:before {
+	transform: translateX(47px);
+	transition: transform 300ms linear;
+}
+
+.switch-button-label:before {
+	content: "";
+	background: rgba(59, 130, 246, 0.2);
+	height: 100%;
+	width: 100%;
+	position: absolute;
+	left: 0;
+	top: 0;
+	transform: translateX(0);
+	transition: transform 300ms;
+	border-radius: 6px;
+	border: 3px solid rgba(59, 130, 246, 0.8);
+}
+
+/* ==================== INDICATEURS ==================== */
+
+.spinner {
+	border: 4px solid rgba(59, 130, 246, 0.1);
+	border-left-color: rgba(59, 130, 246, 1);
+	border-radius: 50%;
+	width: 120px;
+	height: 120px;
+	animation: rotate 1s linear infinite;
+}
+
+.pulse-ring {
+	position: absolute;
+	border: 4px solid rgba(59, 130, 246, 0.6);
+	border-radius: 50%;
+	animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.status-indicator {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: #10b981;
+	box-shadow: 0 0 10px #10b981;
+	animation: neonPulse 2s ease-in-out infinite;
+}
+
+/* ==================== MODALS ==================== */
+
+.countdown-modal {
+	backdrop-filter: blur(10px);
+}
+
+/* ==================== GAME 3D ==================== */
+:root {
+	--skill-gradient-color: #00e676;
+}
+
+.skillLoader {
+	width: 120px;
+	height: 60px;
+	border-radius: 200px 200px 0 0;
+	-webkit-mask: repeating-radial-gradient(farthest-side at bottom ,#0000 0,#000 1px 12%,#0000 calc(12% + 1px) 20%);
+	background: radial-gradient(farthest-side at bottom, var(--skill-gradient-color) 0 95%,#0000 0) bottom/0% 0% no-repeat #ddd;
+	background-size: 100% 100%;
+}
+
+.emphasize-side-player {
+	color: #ff0a0a;
+	font-weight: bold;
+	text-shadow: 0 0 8px #ff0a0a88, 0 0 16px #ff0a0a44;
+	animation: emphasizeTextPulse 2s infinite;
+}

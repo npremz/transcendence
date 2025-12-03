@@ -1,103 +1,10 @@
 import type { ViewFunction, CleanupFunction } from "../router/types";
 import { gsap } from "gsap";
+import { Layout } from "../components/Layout";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 export const HomeView: ViewFunction = () => {
-    return `
-        <!-- Fond avec grille animée -->
-        <div class="fixed inset-0 bg-black overflow-hidden">
-            <!-- Grille de fond -->
-            <div class="absolute inset-0" style="
-                background-image: 
-                    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-                background-size: 50px 50px;
-                animation: gridMove 20s linear infinite;
-            "></div>
-            
-            <style>
-                @keyframes gridMove {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(50px); }
-                }
-                
-                @keyframes neonPulse {
-                    0%, 100% { 
-                        text-shadow: 
-                            0 0 10px rgba(59, 130, 246, 0.8),
-                            0 0 20px rgba(59, 130, 246, 0.6),
-                            0 0 30px rgba(59, 130, 246, 0.4);
-                    }
-                    50% { 
-                        text-shadow: 
-                            0 0 20px rgba(59, 130, 246, 1),
-                            0 0 30px rgba(59, 130, 246, 0.8),
-                            0 0 40px rgba(59, 130, 246, 0.6);
-                    }
-                }
-                
-                @keyframes scanline {
-                    0% { transform: translateY(-100%); }
-                    100% { transform: translateY(100vh); }
-                }
-                
-                .pixel-font {
-                    font-family: 'Courier New', monospace;
-                    font-weight: bold;
-                    letter-spacing: 0.1em;
-                }
-                
-                .neon-border {
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    border: 3px solid rgba(59, 130, 246, 0.8);
-                }
-                
-                .neon-border:hover {
-                    box-shadow: 
-                        0 0 20px rgba(59, 130, 246, 0.8),
-                        inset 0 0 20px rgba(59, 130, 246, 0.3);
-                    border-color: rgba(59, 130, 246, 1);
-                }
-                
-                .game-card {
-                    transition: all 0.3s ease;
-                    background: rgba(15, 23, 42, 0.8);
-                    backdrop-filter: blur(10px);
-                }
-                
-                .game-card:hover {
-                    transform: translateY(-10px) scale(1.02);
-                    background: rgba(30, 41, 59, 0.9);
-                }
-            </style>
-            
-            <!-- Scanline effect -->
-            <div class="absolute inset-0 pointer-events-none opacity-10">
-                <div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
-            </div>
-        </div>
-
-        <!-- Contenu principal -->
-        <div class="relative z-10 min-h-screen flex flex-col">
-            <!-- Header avec PONG et bouton connexion -->
-            <header class="flex justify-between items-center px-8 py-6">
-                <!-- Logo PONG -->
-                <div class="pixel-font text-4xl md:text-5xl text-blue-400" style="animation: neonPulse 2s ease-in-out infinite;">
-                    PONG
-                </div>
-                
-                <!-- Bouton Connexion -->
-                <a href="/login" 
-                   class="pixel-font bg-blue-500 opacity-80 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
-                    <span>SIGN IN</span>
-                </a>
-            </header>
-
-            <!-- Ligne horizontale néon -->
-            <div class="w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50"></div>
-
-            <!-- Zone centrale -->
+    const content = `
             <div class="flex-1 flex flex-col items-center justify-center px-4 py-12">
                 <!-- Titre principal -->
                 <div class="text-center mb-8">
@@ -128,7 +35,7 @@ export const HomeView: ViewFunction = () => {
                 </div>
 
                 <!-- Cartes de jeu -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl mb-12">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl mb-12">
                     <!-- QuickPlay Card -->
                     <a href="/play" 
                        class="game-card group relative p-8 md:p-12 neon-border hover:cursor-pointer"
@@ -178,6 +85,27 @@ export const HomeView: ViewFunction = () => {
                         <div class="absolute top-4 left-4 text-blue-500 text-2xl opacity-80">←</div>
                         <div class="absolute bottom-4 right-4 text-blue-500 text-2xl opacity-80">→</div>
                     </a>
+
+                    <!-- Dashboard Card -->
+                    <a href="/dashboard" 
+                       class="game-card group relative p-8 md:p-12 neon-border hover:cursor-pointer"
+                       id="dashboard-card"
+                       style="opacity: 0; transform: translateY(100px);">
+                        <div class="text-6xl md:text-7xl mb-6 text-center">
+                            🧭
+                        </div>
+                        
+                        <h2 class="pixel-font text-2xl md:text-3xl text-purple-400 text-center opacity-80 mb-4">
+                            DASHBOARD
+                        </h2>
+                        
+                        <p class="pixel-font text-sm text-blue-300 text-center opacity-80">
+                            Stats, parties récentes et profil joueur
+                        </p>
+                        
+                        <div class="absolute top-4 left-4 text-purple-400 text-2xl opacity-80">⇠</div>
+                        <div class="absolute bottom-4 right-4 text-purple-400 text-2xl opacity-80">⇢</div>
+                    </a>
                 </div>
 
                 <!-- Leaderboard -->
@@ -191,17 +119,28 @@ export const HomeView: ViewFunction = () => {
                         <p class="pixel-font text-sm text-blue-300 text-center py-4">Loading...</p>
                     </div>
                 </div>
+				<div class="mt-8">
+					<a href="/blockchain" class="pixel-font text-purple-400 hover:text-purple-300 text-sm flex items-center justify-center gap-2 transition-colors">
+						<span>VIEW BLOCKCHAIN REGISTRY</span>
+					</a>
+				</div>
             </div>
-
-            <!-- Footer -->
-            <footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
-                <p>© 2025 PONG - SKILL ISSUE</p>
-            </footer>
-        </div>
     `;
+
+    return Layout.render(content, {
+        customHeader: Layout.renderHomeHeader(),
+        showFooter: true,
+        showBackButton: false
+    });
 };
 
 export const homeLogic = (): CleanupFunction => {
+	const cleanupManager = createCleanupManager();
+	cleanupManager.registerGsapTarget('#main-title');
+	cleanupManager.registerGsapTarget('#quickplay-card');
+	cleanupManager.registerGsapTarget('#tournament-card');
+	cleanupManager.registerGsapTarget('#dashboard-card');
+
     // Animation d'entrée du titre
     gsap.to('#main-title', {
         scale: 1,
@@ -235,6 +174,14 @@ export const homeLogic = (): CleanupFunction => {
         delay: 0.8,
         ease: 'power3.out'
     });
+
+	gsap.to('#dashboard-card', {
+		y: 0,
+		opacity: 1,
+		duration: 1,
+		delay: 1.1,
+		ease: 'power3.out'
+	});
 
     // Animation des chiffres (compteur)
     const animateCounter = (id: string, target: number) => {
@@ -326,7 +273,7 @@ export const homeLogic = (): CleanupFunction => {
     loadLeaderboard();
 
     // Rafraîchir les stats toutes les 30 secondes
-    const statsInterval = setInterval(loadGlobalStats, 30000);
+    const statsInterval = cleanupManager.setInterval(loadGlobalStats, 30000);
 
     // Arrêter le polling si l'utilisateur quitte l'onglet
     const handleVisibilityChange = () => {
@@ -336,12 +283,12 @@ export const homeLogic = (): CleanupFunction => {
             loadGlobalStats(); // Refresh immédiat au retour
         }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+	cleanupManager.onCleanup(() => {
+		document.removeEventListener('visibilitychange', handleVisibilityChange);
+	});
 
     // Cleanup
-    return () => {
-        clearInterval(statsInterval);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    return cleanupManager.getCleanupFunction();
 };

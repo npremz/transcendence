@@ -6,6 +6,7 @@ export type ClientMessage =
 	| {type: 'skill'}
 	| {type: 'forfeit'}
 	| {type: 'logIn'; id: string}
+	| {type: 'ready'}
     | {type: 'debug'; action: 'activate_powerup'; payload: {kind: 'split' | 'blackout' | 'blackhole'}}
     | {type: 'debug'; action: 'clear_powerups'}
     | {type: 'debug'; action: 'score_change'; payload: {side: 'left' | 'right'; amount: number}}

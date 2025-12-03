@@ -2,12 +2,20 @@ import type { NavigationGuard } from './types';
 
 export const roomExistsGuard: NavigationGuard = async (to, from, params) => {
     const roomId = params?.roomId;
-    
+
     if (!roomId)
 	{
         console.log('No room id provided');
         return '/';
     }
+
+	// Check if this is a local tournament match
+	const isLocalTournament = sessionStorage.getItem('localTournamentMatch');
+	const localGameConfig = sessionStorage.getItem('localGameConfig');
+	if (isLocalTournament && localGameConfig && roomId.startsWith('local-tournament-')) {
+		console.log('Local tournament match detected, allowing navigation');
+		return true;
+	}
 
 	const cachedWsUrl = sessionStorage.getItem('gameWsURL');
     if (cachedWsUrl && cachedWsUrl.includes(roomId)) {
@@ -40,12 +48,18 @@ export const roomExistsGuard: NavigationGuard = async (to, from, params) => {
             return true;
         } else if (data.status === 'waiting') {
             console.log('Room is waiting for players, redirection');
+            sessionStorage.removeItem('gameWsURL');
+            sessionStorage.removeItem('currentGameRoute');
             return '/play';
         } else if (data.status === 'finished') {
             console.log('Room is finished, redirection');
+            sessionStorage.removeItem('gameWsURL');
+            sessionStorage.removeItem('currentGameRoute');
             return '/play';
         } else {
             console.log('Invalid room status:', data.status);
+            sessionStorage.removeItem('gameWsURL');
+            sessionStorage.removeItem('currentGameRoute');
             return '/play';
         }
     } catch (err) {
@@ -76,6 +90,38 @@ export const tournamentExistsGuard: NavigationGuard = async (to, from, params) =
         console.error('Error while fetching tournament:', err);
         return '/tournament';
     }
+};
+
+export const authGuard: NavigationGuard = (to, from, params) => {
+    if (typeof window === 'undefined') {
+        return true;
+    }
+
+    const simpleAuth = (window as any).simpleAuth;
+
+    if (!simpleAuth || !simpleAuth.isLoggedIn()) {
+        console.log('Navigation blocked: user not authenticated');
+        return '/login';
+    }
+
+    return true;
+};
+
+export const noActiveGameGuard: NavigationGuard = (to, from, params) => {
+    if (typeof window === 'undefined') {
+        return true;
+    }
+
+    const gameWsURL = sessionStorage.getItem('gameWsURL');
+    const currentGameRoute = sessionStorage.getItem('currentGameRoute');
+
+    if (gameWsURL && currentGameRoute) {
+        console.log('Navigation blocked: player already in a game');
+        console.log('Redirecting to:', currentGameRoute);
+        return currentGameRoute;
+    }
+
+    return true;
 };
 
 export const logGuard: NavigationGuard = (to, from, params) => {

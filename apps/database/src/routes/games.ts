@@ -4,7 +4,6 @@ interface Game {
 	id: string;
 	room_id: string;
 	game_type: 'quickplay' | 'tournament';
-	is_3d?: boolean;
 	tournament_id?: string;
 	tournament_round?: number;
 	match_position?: number;
@@ -28,7 +27,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 		id: string;
 		room_id: string;
 		game_type: 'quickplay' | 'tournament';
-		is_3d?: boolean;
 		player_left_id: string;
 		player_right_id: string;
 		tournament_id?: string;
@@ -41,7 +39,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 				id,
 				room_id,
 				game_type,
-				is_3d,
 				player_left_id,
 				player_right_id,
 				tournament_id,
@@ -60,11 +57,11 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 			return new Promise((resolve) => {
 				fastify.db.run(
 					`INSERT INTO games (
-						id, room_id, game_type, is_3d, player_left_id, player_right_id,
+						id, room_id, game_type, player_left_id, player_right_id,
 						tournament_id, tournament_round, match_position, status
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'waiting')`,
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting')`,
 					[
-						id, room_id, game_type, is_3d ? 1 : 0, player_left_id, player_right_id,
+						id, room_id, game_type, player_left_id, player_right_id,
 						tournament_id || null, tournament_round || null, match_position || null
 					],
 					function(err)
@@ -332,7 +329,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 			const { id } = request.params;
 
 			return new Promise((resolve) => {
-				// Récupérer les infos de base de la partie
 				fastify.db.get(
 					`SELECT g.*,
 						u1.username as player_left_username,
@@ -358,7 +354,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 							}));
 						}
 
-						// Récupérer les stats des joueurs
 						fastify.db.all(
 							`SELECT gs.*, u.username
 							FROM game_stats gs
@@ -373,7 +368,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 									}));
 								}
 
-								// Récupérer les skills utilisés
 								fastify.db.all(
 									`SELECT su.*, u.username
 									FROM skills_used su
@@ -389,7 +383,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 											}));
 										}
 
-										// Récupérer les power-ups utilisés
 										fastify.db.all(
 											`SELECT pu.*, u.username
 											FROM power_ups_used pu
@@ -405,7 +398,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 													}));
 												}
 
-												// Récupérer les goals marqués
 												fastify.db.all(
 													`SELECT * FROM goals_scored
 													WHERE game_id = ?
@@ -419,7 +411,6 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 															}));
 														}
 
-														// Construire la réponse complète
 														resolve(reply.send({
 															success: true,
 															game: {

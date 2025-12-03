@@ -28,7 +28,10 @@ class GameSession {
 	private roles = new Map<WebSocket, Role>();
 	private leftCtrl?: WebSocket;
 	private rightCtrl?: WebSocket;
-    
+	private leftReady: boolean = false;
+	private rightReady: boolean = false;
+	private gameStarted: boolean = false;
+
     private expected: {left?: Player; right?: Player} = {};
 
 	private leftStats: GameStats = {
@@ -71,7 +74,10 @@ class GameSession {
 	constructor(private readonly roomId?: string, log?: FastifyBaseLogger) {
 		this.startLoops();
 		this.log = log;
-		
+
+		// Start the game in paused state, waiting for both players to be ready
+		this.world.state.isPaused = true;
+
 		this.world.setCallbacks({
 			onPaddleHit: (side) => {
 				const stats = side === 'left' ? this.leftStats : this.rightStats;
@@ -163,14 +169,23 @@ class GameSession {
 		}
 		if (this.expected.left?.id || this.expected.right?.id) 
         {
-            if (playerId && this.expected.left?.id === playerId && !this.leftCtrl)
+            if (playerId && this.expected.left?.id === playerId)
             {
+                if (this.leftCtrl && this.leftCtrl !== ws) {
+                    this.roles.set(this.leftCtrl, 'spectator'); 
+                    this.log?.info({ roomId: this.roomId }, 'Left player hot-reconnected, overwriting old socket');
+                }
                 this.leftCtrl = ws;
                 this.leftCtrlDisconnectedAt = null;
                 return ('left');
             }
-            if (playerId && this.expected.right?.id === playerId && !this.rightCtrl)
+            
+            if (playerId && this.expected.right?.id === playerId)
             {
+                if (this.rightCtrl && this.rightCtrl !== ws) {
+                    this.roles.set(this.rightCtrl, 'spectator');
+                    this.log?.info({ roomId: this.roomId }, 'Right player hot-reconnected, overwriting old socket');
+                }
                 this.rightCtrl = ws;
                 this.rightCtrlDisconnectedAt = null;
                 return ('right');
@@ -293,9 +308,10 @@ class GameSession {
                     this.log?.info({ roomId: this.roomId, assRole, clients: this.clients.size, playerId: msg.id }, 'client connected');
 
                     const haveBoth = !!this.leftCtrl && !!this.rightCtrl;
-                    if (haveBoth && !this.hadBothCtrl) {
+                    // If game has already started and both players are now connected, start countdown before resuming
+                    if (this.gameStarted && haveBoth && this.world.state.isPaused && this.world.state.countdownValue === 0) {
                         this.world.startCountdown();
-                        this.notifyGameStarted();
+                        this.log?.info({ roomId: this.roomId }, 'Player reconnected - starting countdown before resuming game');
                     }
                     this.hadBothCtrl = haveBoth;
                 }
@@ -303,15 +319,40 @@ class GameSession {
                     this.send(ws, { type: 'error', message: 'no player expected for this room.' })
                 }
                 break;
+            case 'ready': {
+                const role = this.roles.get(ws);
+                if (role === 'left' && ws === this.leftCtrl) {
+                    this.leftReady = true;
+                    this.log?.info({ roomId: this.roomId, side: 'left' }, 'Player ready');
+                } else if (role === 'right' && ws === this.rightCtrl) {
+                    this.rightReady = true;
+                    this.log?.info({ roomId: this.roomId, side: 'right' }, 'Player ready');
+                } else {
+                    this.send(ws, { type: 'error', message: 'Only players can signal ready' });
+                    break;
+                }
+
+                // Start the game only when both players are connected AND ready
+                const bothReady = this.leftReady && this.rightReady;
+                const bothConnected = !!this.leftCtrl && !!this.rightCtrl;
+                if (bothReady && bothConnected && !this.gameStarted) {
+                    this.world.startCountdown();
+                    this.notifyGameStarted();
+                    this.gameStarted = true;
+                    this.hadBothCtrl = true;
+                    this.log?.info({ roomId: this.roomId }, 'Both players ready - starting game');
+                }
+                break;
+            }
             case 'ping':
                 this.send(ws, { type: 'pong', t: msg.t });
                 break;
             case 'debug': {
-                const allowDebug = (process.env.ALLOW_DEBUG === '1');
-                if (!allowDebug) {
-                    this.send(ws, { type: 'error', message: 'Debug disabled on server' });
-                    break;
-                }
+                //const allowDebug = (process.env.ALLOW_DEBUG === '1');
+                //if (!allowDebug) {
+                 //   this.send(ws, { type: 'error', message: 'Debug disabled on server' });
+                 //   break;
+                //}
 
                 try {
                     switch (msg.action) {
@@ -358,12 +399,20 @@ class GameSession {
 		if (this.leftCtrl === ws)
 		{
 			this.leftCtrl = undefined;
+			// Only reset ready flag if game hasn't started yet
+			if (!this.gameStarted) {
+				this.leftReady = false;
+			}
             this.leftCtrlDisconnectedAt = Date.now();
             this.log?.info({roomId: this.roomId, role}, 'client disconnected starting 30s timeout');
 		}
 		if (this.rightCtrl === ws)
 		{
 			this.rightCtrl = undefined;
+			// Only reset ready flag if game hasn't started yet
+			if (!this.gameStarted) {
+				this.rightReady = false;
+			}
             this.rightCtrlDisconnectedAt = Date.now();
             this.log?.info({roomId: this.roomId, role}, 'client disconnected starting 30s timeout');
 		}
@@ -384,8 +433,7 @@ class GameSession {
         
         try
         {
-            const host = process.env.VITE_HOST || 'localhost:8443';
-            const url = `https://${host}/gamedb/games/room/${this.roomId}/start`;
+            const url = `http://database:3020/games/room/${this.roomId}/start`;
             
             await fetch(url, {
                 method: 'PATCH',
@@ -408,21 +456,14 @@ class GameSession {
 		if (!player) return;
 
 		try {
-			const host = process.env.VITE_HOST || 'localhost:8443';
-			const isDevelopment = process.env.NODE_ENV === 'development';
-			const agent = isDevelopment ? new (await import('https')).Agent({ rejectUnauthorized: false }) : undefined;
-
-			const gameResponse = await fetch(`https://${host}/gamedb/games/room/${this.roomId}`, {
-				// @ts-ignore
-				agent
-			});
+			const gameResponse = await fetch(`http://database:3020/games/room/${this.roomId}`);
 			const gameData = await gameResponse.json();
 			
 			if (!gameData.success || !gameData.game?.id) {
 				return;
 			}
 
-			await fetch(`https://${host}/gamedb/power-ups`, {
+			await fetch(`http://database:3020/power-ups`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -431,9 +472,7 @@ class GameSession {
 					power_up_type: type,
 					collected_at_game_time: gameTime,
 					activated_at_game_time: gameTime
-				}),
-				// @ts-ignore
-				agent
+				})
 			});
 
 			this.log?.info({ gameId: gameData.game.id, playerId: player.id, type, gameTime }, 'Power-up saved');
@@ -446,14 +485,7 @@ class GameSession {
 		if (!this.roomId) return;
 
 		try {
-			const host = process.env.VITE_HOST || 'localhost:8443';
-			const isDevelopment = process.env.NODE_ENV === 'development';
-			const agent = isDevelopment ? new (await import('https')).Agent({ rejectUnauthorized: false }) : undefined;
-
-			const gameResponse = await fetch(`https://${host}/gamedb/games/room/${this.roomId}`, {
-				// @ts-ignore
-				agent
-			});
+			const gameResponse = await fetch(`http://database:3020/games/room/${this.roomId}`);
 			const gameData = await gameResponse.json();
 			
 			if (!gameData.success || !gameData.game?.id) {
@@ -462,7 +494,7 @@ class GameSession {
 
 			const scoredAgainstSide = scorerSide === 'left' ? 'right' : 'left';
 
-			await fetch(`https://${host}/gamedb/goals`, {
+			await fetch(`http://database:3020/goals`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -471,9 +503,7 @@ class GameSession {
 					scored_against_side: scoredAgainstSide,
 					ball_y_position: ballYPosition,
 					scored_at_game_time: gameTime
-				}),
-				// @ts-ignore
-				agent
+				})
 			});
 
 			this.log?.info({ gameId: gameData.game.id, scorerSide, ballYPosition, gameTime }, 'Goal saved');
@@ -487,10 +517,6 @@ class GameSession {
 			return;
 		}
 
-		const host = process.env.VITE_HOST || 'localhost:8443';
-		const isDevelopment = process.env.NODE_ENV === 'development';
-		const agent = isDevelopment ? new (await import('https')).Agent({ rejectUnauthorized: false }) : undefined;
-
 		const savePlayerStats = async (side: 'left' | 'right') => {
 			const player = side === 'left' ? this.expected.left : this.expected.right;
 			const stats = side === 'left' ? this.leftStats : this.rightStats;
@@ -498,7 +524,7 @@ class GameSession {
 			if (!player) return;
 
 			try {
-				await fetch(`https://${host}/gamedb/game-stats`, {
+				await fetch(`http://database:3020/game-stats`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
@@ -509,13 +535,11 @@ class GameSession {
 						max_ball_speed: Math.round(stats.max_ball_speed),
 						power_ups_collected: stats.power_ups_collected,
 						skills_used: stats.skills_used
-					}),
-					// @ts-ignore
-					agent
+					})
 				});
 
 				for (const smash of stats.smashes) {
-					await fetch(`https://${host}/gamedb/skills`, {
+					await fetch(`http://database:3020/skills`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
@@ -524,14 +548,12 @@ class GameSession {
 							skill_type: 'smash',
 							activated_at_game_time: smash.time,
 							was_successful: smash.successful
-						}),
-						// @ts-ignore
-						agent
+						})
 					});
 				}
 
 				for (const dash of stats.dashes) {
-					await fetch(`https://${host}/gamedb/skills`, {
+					await fetch(`http://database:3020/skills`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
@@ -540,9 +562,7 @@ class GameSession {
 							skill_type: 'dash',
 							activated_at_game_time: dash.time,
 							was_successful: dash.successful
-						}),
-						// @ts-ignore
-						agent
+						})
 					});
 				}
 
@@ -572,9 +592,7 @@ class GameSession {
             await this.notifyTournamentMatchEnd(this.matchId, winnerId);
         }
 
-        const host = process.env.VITE_HOST || 'localhost:8443';
-        const endpoint = '/quickplay/room-finished';
-        const url = `https://${host}${endpoint}`;
+        const url = `http://quickplayback:3030/room-finished`;
 
         try
 		{
@@ -598,7 +616,7 @@ class GameSession {
 
 			if (this.roomId) {
 				try {
-					const gameResponse = await fetch(`https://${host}/gamedb/games/room/${this.roomId}`);
+					const gameResponse = await fetch(`http://database:3020/games/room/${this.roomId}`);
 					const gameData = await gameResponse.json();
 					if (gameData.success && gameData.game?.id) {
 						await this.saveGameStats(gameData.game.id);
@@ -615,9 +633,7 @@ class GameSession {
     }
 
 	private async notifyTournamentMatchEnd(matchId: string, winnerId: string): Promise<void> {
-        const host = process.env.VITE_HOST || 'localhost:8443';
-        const endpoint = '/tournamentback/match-finished';
-        const url = `https://${host}${endpoint}`;
+        const url = `http://tournamentback:3040/match-finished`;
 
         try
 		{

@@ -134,6 +134,35 @@ export class BlockchainService {
 		}
 	}
 
+	async getManyTournaments(tournamentIds: string[]): Promise<Array<{id: string, data: TournamentResult}>> {
+        if (!this.contract) {
+            throw new Error('Contract not initialized');
+        }
+
+        const promises = tournamentIds.map(async (id) => {
+            try {
+                const result = await this.contract!.getTournament(id);
+                if (!result || result[0] === '') return null;
+
+                return {
+                    id,
+                    data: {
+                        tournamentName: result[0],
+                        maxPlayers: Number(result[1]),
+                        winnerId: result[2],
+                        winnerUsername: result[3],
+                        timestamp: result[4]
+                    }
+                };
+            } catch (error) {
+                return null;
+            }
+        });
+
+        const results = await Promise.all(promises);
+        return results.filter((item): item is {id: string, data: TournamentResult} => item !== null);
+    }
+
 	async getTournamentCount(): Promise<number> {
 		if (!this.contract) {
 			throw new Error('Contract not initialized')

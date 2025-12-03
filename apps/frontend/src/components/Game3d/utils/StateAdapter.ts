@@ -1,5 +1,5 @@
 import type { PublicState } from '../../../net/wsClient';
-import type { Game3DState, BallState, PaddleState } from '../types';
+import type { Game3DState, BallState, PaddleState, GameStatusInfo } from '../types';
 
 export class StateAdapter {
 	public static toGame3DState(serverState: PublicState): Game3DState {
@@ -49,6 +49,16 @@ export class StateAdapter {
 			blackholeProgress: serverState.blackholeProgress,
 			blackholeCenterX: serverState.blackholeCenterX,
 			blackholeCenterY: serverState.blackholeCenterY
+		}
+	}
+
+	public static getStatusInfo(serverState: PublicState): GameStatusInfo {
+		return {
+			isPaused: serverState.isPaused,
+			isGameOver: serverState.isGameOver,
+			winner: serverState.winner,
+			countdownValue: serverState.countdownValue,
+			score: serverState.score
 		}
 	}
 

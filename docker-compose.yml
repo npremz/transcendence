@@ -50,29 +50,6 @@ services:
       retries: 5
       start_period: 40s
 
-  chatback:
-    container_name: chatback
-    networks:
-      - transcendence
-    build:
-      context: apps/chatback
-      dockerfile: ../../infra/docker/chatback/Dockerfile
-    env_file: .env
-    volumes:
-      - ./apps/chatback:/chatback
-      - chatback_node_modules:/chatback/node_modules
-    restart: unless-stopped
-    expose:
-      - "3000"
-    environment:
-      - PORT=3000
-    depends_on:
-      database:
-        condition: service_healthy
-    healthcheck:
-      <<: *healthcheck-wget
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
-
   userback:
     container_name: userback
     networks:
@@ -118,29 +95,6 @@ services:
     healthcheck:
       <<: *healthcheck-wget
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3010"]
-
-  game3dback:
-    container_name: game3dback
-    networks:
-      - transcendence
-    build:
-      context: apps/game3dback
-      dockerfile: ../../infra/docker/game3dback/Dockerfile
-    env_file: .env
-    volumes:
-      - ./apps/game3dback:/game3dback
-      - game3dback_node_modules:/game3dback/node_modules
-    restart: unless-stopped
-    expose:
-      - "3050"
-    environment:
-      - PORT=3050
-    depends_on:
-      database:
-        condition: service_healthy
-    healthcheck:
-      <<: *healthcheck-wget
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3050"]
 
   quickplayback:
     container_name: quickplayback
@@ -222,16 +176,13 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8443:443"
+      - "8080:80"
     depends_on:
       front:
         condition: service_healthy
       database:
         condition: service_healthy
-      chatback:
-        condition: service_healthy
       gameback:
-        condition: service_healthy
-      game3dback:
         condition: service_healthy
       quickplayback:
         condition: service_healthy
@@ -251,10 +202,8 @@ networks:
 
 volumes:
   front_node_modules:
-  chatback_node_modules:
   userback_node_modules:
   gameback_node_modules:
-  game3dback_node_modules:
   quickplayback_node_modules:
   tournamentback_node_modules:
   blockchainback_node_modules:

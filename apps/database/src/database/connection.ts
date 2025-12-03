@@ -31,7 +31,6 @@ class Database implements DatabaseInterface
 				else
 				{
 					console.log('Connected to SQlite db');
-					// Enable foreign key constraints
 					this.db!.run('PRAGMA foreign_keys = ON;', (pragmaErr) => {
 						if (pragmaErr)
 						{

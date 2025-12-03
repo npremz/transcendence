@@ -1,4 +1,4 @@
-import { Scene, Mesh, MeshBuilder, StandardMaterial, Color3, ParticleSystem, Quaternion, Vector3, Color4, Animation} from "@babylonjs/core";
+import { Scene, Mesh, StandardMaterial, Color3, Vector3, Animation} from "@babylonjs/core";
 
 export class PowerUpEffects {
 	private scene: Scene;

@@ -1,3 +1,5 @@
+// apps/frontend/src/components/PongGame/PongGame.ts
+
 import type { Component } from "../types";
 import { WSClient, type PublicState } from "../../net/wsClient";
 import type { TimeoutStatus } from "./types";
@@ -8,6 +10,7 @@ import { PongAssets } from "./PongAssets";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "./constants";
 import { DebugPanel, type DebugPanelCallbacks } from "../DebugPanel";
 import { PongAI } from "./PongAI";
+import { LocalTournamentManager } from "../../utils/localTournamentManager";
 
 type LocalGameConfig = {
 	roomId: string;
@@ -78,6 +81,7 @@ export class PongGame implements Component {
 	private lastPingTime: number = 0;
 	private statsUpdateInterval: number | null = null;
     private aiControllers: { left?: PongAI; right?: PongAI } = {};
+	private pingInterval: number | null = null;
 
 	private state: PublicState = {
 		leftPaddle: {y: WORLD_HEIGHT / 2, speed: 0, intention: 0},
@@ -426,24 +430,109 @@ export class PongGame implements Component {
 		this.state.isGameOver = true;
 		this.state.winner = winner;
 
-		const message = didIWin 
-			? 'Victoire ! Redirection vers les brackets...' 
+		const message = didIWin
+			? 'Victoire ! Redirection vers les brackets...'
 			: 'Défaite... Redirection vers les brackets...';
-		
+
 		console.log(message);
 
 		setTimeout(() => {
 			sessionStorage.removeItem('gameWsURL');
-			window.location.href = `/tournament/${tournamentId}`;
+			sessionStorage.removeItem('currentGameRoute');
+			window.router.navigate(`/tournament/${tournamentId}`);
 		}, 3000);
 	}
 
+	private handleLocalTournamentGameOver(winner: 'left' | 'right') {
+		this.state.isGameOver = true;
+		this.state.winner = winner;
+
+		// Récupérer l'ID du match et la config
+		const matchId = sessionStorage.getItem('localTournamentMatch');
+		const configStr = sessionStorage.getItem('localGameConfig');
+
+		if (!matchId || !configStr) {
+			console.error('Missing local tournament match data');
+			return;
+		}
+
+		try {
+			const config = JSON.parse(configStr);
+
+			// Déterminer l'ID du gagnant
+			const winnerId = winner === 'left' ? config.left.id : config.right.id;
+
+			// Enregistrer le résultat
+			const updatedTournament = LocalTournamentManager.recordMatchResult(matchId, winnerId);
+
+			if (updatedTournament) {
+				console.log('Match result recorded:', { matchId, winnerId });
+
+				// Afficher un overlay de victoire
+				const overlay = document.createElement('div');
+				overlay.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50';
+				overlay.innerHTML = `
+					<div class="bg-[#0C154D]/90 border-2 border-blue-400 rounded-lg p-8 text-center max-w-md">
+						<h2 class="text-4xl font-bold mb-4 text-blue-400">
+							🏆 ${winner === 'left' ? config.left.username : config.right.username} WINS!
+						</h2>
+						<p class="text-white/80 text-xl mb-6">
+							Score: ${this.state.score.left} - ${this.state.score.right}
+						</p>
+						<p class="text-blue-300 text-sm">
+							Retour au bracket dans <span id="countdown-timer">3</span> secondes...
+						</p>
+					</div>
+				`;
+
+				document.body.appendChild(overlay);
+
+				// Décompte dynamique
+				let countdown = 3;
+				const countdownEl = document.getElementById('countdown-timer');
+				const countdownInterval = setInterval(() => {
+					countdown--;
+					if (countdownEl) {
+						countdownEl.textContent = countdown.toString();
+					}
+					if (countdown <= 0) {
+						clearInterval(countdownInterval);
+					}
+				}, 1000);
+
+				// Nettoyer et rediriger
+				setTimeout(() => {
+					clearInterval(countdownInterval);
+					overlay.remove(); // Supprimer l'overlay du DOM
+					sessionStorage.removeItem('gameWsURL');
+					sessionStorage.removeItem('currentGameRoute');
+					sessionStorage.removeItem('localGameConfig');
+					sessionStorage.removeItem('localTournamentMatch');
+					window.router.navigate('/local-tournament-bracket');
+				}, 3000);
+			}
+		} catch (error) {
+			console.error('Error handling local tournament game over:', error);
+		}
+	}
+
 	private handleQuickplayGameOver(winner: 'left' | 'right') {
+		// Vérifier si c'est un match de tournoi local
+		const isLocalTournament = sessionStorage.getItem('localTournamentMatch');
+		if (isLocalTournament) {
+			this.handleLocalTournamentGameOver(winner);
+			return;
+		}
+
 		const amILeft = this.net.side === 'left';
 		const didIWin = (amILeft && winner === 'left') || (!amILeft && winner === 'right');
 
 		this.state.isGameOver = true;
 		this.state.winner = winner;
+
+		// Nettoyer immédiatement le sessionStorage pour débloquer la navigation
+		sessionStorage.removeItem('gameWsURL');
+		sessionStorage.removeItem('currentGameRoute');
 
 		const overlay = document.createElement('div');
 		overlay.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50';
@@ -455,7 +544,7 @@ export class PongGame implements Component {
 				<p class="text-white/80 text-xl mb-6">
 					Score: ${this.state.score.left} - ${this.state.score.right}
 				</p>
-				<button 
+				<button
 					id="return-to-lobby"
 					class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-semibold transition-all cursor-pointer"
 				>
@@ -463,7 +552,7 @@ export class PongGame implements Component {
 				</button>
 			</div>
 		`;
-		
+
 		document.body.appendChild(overlay);
 
 		overlay.addEventListener('click', (e) => {
@@ -471,7 +560,6 @@ export class PongGame implements Component {
 			if (target.id === 'return-to-lobby' || target.closest('#return-to-lobby')) {
 				console.log('Return to lobby clicked');
 				e.stopPropagation();
-				sessionStorage.removeItem('gameWsURL');
 				document.body.removeChild(overlay);
 				window.router?.navigateTo('/play');
 			}
@@ -548,7 +636,7 @@ export class PongGame implements Component {
 	}
 
 	private createWelcomeHandler(client: WSClient) {
-		return (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => {
+		return async (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => {
 			console.log('Welcome received:', { side, playerNames });
 
 			const resolvedLeftName = playerNames?.left ?? this.localConfig?.left.username;
@@ -586,12 +674,19 @@ export class PongGame implements Component {
 
 			if (!this.isDebugMode) {
 				const username = window.simpleAuth?.getUsername?.();
-				if (username === 'admindebug') {
+				if (username === 'debugadmin') {
 					this.enableDebugMode();
 				}
 			}
 
-
+            if (!this.assets.isLoaded()) {
+                await this.assets.loadAll();
+            }
+            
+            if (side !== 'spectator') {
+                console.log('Assets loaded and connection established. Sending READY.');
+                client.sendReady();
+            }
 		};
 	}
 
@@ -759,9 +854,22 @@ export class PongGame implements Component {
 			this.aiNet.cleanup();
 			this.aiNet = undefined;
 		}
+		
 		if (this.isLocalMode) {
 			sessionStorage.removeItem('localGameConfig');
+			sessionStorage.removeItem('gameWsURL');
+			sessionStorage.removeItem('currentGameRoute');
+
+            if (this.localConfig?.roomId) {
+                const host = import.meta.env.VITE_HOST || 'localhost:8443';
+                const endpoint = import.meta.env.VITE_GAME_ENDPOINT || '/gameback/game';
+                fetch(`https://${host}${endpoint}/${this.localConfig.roomId}`, {
+                    method: 'DELETE',
+                    keepalive: true
+                }).catch(err => console.warn('Failed to delete local game session on server', err));
+            }
 		}
+
 		if (this.debugContainer && this.debugContainer.parentNode) {
 			this.debugContainer.parentNode.removeChild(this.debugContainer);
 			this.debugContainer = undefined;

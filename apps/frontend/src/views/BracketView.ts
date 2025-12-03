@@ -1,5 +1,6 @@
 import type { ViewFunction, CleanupFunction, RouteParams } from "../router/types";
 import { gsap } from "gsap";
+import { createCleanupManager } from "../utils/CleanupManager";
 
 interface Player {
     id: string;
@@ -50,44 +51,6 @@ export const BracketView: ViewFunction = () => {
             "></div>
             
             <style>
-                @keyframes gridMove {
-                    0% { transform: translateY(0); }
-                    100% { transform: translateY(50px); }
-                }
-                
-                @keyframes neonPulse {
-                    0%, 100% { 
-                        text-shadow: 
-                            0 0 10px rgba(59, 130, 246, 0.8),
-                            0 0 20px rgba(59, 130, 246, 0.6),
-                            0 0 30px rgba(59, 130, 246, 0.4);
-                    }
-                    50% { 
-                        text-shadow: 
-                            0 0 20px rgba(59, 130, 246, 1),
-                            0 0 30px rgba(59, 130, 246, 0.8),
-                            0 0 40px rgba(59, 130, 246, 0.6);
-                    }
-                }
-                
-                @keyframes scanline {
-                    0% { transform: translateY(-100%); }
-                    100% { transform: translateY(100vh); }
-                }
-                
-                .pixel-font {
-                    font-family: 'Courier New', monospace;
-                    font-weight: bold;
-                    letter-spacing: 0.1em;
-                }
-                
-                .neon-border {
-                    box-shadow: 
-                        0 0 10px rgba(59, 130, 246, 0.5),
-                        inset 0 0 10px rgba(59, 130, 246, 0.2);
-                    border: 3px solid rgba(59, 130, 246, 0.8);
-                }
-                
                 .match-card {
                     transition: all 0.3s ease;
                     background: rgba(15, 23, 42, 0.8);
@@ -198,8 +161,8 @@ export const BracketView: ViewFunction = () => {
         <div class="relative z-10 min-h-screen flex flex-col">
             <!-- Header avec BackButton -->
             <header class="flex justify-between items-center px-8 py-6">
-                <button 
-                    onclick="history.back()" 
+                <button
+                    onclick="window.router.goBack()"
                     class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
                     id="back-button"
                 >
@@ -249,6 +212,7 @@ export const BracketView: ViewFunction = () => {
 export const bracketLogic = (params: RouteParams | undefined): CleanupFunction => {
     console.log('🎮 BracketView: Initializing...');
 
+    const cleanupManager = createCleanupManager();
     const tournamentId = params?.id;
     const myPlayerId = window.simpleAuth.getPlayerId();
 
@@ -256,6 +220,10 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     let isFirstRender = true;
     let displayedMatchIds = new Set<string>();
     let currentTournamentState: Tournament | null = null;
+
+    // Enregistrer les cibles GSAP
+    cleanupManager.registerGsapTarget('.neon-border');
+    cleanupManager.registerGsapTarget('.round-column');
 
     const cleanupIntervals = () => {
         if (pollInterval) {
@@ -306,7 +274,7 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
             const wsUrl = `wss://${host}${endpoint}/${myMatch.roomId}`;
             sessionStorage.setItem('gameWsURL', wsUrl);
             
-            window.location.href = `/game/${myMatch.roomId}`;
+            window.router.navigate(`/game/${myMatch.roomId}`);
         }
     };
 
@@ -373,8 +341,7 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                 ease: 'power2.out'
             });
 
-            // Dessiner les connexions après l'animation
-            setTimeout(() => drawConnections(tournament.bracket), 1000);
+            cleanupManager.setTimeout(() => drawConnections(tournament.bracket), 1000);
 
             isFirstRender = false;
         } else {
@@ -495,7 +462,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     };
 
     const drawConnections = (matches: Match[]): void => {
-        // Supprimer les anciennes connexions
         document.querySelectorAll('.connector-line').forEach(el => el.remove());
 
         const matchesByRound = matches.reduce((acc, match) => {
@@ -528,7 +494,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                         if (container) {
                             const containerRect = container.getBoundingClientRect();
 
-                            // Ligne horizontale depuis le match actuel
                             const horizontalLine = document.createElement('div');
                             horizontalLine.className = 'connector-line connector-horizontal';
                             if (match.status === 'finished') {
@@ -539,12 +504,10 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                             horizontalLine.style.width = '40px';
                             container.appendChild(horizontalLine);
 
-                            // Point de jonction
                             const junctionX = currentRect.right - containerRect.left + 40;
                             const junctionY = currentRect.top + currentRect.height / 2 - containerRect.top;
                             const nextJunctionY = nextRect.top + nextRect.height / 2 - containerRect.top;
 
-                            // Ligne verticale vers le point de jonction commun
                             if (index % 2 === 1) {
                                 const verticalLine = document.createElement('div');
                                 verticalLine.className = 'connector-line connector-vertical';
@@ -561,7 +524,6 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                                     container.appendChild(verticalLine);
                                 }
 
-                                // Ligne horizontale finale vers le prochain match
                                 const finalHorizontal = document.createElement('div');
                                 finalHorizontal.className = 'connector-line connector-horizontal';
                                 finalHorizontal.style.left = `${junctionX}px`;
@@ -665,20 +627,18 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
 
     fetchTournamentData();
 
-    pollInterval = setInterval(() => {
+    pollInterval = cleanupManager.setInterval(() => {
         fetchTournamentData();
-        // Redessiner les connexions à chaque update
         if (currentTournamentState) {
-            setTimeout(() => drawConnections(currentTournamentState!.bracket), 100);
+            cleanupManager.setTimeout(() => drawConnections(currentTournamentState!.bracket), 100);
         }
     }, 2000);
     console.log('🔄 Started bracket polling');
 
-    return (): void => {
-        console.log('🧹 BracketView: Cleaning up...');
-        
+    // Enregistrer le cleanup du polling
+    cleanupManager.onCleanup(() => {
         cleanupIntervals();
-        
-        console.log('✅ BracketView: Cleanup complete');
-    };
+    });
+
+    return cleanupManager.getCleanupFunction();
 };
