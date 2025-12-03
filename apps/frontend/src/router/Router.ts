@@ -379,12 +379,12 @@ export class Router {
             title: 'Détails de la Partie'
         });
 
-		// Chat - Lazy
-		this.routes.push({
-			path: '/chat',
-            lazyView: () => import('../views/ChatView'),
-			title: 'Chat'
-		});
+		// Chat - Lazy (désactivé temporairement)
+		// this.routes.push({
+		// 	path: '/chat',
+        //     lazyView: () => import('../views/ChatView'),
+		// 	title: 'Chat'
+		// });
 
 		// Login - Lazy
 		this.routes.push({

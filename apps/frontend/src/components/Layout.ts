@@ -46,9 +46,10 @@ export class Layout {
 			containerClass = ''
 		} = options;
 
-		const chatWidgetHTML = `
-            <div data-component="chat-widget"></div>
-        `;
+		const chatWidgetHTML = ''; // Chat désactivé temporairement
+		// const chatWidgetHTML = `
+        //     <div data-component="chat-widget"></div>
+        // `;
 
 		return `
 			<!-- Fond avec grille animée -->
