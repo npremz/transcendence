@@ -569,6 +569,8 @@ export class PongGame implements Component {
 	private setupEventHandlers(): void {
 		window.addEventListener('resize', this.handleResize);
 		window.addEventListener('pong:togglePause', this.handleTogglePause);
+		window.addEventListener('beforeunload', this.handleBeforeUnload);
+		window.addEventListener('visibilitychange', this.handleVisibilityChange);
 
 		if (!this.isLocalMode) {
 			const forfeitBtn = document.getElementById('forfeit-btn');
@@ -709,12 +711,45 @@ export class PongGame implements Component {
 		if (this.state.isGameOver) {
 			return;
 		}
-		
+
 		const confirmed = confirm('Are you sure you want to forfeit this game?');
 		if (confirmed) {
 			this.net.forfeit();
 		}
 	};
+
+	private handleBeforeUnload = (e: BeforeUnloadEvent): void => {
+		// Nettoyer le sessionStorage avant de quitter la page
+		if (this.isLocalMode || !this.state.isGameOver) {
+			console.log('🧹 Cleaning up game session before unload');
+			this.cleanupGameSession();
+		}
+	};
+
+	private handleVisibilityChange = (): void => {
+		// Si l'utilisateur quitte l'onglet pendant une partie locale, nettoyer
+		if (document.hidden && this.isLocalMode && !this.state.isGameOver) {
+			console.log('🧹 User left tab during local game, cleaning up session');
+			this.cleanupGameSession();
+		}
+	};
+
+	private cleanupGameSession(): void {
+		sessionStorage.removeItem('gameWsURL');
+		sessionStorage.removeItem('currentGameRoute');
+		sessionStorage.removeItem('localGameConfig');
+		sessionStorage.removeItem('localTournamentMatch');
+
+		// Notifier le serveur de supprimer la session
+		if (this.localConfig?.roomId) {
+			const host = import.meta.env.VITE_HOST || 'localhost:8443';
+			const endpoint = import.meta.env.VITE_GAME_ENDPOINT || '/gameback/game';
+			fetch(`https://${host}${endpoint}/${this.localConfig.roomId}`, {
+				method: 'DELETE',
+				keepalive: true
+			}).catch(err => console.warn('Failed to delete game session', err));
+		}
+	}
 
 	private enableAI(side: 'left' | 'right', ws: WSClient, hz?: number): void {
 		if (this.aiControllers[side]) {
@@ -831,7 +866,9 @@ export class PongGame implements Component {
 		}
 		window.removeEventListener('resize', this.handleResize);
 		window.removeEventListener('pong:togglePause', this.handleTogglePause);
-		
+		window.removeEventListener('beforeunload', this.handleBeforeUnload);
+		window.removeEventListener('visibilitychange', this.handleVisibilityChange);
+
 		if (!this.isLocalMode) {
 			const forfeitBtn = document.getElementById('forfeit-btn');
 			if (forfeitBtn) {
@@ -854,7 +891,7 @@ export class PongGame implements Component {
 			this.aiNet.cleanup();
 			this.aiNet = undefined;
 		}
-		
+
 		if (this.isLocalMode) {
 			sessionStorage.removeItem('localGameConfig');
 			sessionStorage.removeItem('gameWsURL');

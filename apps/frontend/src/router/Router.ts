@@ -654,6 +654,16 @@ export class Router {
 
 	private cleanup(): void
     {
+		// Nettoyer le sessionStorage si on quitte une partie
+		const currentPath = this.currentRoute?.path;
+		if (currentPath && (currentPath.startsWith('/game/') || currentPath.startsWith('/game3d/'))) {
+			console.log('🧹 Cleaning up game session from router');
+			sessionStorage.removeItem('gameWsURL');
+			sessionStorage.removeItem('currentGameRoute');
+			sessionStorage.removeItem('localGameConfig');
+			sessionStorage.removeItem('localTournamentMatch');
+		}
+
 		// Tuer toutes les animations GSAP en cours
 		if (typeof window !== 'undefined' && (window as any).gsap) {
 			const gsap = (window as any).gsap;

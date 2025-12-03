@@ -74,8 +74,32 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 			selectedSkill: normalizedSkill
 		};
 
-		const room = roomManager.findOrCreateRoom(player);
-		
+		const roomResult = roomManager.findOrCreateRoom(player);
+
+		// Vérifier si c'est une erreur
+		if ('error' in roomResult) {
+			if (roomResult.error === 'already_in_queue') {
+				return reply.code(409).send({
+					success: false,
+					error: 'already_in_queue',
+					message: 'You are already in the matchmaking queue. Please close other browser tabs or wait for your current game to finish.'
+				});
+			} else if (roomResult.error === 'already_in_game') {
+				return reply.code(409).send({
+					success: false,
+					error: 'already_in_game',
+					message: 'You are already in an active game. Please finish or leave your current game first.'
+				});
+			}
+			return reply.code(409).send({
+				success: false,
+				error: 'duplicate_session',
+				message: 'You cannot join from multiple browsers at the same time.'
+			});
+		}
+
+		const room = roomResult;
+
 		if (room.players.length === 2)
 		{
 			const fetchURL = `http://gameback:3010/create`;
@@ -164,6 +188,52 @@ export function handleQuickPlay(fastify: FastifyInstance, roomManager: RoomManag
 			players: room.players.length,
 			maxPlayers: 2
 		};
+	});
+
+	fastify.post('/leave', async (request, reply) => {
+		const { playerId } = request.body as { playerId: string };
+
+		if (!playerId) {
+			return reply.code(400).send({ error: 'playerId required' });
+		}
+
+		try {
+			// Chercher le joueur dans toutes les rooms
+			let foundRoom = false;
+
+			// Vérifier la waitingRoom
+			const waitingRoom = roomManager['waitingRoom'];
+			if (waitingRoom) {
+				const playerInWaiting = waitingRoom.players.find(p => p.id === playerId);
+				if (playerInWaiting) {
+					roomManager.removePlayerFromRoom(playerInWaiting);
+					foundRoom = true;
+					fastify.log.info({ playerId }, 'Player removed from waiting room');
+				}
+			}
+
+			// Vérifier toutes les autres rooms
+			if (!foundRoom) {
+				for (const [roomId, room] of roomManager['rooms']) {
+					const player = room.players.find(p => p.id === playerId);
+					if (player) {
+						roomManager.removePlayerFromRoom(player);
+						foundRoom = true;
+						fastify.log.info({ playerId, roomId }, 'Player removed from room');
+						break;
+					}
+				}
+			}
+
+			if (foundRoom) {
+				return reply.send({ success: true, message: 'Left matchmaking queue' });
+			} else {
+				return reply.send({ success: false, message: 'Player not found in any queue' });
+			}
+		} catch (err) {
+			fastify.log.error(err);
+			return reply.code(500).send({ error: 'Failed to leave queue' });
+		}
 	});
 
 	fastify.post('/room-finished', async (request, reply) => {

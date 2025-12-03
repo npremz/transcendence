@@ -17,6 +17,21 @@ export const roomExistsGuard: NavigationGuard = async (to, from, params) => {
 		return true;
 	}
 
+	// Check if this is a local game (non-tournament)
+	// Local games are identified by having localGameConfig but not localTournamentMatch
+	if (localGameConfig && !isLocalTournament) {
+		try {
+			const config = JSON.parse(localGameConfig);
+			if (config.roomId === roomId) {
+				console.log('Local game match detected, allowing navigation');
+				return true;
+			}
+		} catch (err) {
+			console.warn('Failed to parse local game config', err);
+			sessionStorage.removeItem('localGameConfig');
+		}
+	}
+
 	const cachedWsUrl = sessionStorage.getItem('gameWsURL');
     if (cachedWsUrl && cachedWsUrl.includes(roomId)) {
         console.log('Room URL found in cache, allowing navigation');

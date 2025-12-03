@@ -349,5 +349,15 @@ else
             event.preventDefault();
             input.click();
         });
+
+        // Listener pour le bouton logout
+        document.addEventListener('click', (event) => {
+            const target = (event.target as HTMLElement | null)?.closest('[data-auth-logout]');
+            if (!target) return;
+            event.preventDefault();
+            this.logout().then(() => {
+                window.location.href = '/';
+            });
+        });
     }
 }

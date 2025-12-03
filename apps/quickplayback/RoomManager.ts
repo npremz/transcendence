@@ -4,38 +4,59 @@ import { v4 as uuidv4 } from 'uuid'
 export class RoomManager
 {
 	private rooms: Map<string, Room> = new Map();
-	private waitingRoom: Room | null = null
+	private waitingRoom: Room | null = null;
+	private pendingPlayers: Map<string, number> = new Map(); // playerId -> timestamp
 
-	public findOrCreateRoom(player: Player) : Room
+	public findOrCreateRoom(player: Player) : Room | { error: string }
 	{
-		// Vérifier si le joueur est déjà dans la waitingRoom
-		if (this.waitingRoom && this.waitingRoom.players.some(p => p.id === player.id))
-		{
-			const existing = this.waitingRoom.players.find(p => p.id === player.id);
-			if (existing)
-			{
-				existing.username = player.username;
-				existing.selectedSkill = player.selectedSkill;
+		// Vérifier si le joueur a déjà une requête en cours (race condition protection)
+		const now = Date.now();
+		const pendingTimestamp = this.pendingPlayers.get(player.id);
+		if (pendingTimestamp && (now - pendingTimestamp) < 5000) {
+			console.log(`⛔ Player ${player.username} (${player.id}) has a pending request (race condition detected)`);
+			return { error: 'request_in_progress' };
+		}
+
+		// Marquer le joueur comme ayant une requête en cours
+		this.pendingPlayers.set(player.id, now);
+
+		// Nettoyer les anciennes entrées (plus de 10 secondes)
+		for (const [id, timestamp] of this.pendingPlayers.entries()) {
+			if (now - timestamp > 10000) {
+				this.pendingPlayers.delete(id);
 			}
-			console.log(`Player ${player.username} (${player.id}) is already in waiting room ${this.waitingRoom.id}`)
-			return this.waitingRoom
+		}
+
+		// Vérifier si le joueur est déjà dans la waitingRoom
+		if (this.waitingRoom && this.waitingRoom.players.some(p => p.username === player.username))
+		{
+			this.pendingPlayers.delete(player.id);
+			console.log(`⛔ Player ${player.username} (${player.id}) is already in waiting room ${this.waitingRoom.id}`);
+			return { error: 'already_in_queue' };
 		}
 
 		// Vérifier si le joueur est déjà dans une autre room active
 		for (const [roomId, room] of this.rooms)
 		{
-			const existing = room.players.find(p => p.id === player.id);
+			const existing = room.players.find(p => p.username === player.username);
 			if (existing)
 			{
-				existing.username = player.username;
-				existing.selectedSkill = player.selectedSkill;
-				console.log(`Player ${player.username} (${player.id}) is already in room ${roomId}`)
-				return room
+				this.pendingPlayers.delete(player.id);
+				console.log(`⛔ Player ${player.username} (${player.id}) is already in an active game (room ${roomId})`);
+				return { error: 'already_in_game' };
 			}
 		}
 
 		if (this.waitingRoom && this.waitingRoom.players.length === 1)
 		{
+			// Vérifier que ce n'est pas le même joueur
+			const waitingPlayer = this.waitingRoom.players[0];
+			if (waitingPlayer.username === player.username) {
+				this.pendingPlayers.delete(player.id);
+				console.log(`⛔ Player ${player.username} (${player.id}) tried to match with themselves`);
+				return { error: 'cannot_play_yourself' };
+			}
+
 			this.waitingRoom.players.push(player)
 			player.roomId = this.waitingRoom.id
 
@@ -45,7 +66,11 @@ export class RoomManager
 
 			this.rooms.set(completedRoom.id, completedRoom)
 
-			console.log(`Room ${completedRoom.id} is complete with 2 players`)
+			// Retirer les deux joueurs des requêtes en cours
+			this.pendingPlayers.delete(waitingPlayer.id);
+			this.pendingPlayers.delete(player.id);
+
+			console.log(`✅ Room ${completedRoom.id} is complete with 2 players: ${waitingPlayer.username} vs ${player.username}`)
 			return completedRoom
 		}
 

@@ -244,13 +244,34 @@ export const waitingRoomLogic = (): CleanupFunction => {
                 body: JSON.stringify({ username, playerId, selectedSkill: skill })
             });
             const data = await response.json();
-            
+
             if (data.success) {
                 roomId = data.roomId;
-                updateStatus('Waiting for opponent...');
+
+                // Si la room est déjà en status 'playing', mettre à jour le message et commencer le polling
+                if (data.status === 'playing') {
+                    updateStatus('Opponent found! Preparing game...');
+                } else {
+                    updateStatus('Waiting for opponent...');
+                }
+
+                // Toujours démarrer le polling pour vérifier quand le jeu est prêt
                 startPolling();
             } else {
-                updateStatus('Error: ' + (data.error || 'Failed to join'));
+                // Gérer les erreurs de session multiple
+                if (data.error === 'already_in_queue') {
+                    updateStatus('⚠️ You are already in queue from another tab!');
+                    setTimeout(() => {
+                        window.router.navigate('/play');
+                    }, 3000);
+                } else if (data.error === 'already_in_game') {
+                    updateStatus('⚠️ You are already in an active game!');
+                    setTimeout(() => {
+                        window.router.navigate('/play');
+                    }, 3000);
+                } else {
+                    updateStatus('Error: ' + (data.message || data.error || 'Failed to join'));
+                }
             }
         } catch (err) {
             console.error(err);
@@ -303,9 +324,25 @@ export const waitingRoomLogic = (): CleanupFunction => {
         }
     };
 
-    const handleCancel = (): void => {
+    const handleCancel = async (): Promise<void> => {
         stopPolling();
-        
+
+        // Notifier le serveur que le joueur quitte la file
+        const playerId = window.simpleAuth.getPlayerId();
+        if (playerId) {
+            try {
+                const host = import.meta.env.VITE_HOST || 'localhost:8443';
+                await fetch(`https://${host}/quickplay/leave`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playerId })
+                });
+                console.log('🚪 Left matchmaking queue');
+            } catch (err) {
+                console.error('Failed to notify server of leaving queue:', err);
+            }
+        }
+
         // Animation de sortie
         gsap.to('#waiting-title, #search-animation, #your-card, #opponent-card, #status-container', {
             opacity: 0,
@@ -333,9 +370,21 @@ export const waitingRoomLogic = (): CleanupFunction => {
 		});
     }
 
-	// Enregistrer le cleanup du polling
+	// Enregistrer le cleanup du polling et de la file d'attente
 	cleanupManager.onCleanup(() => {
 		stopPolling();
+
+		// Retirer le joueur de la file d'attente si on quitte la page
+		const playerId = window.simpleAuth.getPlayerId();
+		if (playerId && roomId) {
+			const host = import.meta.env.VITE_HOST || 'localhost:8443';
+			fetch(`https://${host}/quickplay/leave`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ playerId }),
+				keepalive: true  // Important pour que la requête soit envoyée même si la page se ferme
+			}).catch(err => console.warn('Failed to leave queue on cleanup:', err));
+		}
 	});
 
     // Cleanup
