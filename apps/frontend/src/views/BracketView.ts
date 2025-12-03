@@ -171,11 +171,20 @@ export const BracketView: ViewFunction = () => {
                     ← BACK
                 </button>
                 
-                <!-- Bouton Sign in -->
+                <!-- Bouton Sign in (guest only) -->
                 <a href="/login" 
+                   data-auth-guest
                    class="pixel-font bg-blue-500 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
                     <span>SIGN IN</span>
                 </a>
+                
+                <!-- User info (logged in only) -->
+                <div data-auth-user class="hidden flex items-center gap-4">
+                    <span class="pixel-font text-blue-300" data-auth-username></span>
+                    <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500/50">
+                        <img data-auth-avatar src="/sprites/cat.gif" class="w-full h-full object-cover" style="image-rendering: pixelated;" />
+                    </div>
+                </div>
             </header>
 
             <!-- Container principal -->
@@ -217,6 +226,9 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     const cleanupManager = createCleanupManager();
     const tournamentId = params?.id;
     const myPlayerId = window.simpleAuth.getPlayerId();
+
+    // Synchroniser le DOM d'authentification
+    window.simpleAuth.syncAuthDom();
 
     let pollInterval: number | null = null;
     let isFirstRender = true;
