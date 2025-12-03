@@ -39,7 +39,8 @@ function httpsRequest(
 export function registerGithubAuthRoutes(fastify: FastifyInstance): void {
 	const clientId = process.env.AUTH_CLIENT_ID;
 	const clientSecret = process.env.AUTH_CLIENT_SECRET;
-	const callbackUrl = 'https://localhost:8443/userback/auth/github/callback';
+	const host = process.env.VITE_HOST || 'localhost:8443';
+	const callbackUrl = `https://${host}/userback/auth/github/callback`;
 
 	if (!clientId || !clientSecret) {
 		fastify.log.warn('GitHub OAuth disabled: AUTH_CLIENT_ID or AUTH_CLIENT_SECRET missing');
