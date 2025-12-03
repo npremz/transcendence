@@ -97,6 +97,7 @@ export const BracketView: ViewFunction = () => {
                     padding: 40px;
                     overflow-x: auto;
                     min-height: 600px;
+                    position: relative;
                 }
 
                 .round-column {
@@ -473,6 +474,12 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
         }, {} as Record<number, Match[]>);
 
         const maxRound = Math.max(...Object.keys(matchesByRound).map(Number));
+        const container = document.getElementById('tournament-brackets');
+        if (!container) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const scrollLeft = container.scrollLeft;
+        const scrollTop = container.scrollTop;
 
         for (let round = 1; round < maxRound; round++) {
             const currentRoundMatches = matchesByRound[round] || [];
@@ -489,48 +496,50 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                     if (currentCard && nextCard) {
                         const currentRect = currentCard.getBoundingClientRect();
                         const nextRect = nextCard.getBoundingClientRect();
-                        const container = document.getElementById('tournament-brackets');
-                        
-                        if (container) {
-                            const containerRect = container.getBoundingClientRect();
 
-                            const horizontalLine = document.createElement('div');
-                            horizontalLine.className = 'connector-line connector-horizontal';
-                            if (match.status === 'finished') {
-                                horizontalLine.classList.add('active');
-                            }
-                            horizontalLine.style.left = `${currentRect.right - containerRect.left}px`;
-                            horizontalLine.style.top = `${currentRect.top + currentRect.height / 2 - containerRect.top}px`;
-                            horizontalLine.style.width = '40px';
-                            container.appendChild(horizontalLine);
+                        // Calculer les positions relatives au conteneur + scroll
+                        const currentRight = currentRect.right - containerRect.left + scrollLeft;
+                        const currentCenterY = currentRect.top + currentRect.height / 2 - containerRect.top + scrollTop;
+                        const nextLeft = nextRect.left - containerRect.left + scrollLeft;
+                        const nextCenterY = nextRect.top + nextRect.height / 2 - containerRect.top + scrollTop;
 
-                            const junctionX = currentRect.right - containerRect.left + 40;
-                            const junctionY = currentRect.top + currentRect.height / 2 - containerRect.top;
-                            const nextJunctionY = nextRect.top + nextRect.height / 2 - containerRect.top;
+                        // Ligne horizontale depuis le match actuel
+                        const horizontalLine = document.createElement('div');
+                        horizontalLine.className = 'connector-line connector-horizontal';
+                        if (match.status === 'finished') {
+                            horizontalLine.classList.add('active');
+                        }
+                        horizontalLine.style.left = `${currentRight}px`;
+                        horizontalLine.style.top = `${currentCenterY}px`;
+                        horizontalLine.style.width = '40px';
+                        container.appendChild(horizontalLine);
 
-                            if (index % 2 === 1) {
-                                const verticalLine = document.createElement('div');
-                                verticalLine.className = 'connector-line connector-vertical';
-                                const prevMatch = currentRoundMatches[index - 1];
-                                const prevCard = document.querySelector(`[data-match-id="${prevMatch.id}"]`) as HTMLElement;
+                        const junctionX = currentRight + 40;
+
+                        if (index % 2 === 1) {
+                            // Ligne verticale reliant les deux matchs
+                            const verticalLine = document.createElement('div');
+                            verticalLine.className = 'connector-line connector-vertical';
+                            const prevMatch = currentRoundMatches[index - 1];
+                            const prevCard = document.querySelector(`[data-match-id="${prevMatch.id}"]`) as HTMLElement;
+                            
+                            if (prevCard) {
+                                const prevRect = prevCard.getBoundingClientRect();
+                                const prevCenterY = prevRect.top + prevRect.height / 2 - containerRect.top + scrollTop;
                                 
-                                if (prevCard) {
-                                    const prevRect = prevCard.getBoundingClientRect();
-                                    const prevY = prevRect.top + prevRect.height / 2 - containerRect.top;
-                                    
-                                    verticalLine.style.left = `${junctionX}px`;
-                                    verticalLine.style.top = `${Math.min(prevY, junctionY)}px`;
-                                    verticalLine.style.height = `${Math.abs(junctionY - prevY)}px`;
-                                    container.appendChild(verticalLine);
-                                }
-
-                                const finalHorizontal = document.createElement('div');
-                                finalHorizontal.className = 'connector-line connector-horizontal';
-                                finalHorizontal.style.left = `${junctionX}px`;
-                                finalHorizontal.style.top = `${nextJunctionY}px`;
-                                finalHorizontal.style.width = `${nextRect.left - containerRect.left - junctionX}px`;
-                                container.appendChild(finalHorizontal);
+                                verticalLine.style.left = `${junctionX}px`;
+                                verticalLine.style.top = `${Math.min(prevCenterY, currentCenterY)}px`;
+                                verticalLine.style.height = `${Math.abs(currentCenterY - prevCenterY)}px`;
+                                container.appendChild(verticalLine);
                             }
+
+                            // Ligne horizontale vers le match suivant
+                            const finalHorizontal = document.createElement('div');
+                            finalHorizontal.className = 'connector-line connector-horizontal';
+                            finalHorizontal.style.left = `${junctionX}px`;
+                            finalHorizontal.style.top = `${nextCenterY}px`;
+                            finalHorizontal.style.width = `${nextLeft - junctionX}px`;
+                            container.appendChild(finalHorizontal);
                         }
                     }
                 }
