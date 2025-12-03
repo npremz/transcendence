@@ -87,6 +87,25 @@ export class SimpleAuth
                 this.forceLogout();
             } else {
                 console.log('Session validated successfully');
+
+                // Charger l'avatar depuis le serveur si l'utilisateur est connecté
+                if (this.username && this.username !== 'Anon') {
+                    try {
+                        const userResponse = await fetch(`${protocol}//${host}/userback/users?username=${encodeURIComponent(this.username)}`, {
+                            credentials: 'include'
+                        });
+                        const userData = await userResponse.json();
+
+                        if (userData.success && userData.user && userData.user.avatar) {
+                            // Mettre à jour l'avatar depuis le serveur
+                            this.avatarDataUrl = userData.user.avatar;
+                            localStorage.setItem(SimpleAuth.AVATAR_KEY, userData.user.avatar);
+                            this.syncAuthDom();
+                        }
+                    } catch (err) {
+                        console.warn('Failed to load avatar from server:', err);
+                    }
+                }
             }
         } catch (error) {
             console.error('Session validation error:', error);

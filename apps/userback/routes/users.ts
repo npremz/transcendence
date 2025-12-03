@@ -187,7 +187,7 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
 		if (username) {
 			return new Promise((resolve) => {
 				fastify.db.get(
-					`SELECT id, username, created_at, last_seen FROM users WHERE username = ?`,
+					`SELECT id, username, created_at, last_seen, avatar FROM users WHERE username = ?`,
 					[username],
 					(err, row) => {
 						if (err) {
@@ -344,6 +344,107 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
             );
         });
     });
+
+	// PUT /users/username - Changer le username
+	fastify.put<{ Body: { currentUsername: string; newUsername: string } }>('/users/username', async (request, reply) => {
+		const { currentUsername, newUsername } = request.body;
+
+		if (!currentUsername || !newUsername) {
+			return reply.status(400).send({
+				success: false,
+				error: 'currentUsername and newUsername are required'
+			});
+		}
+
+		if (newUsername.length < 3 || newUsername.length > 20) {
+			return reply.status(400).send({
+				success: false,
+				error: 'username must be between 3 and 20 characters'
+			});
+		}
+
+		// Vérifier que le nouveau username n'est pas déjà pris
+		return new Promise((resolve) => {
+			fastify.db.get(
+				`SELECT id FROM users WHERE username = ?`,
+				[newUsername],
+				(err, row) => {
+					if (err) {
+						resolve(reply.status(500).send({
+							success: false,
+							error: err.message
+						}));
+						return;
+					}
+
+					if (row) {
+						resolve(reply.status(409).send({
+							success: false,
+							error: 'username already taken'
+						}));
+						return;
+					}
+
+					// Mettre à jour le username
+					fastify.db.run(
+						`UPDATE users SET username = ? WHERE username = ?`,
+						[newUsername, currentUsername],
+						function(err) {
+							if (err) {
+								resolve(reply.status(500).send({
+									success: false,
+									error: err.message
+								}));
+							} else if (this.changes === 0) {
+								resolve(reply.status(404).send({
+									success: false,
+									error: 'user not found'
+								}));
+							} else {
+								resolve(reply.send({
+									success: true,
+									username: newUsername
+								}));
+							}
+						}
+					);
+				}
+			);
+		});
+	});
+
+	// GET /users/check-availability - Vérifier si un username est disponible
+	fastify.get<{ Querystring: { username: string } }>('/users/check-availability', async (request, reply) => {
+		const { username } = request.query;
+
+		if (!username) {
+			return reply.status(400).send({
+				success: false,
+				error: 'username is required'
+			});
+		}
+
+		return new Promise((resolve) => {
+			fastify.db.get(
+				`SELECT id FROM users WHERE username = ?`,
+				[username],
+				(err, row) => {
+					if (err) {
+						resolve(reply.status(500).send({
+							success: false,
+							error: err.message
+						}));
+						return;
+					}
+
+					resolve(reply.send({
+						success: true,
+						available: !row
+					}));
+				}
+			);
+		});
+	});
 
 	// POST /users/validate - Valider une session existante
 	fastify.post('/users/validate', async (request, reply) => {
