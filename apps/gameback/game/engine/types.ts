@@ -64,5 +64,6 @@ export type GameState = {
 	skillStates: {
 		left: SkillState;
 		right: SkillState;
-	}
+	};
+	classicMode: boolean;
 };

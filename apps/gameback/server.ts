@@ -29,6 +29,7 @@ type CreateBody = {
 	isTournament?: boolean;
     tournamentId?: string;
     matchId?: string;
+	classicMode?: boolean;
 }
 
 fastify.post('/create', async (request, reply) => {
@@ -44,12 +45,12 @@ fastify.post('/create', async (request, reply) => {
 		body.roomId,
 		{
 			left: {
-				id: body.player1.id, 
+				id: body.player1.id,
 				username: body.player1.username || 'p1',
 				selectedSkill: body.player1.selectedSkill || 'smash'
 			},
 			right: {
-				id: body.player2.id, 
+				id: body.player2.id,
 				username: body.player2.username || 'p2',
 				selectedSkill: body.player2.selectedSkill || 'smash'
 			}
@@ -57,7 +58,8 @@ fastify.post('/create', async (request, reply) => {
 		{
 			isTournament: body.isTournament,
 			tournamentId: body.tournamentId,
-			matchId: body.matchId
+			matchId: body.matchId,
+			classicMode: body.classicMode
 		},
 		fastify.log
 	);

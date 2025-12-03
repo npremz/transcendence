@@ -70,6 +70,7 @@ class GameSession {
 	private isTournament: boolean = false;
 	private tournamentId?: string;
 	private matchId?: string;
+	private classicMode: boolean = false;
 
 	constructor(private readonly roomId?: string, log?: FastifyBaseLogger) {
 		this.startLoops();
@@ -136,24 +137,31 @@ class GameSession {
 		isTournament?: boolean;
 		tournamentId?: string;
 		matchId?: string;
+		classicMode?: boolean;
 	}) {
         this.expected.left = players.left;
         this.expected.right = players.right;
-
-		if (players.left.selectedSkill) {
-			this.world.setSkill('left', players.left.selectedSkill);
-		}
-		if (players.right.selectedSkill) {
-			this.world.setSkill('right', players.right.selectedSkill);
-		}
 
 		if (metadata) {
             this.isTournament = metadata.isTournament || false;
             this.tournamentId = metadata.tournamentId;
             this.matchId = metadata.matchId;
+			this.classicMode = metadata.classicMode || false;
         }
 
-        this.log?.info({roomId: this.roomId, players: this.expected}, 'match set');
+		// En mode classique, on désactive les skills et les powerups
+		if (this.classicMode) {
+			this.world.setClassicMode(true);
+		} else {
+			if (players.left.selectedSkill) {
+				this.world.setSkill('left', players.left.selectedSkill);
+			}
+			if (players.right.selectedSkill) {
+				this.world.setSkill('right', players.right.selectedSkill);
+			}
+		}
+
+        this.log?.info({roomId: this.roomId, players: this.expected, classicMode: this.classicMode}, 'match set');
     }
 
 	addClient(ws: WebSocket) {
@@ -807,6 +815,7 @@ export const setMatchForRoom = (
 		isTournament?: boolean;
 		tournamentId?: string;
 		matchId?: string;
+		classicMode?: boolean;
 	},
 	log?: FastifyBaseLogger
 ) => {

@@ -126,6 +126,7 @@ export const waitingRoomLogic = (): CleanupFunction => {
 	const cleanupManager = createCleanupManager();
     let pollInterval: number | null = null;
     let roomId: string | null = null;
+    let matchFound = false; // Flag pour indiquer qu'un match a été trouvé
     const skill = (sessionStorage.getItem('selectedSkill') as 'smash' | 'dash' | null) || 'smash';
 
     // ✅ DÉFINIR l'état initial AVANT d'animer
@@ -290,7 +291,8 @@ export const waitingRoomLogic = (): CleanupFunction => {
                 
                 if (data.status === 'ready') {
                     updateStatus('Opponent found! Preparing game...');
-                    
+                    matchFound = true; // Marquer qu'un match a été trouvé
+
                     // Animation de transition
                     const opponentCard = document.getElementById('opponent-card');
                     if (opponentCard) {
@@ -300,10 +302,10 @@ export const waitingRoomLogic = (): CleanupFunction => {
                             ease: 'power2.out'
                         });
                     }
-                    
+
                     stopPolling();
                     sessionStorage.setItem('gameWsURL', data.gameServerURL);
-                    
+
                     setTimeout(() => {
                         window.router.navigate(`/game/${roomId}`);
                     }, 1500);
@@ -375,6 +377,12 @@ export const waitingRoomLogic = (): CleanupFunction => {
 		stopPolling();
 
 		// Retirer le joueur de la file d'attente si on quitte la page
+		// MAIS PAS si un match a été trouvé (sinon on quitte la room alors qu'on est en train de rejoindre le jeu)
+		if (matchFound) {
+			console.log('Match found, skipping /leave call');
+			return;
+		}
+
 		const playerId = window.simpleAuth.getPlayerId();
 		if (playerId && roomId) {
 			const host = import.meta.env.VITE_HOST || 'localhost:8443';

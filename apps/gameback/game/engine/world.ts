@@ -77,7 +77,8 @@ export class GameWorld {
 			skillStates: {
 				left: {availableAt: 0, lastPressAt: -1e9, lastActivationAt: -1e9},
 				right: {availableAt: 0, lastPressAt: -1e9, lastActivationAt: -1e9}
-			}
+			},
+			classicMode: false
 		};
 	}
 
@@ -86,11 +87,17 @@ export class GameWorld {
 	}
 
 	useSkill(side: Side) {
+		if (this.state.classicMode) return;
 		activateSkill(this.state, side);
 	}
 
 	setSkill(side: Side, skillType: SkillType) {
+		if (this.state.classicMode) return;
 		this.state.selectedSkills[side] = skillType;
+	}
+
+	setClassicMode(enabled: boolean) {
+		this.state.classicMode = enabled;
 	}
 
 	private getMaxBallSpeed(): number {
@@ -106,6 +113,7 @@ export class GameWorld {
 
 	pressSmash(side: Side): boolean
 	{
+		if (this.state.classicMode) return false;
 		const sm = this.state.skillStates[side];
         if (this.state.clock >= sm.availableAt)
         {
@@ -186,55 +194,61 @@ export class GameWorld {
 			PADDLE_HEIGHT / 2, WORLD_HEIGHT - PADDLE_HEIGHT / 2);
 		s.rightPaddle.y = clamp(s.rightPaddle.y + s.rightPaddle.intention * rightSpeed * dt,
 			PADDLE_HEIGHT / 2, WORLD_HEIGHT - PADDLE_HEIGHT / 2);
-		
-		if (s.clock >= s.nextPowerUpAt)
-		{
-			spawnPowerUp(s);
-			scheduleNextPowerUp(s);
-		}
 
-		pruneExpiredPowerUps(s);
+		// Ne pas spawner de powerups en mode classique
+		if (!s.classicMode) {
+			if (s.clock >= s.nextPowerUpAt)
+			{
+				spawnPowerUp(s);
+				scheduleNextPowerUp(s);
+			}
+
+			pruneExpiredPowerUps(s);
+		}
 
 		const leftX = PADDLE_MARGIN;
 		const rightX = WORLD_WIDTH - PADDLE_MARGIN - PADDLE_WIDTH;
 
-		for (let i = s.powerUps.length - 1; i >= 0; i--)
-		{
-			const pu = s.powerUps[i];
-			let picked = false;
-			for (const b of s.balls)
+		// Gérer les collisions avec les powerups (uniquement si pas en mode classique)
+		if (!s.classicMode) {
+			for (let i = s.powerUps.length - 1; i >= 0; i--)
 			{
-				const dx = b.x - pu.x;
-				const dy = b.y - pu.y;
-				if (Math.hypot(dx, dy) <= b.radius + pu.radius)
+				const pu = s.powerUps[i];
+				let picked = false;
+				for (const b of s.balls)
 				{
-					s.powerUps.splice(i, 1);
-					
-					const side: 'left' | 'right' = b.lastPaddleHit === 'left' ? 'left' : 
-												  b.lastPaddleHit === 'right' ? 'right' :
-												  b.x < WORLD_WIDTH / 2 ? 'left' : 'right';
-					
-					this.callbacks.onPowerUpCollected?.(side, pu.type, s.clock);
-					
-					if (pu.type === 'split')
+					const dx = b.x - pu.x;
+					const dy = b.y - pu.y;
+					if (Math.hypot(dx, dy) <= b.radius + pu.radius)
 					{
-						activateSplit(s, b);
+						s.powerUps.splice(i, 1);
+
+						const side: 'left' | 'right' = b.lastPaddleHit === 'left' ? 'left' :
+													  b.lastPaddleHit === 'right' ? 'right' :
+													  b.x < WORLD_WIDTH / 2 ? 'left' : 'right';
+
+						this.callbacks.onPowerUpCollected?.(side, pu.type, s.clock);
+
+						if (pu.type === 'split')
+						{
+							activateSplit(s, b);
+						}
+						else if (pu.type === 'blackout')
+						{
+							activateBlackout(s, b);
+						}
+						else if (pu.type === 'blackhole')
+						{
+							activateBlackhole(s);
+						}
+						picked = true;
+						break;
 					}
-					else if (pu.type === 'blackout')
-					{
-						activateBlackout(s, b);
-					}
-					else if (pu.type === 'blackhole')
-					{
-						activateBlackhole(s);
-					}
-					picked = true;
-					break;
 				}
-			}
-			if (picked)
-			{
-				continue;
+				if (picked)
+				{
+					continue;
+				}
 			}
 		}
 
