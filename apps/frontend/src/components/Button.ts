@@ -120,19 +120,18 @@ interface BackButtonProps {
     size?: 'sm' | 'md' | 'lg';
     text?: string;
     variant?: 'primary' | 'secondary' | 'danger' | 'default';
-    fallbackHref?: string;
 }
 
 export function BackButton({ 
     className = '', 
     size,
     text = "←",
-    variant = 'default',
-    fallbackHref = '/'
+    variant = 'default'
 }: BackButtonProps = {}): string {
     return `
         <button 
             id="back-button"
+            onclick="window.router.goBack()"
             class="
                 ${variant === 'primary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}
                 ${variant === 'secondary' ? 'bg-gray-200 hover:bg-gray-300 text-gray-800' : ''}

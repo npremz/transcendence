@@ -9,6 +9,8 @@ interface GameHistory {
     game_type: 'quickplay' | 'tournament';
     player_left_username: string;
     player_right_username: string;
+    player_left_avatar?: string;
+    player_right_avatar?: string;
     winner_username?: string;
     score_left: number;
     score_right: number;
@@ -294,6 +296,14 @@ export const historyLogic = (): (() => void) => {
                     <div class="grid grid-cols-3 gap-4 items-center">
                         <!-- Joueur gauche -->
                         <div class="text-center">
+                            <div class="w-12 h-12 mx-auto mb-2 rounded-full overflow-hidden border-2 ${game.score_left > game.score_right ? 'border-green-400' : 'border-white/30'}">
+                                <img 
+                                    src="${game.player_left_avatar || '/sprites/cat.gif'}" 
+                                    alt="${game.player_left_username}" 
+                                    class="w-full h-full object-cover"
+                                    style="image-rendering: pixelated;"
+                                />
+                            </div>
                             <div class="text-white font-semibold text-lg mb-2">
                                 ${game.player_left_username}
                             </div>
@@ -314,6 +324,14 @@ export const historyLogic = (): (() => void) => {
 
                         <!-- Joueur droit -->
                         <div class="text-center">
+                            <div class="w-12 h-12 mx-auto mb-2 rounded-full overflow-hidden border-2 ${game.score_right > game.score_left ? 'border-green-400' : 'border-white/30'}">
+                                <img 
+                                    src="${game.player_right_avatar || '/sprites/cat.gif'}" 
+                                    alt="${game.player_right_username}" 
+                                    class="w-full h-full object-cover"
+                                    style="image-rendering: pixelated;"
+                                />
+                            </div>
                             <div class="text-white font-semibold text-lg mb-2">
                                 ${game.player_right_username}
                             </div>

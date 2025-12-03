@@ -100,8 +100,8 @@ export class Game3DEngine {
 			this.gameStatusInfo.countdownValue = v;
 		};
 
-		this.networkManager.onWelcome = (side, playerNames) => {
-			this.uiManager.updatePlayerNames(side, playerNames);
+		this.networkManager.onWelcome = (side, playerNames, playerAvatars) => {
+			this.uiManager.updatePlayerNames(side, playerNames, playerAvatars);
 			this.timeoutStatus = {
 				leftActive: false,
 				leftRemainingMs: 0,

@@ -8,7 +8,7 @@ export class NetworkManager  {
 
 	// callbacks
 	public onStateUpdate?: (state: PublicState) => void;
-	public onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: any) => void;
+	public onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: any, playerAvatars?: any) => void;
 	public onGameOver?: (winner: string, isTournament?: boolean, tournamentId?: string) => void;
 	public onPaused?: () => void;
 	public onResumed?: () => void;
@@ -27,10 +27,10 @@ export class NetworkManager  {
 				this.onStateUpdate(state);
 			}
 		}
-		this.wsClient.onWelcome = (side, playerNames) => {
+		this.wsClient.onWelcome = (side, playerNames, playerAvatars) => {
 			this.isConnected = true;
 			if (this.onWelcome) {
-				this.onWelcome(side, playerNames);
+				this.onWelcome(side, playerNames, playerAvatars);
 			}
 		}
 		this.wsClient.onGameOver = (winner, isTournament, tournamentId) => {

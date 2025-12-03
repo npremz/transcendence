@@ -16,11 +16,35 @@ export class Router {
     private componentManager: ComponentManager;
     private currentRoute?: Route;
     private globalBeforeEach?: NavigationGuard;
-	private navigationHistory: string[] = [];
-    private readonly MAX_HISTORY = 10;
 	private moduleCache: Map<string, ViewModule> = new Map();
 	private loadingPromises: Map<string, Promise<ViewModule>> = new Map();
-	private historyPointer: number = 0;
+
+	// Map hardcodée des destinations "back" pour chaque route
+	private readonly backRoutes: Map<string, string> = new Map([
+		// Pages principales → accueil
+		['/play', '/'],
+		['/tournament', '/'],
+		['/history', '/'],
+		['/dashboard', '/'],
+		['/login', '/'],
+		['/create', '/'],
+		['/admin/users', '/'],
+		['/dbuser', '/'],
+		
+		// Parcours Play
+		['/play/waiting', '/play'],
+		['/local', '/play'],
+		
+		// Parcours Tournament (local)
+		['/local-tournament-setup', '/tournament'],
+		['/local-tournament-bracket', '/local-tournament-setup'],
+		
+		// 404
+		['/404', '/'],
+		
+		// Dev
+		['/dev3d', '/'],
+	]);
     
     constructor()
     {
@@ -168,76 +192,32 @@ export class Router {
 			});
 	}
 
-	public getPreviousRoute(): string {
-        if (this.historyPointer > 0) {
-            return this.navigationHistory[this.historyPointer - 1];
-        }
-        return this.getDefaultBackRoute(this.currentRoute?.path || '/');
-    }
-
-	private recordNavigation(path: string): void {
-        if (this.historyPointer < this.navigationHistory.length - 1) {
-            this.navigationHistory = this.navigationHistory.slice(0, this.historyPointer + 1);
-        }
-
-        this.navigationHistory.push(path);
-
-        if (this.navigationHistory.length > this.MAX_HISTORY) {
-            const overflow = this.navigationHistory.length - this.MAX_HISTORY;
-            this.navigationHistory = this.navigationHistory.slice(overflow);
-        }
-
-        this.historyPointer = this.navigationHistory.length - 1;
-    }
-
-	private getDefaultBackRoute(currentPath: string): string {
-        // Routes de jeu → retour au mode de jeu sélectionné
-        if (currentPath.startsWith('/game/') || currentPath.startsWith('/game3d/')) {
-            return '/play';
-        }
-
-		if (currentPath === '/play/waiting') {
-            return '/play';
-        }
-
-        // Jeu local → retour à la sélection du mode
-        if (currentPath === '/local') {
-            return '/play';
-        }
-
-        // Tournoi local - bracket → retour au setup
-        if (currentPath === '/local-tournament-bracket') {
-            return '/local-tournament-setup';
-        }
-
-        // Tournoi local - setup → retour à la liste des tournois (MODIFIÉ)
-        if (currentPath === '/local-tournament-setup') {
-            return '/tournament';
-        }
-
-        // Tournoi en ligne - bracket → retour à la liste des tournois
-        if (currentPath.startsWith('/tournament/') && currentPath !== '/tournament') {
-            return '/tournament';
-        }
-
-        // Détail d'une partie → retour à l'historique
-        if (currentPath.startsWith('/history/')) {
-            return '/history';
-        }
-
-        // Blockchain → retour à l'accueil
-        if (currentPath === '/blockchain') {
-            return '/';
-        }
-
-        // Pages principales → retour à l'accueil
-        if (['/play', '/tournament', '/history', '/dashboard', '/login', '/create', '/chat', '/admin/users', '/dbuser'].includes(currentPath)) {
-            return '/';
-        }
-
-        // Fallback → accueil
-        return '/';
-    }
+	/**
+	 * Retourne la route de retour hardcodée pour le chemin actuel
+	 */
+	public getBackRoute(): string {
+		const currentPath = window.location.pathname;
+		
+		// Vérifier d'abord la map statique
+		const staticBack = this.backRoutes.get(currentPath);
+		if (staticBack) {
+			return staticBack;
+		}
+		
+		// Patterns dynamiques
+		if (currentPath.startsWith('/game/') || currentPath.startsWith('/game3d/')) {
+			return '/play';
+		}
+		if (currentPath.startsWith('/tournament/') && currentPath !== '/tournament') {
+			return '/tournament';
+		}
+		if (currentPath.startsWith('/history/') && currentPath !== '/history') {
+			return '/history';
+		}
+		
+		// Fallback → accueil
+		return '/';
+	}
     
     private setupRoutes(): void
     {
@@ -412,13 +392,6 @@ export class Router {
 			title: 'game 3D'
 		});
 
-		// Blockchain - Lazy
-		this.routes.push({
-			path: '/blockchain',
-            lazyView: () => import('../views/BlockchainView'),
-			title: 'Blockchain Registry'
-		});
-
 		// 404 Page - Lazy
 		this.routes.push({
 			path: '/404',
@@ -476,10 +449,11 @@ export class Router {
 
 	private setupHistoryNavigation(): void
     {
-        window.addEventListener('popstate', (event: PopStateEvent) => {
+        window.addEventListener('popstate', () => {
             const targetPath = window.location.pathname;
 			const currentPath = this.currentRoute?.path || '/';
 
+			// Bloquer navigation arrière pendant le jeu
 			if (currentPath.startsWith('/game/') || currentPath.startsWith('/game3d/'))
 			{
                 window.history.pushState(null, '', currentPath);
@@ -487,36 +461,8 @@ export class Router {
                 return;
             }
 
-            if (event.state && typeof event.state.navIndex === 'number') {
-                this.historyPointer = event.state.navIndex;
-            } else {
-                const resolvedIndex = this.resolveHistoryPointer(targetPath);
-                if (resolvedIndex !== -1) {
-                    this.historyPointer = resolvedIndex;
-                } else {
-                    this.navigationHistory = [targetPath];
-                    this.historyPointer = 0;
-                }
-            }
-
-            this.navigate(targetPath, false, false);
+            this.navigate(targetPath, false);
         });
-    }
-
-	private resolveHistoryPointer(path: string): number {
-        if (this.historyPointer > 0 && this.navigationHistory[this.historyPointer - 1] === path) {
-            return this.historyPointer - 1;
-        }
-
-        if (
-            this.historyPointer >= 0 &&
-            this.historyPointer < this.navigationHistory.length - 1 &&
-            this.navigationHistory[this.historyPointer + 1] === path
-        ) {
-            return this.historyPointer + 1;
-        }
-
-        return this.navigationHistory.lastIndexOf(path);
     }
 
 	public navigateTo(path: string): void
@@ -527,7 +473,7 @@ export class Router {
         }
     }
     
-    public async navigate(path: string, updateHistory: boolean = true, recordHistory: boolean = true): Promise<void> {
+    public async navigate(path: string, updateHistory: boolean = true): Promise<void> {
         this.cleanup();
         
         const matchResult = this.findRoute(path);
@@ -578,21 +524,11 @@ export class Router {
                 }
             }
 
-			if (recordHistory) {
-				this.recordNavigation(path);
-			}
-
-            const historyState = { navIndex: this.historyPointer };
-
-            if (recordHistory) {
-                if (updateHistory) {
-                    if (window.location.pathname === path) {
-                        window.history.replaceState(historyState, '', path);
-                    } else {
-                        window.history.pushState(historyState, '', path);
-                    }
+            if (updateHistory) {
+                if (window.location.pathname === path) {
+                    window.history.replaceState(null, '', path);
                 } else {
-                    window.history.replaceState(historyState, '', path);
+                    window.history.pushState(null, '', path);
                 }
             }
 
@@ -648,8 +584,8 @@ export class Router {
     }
 
 	public goBack(): void {
-        const previousRoute = this.getPreviousRoute();
-        this.navigateTo(previousRoute);
+        const backRoute = this.getBackRoute();
+        this.navigateTo(backRoute);
     }
 
 	private cleanup(): void

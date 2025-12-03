@@ -18,7 +18,7 @@ export type ClientMessage =
     | {type: 'debug'; action: 'change_skill'; payload: {side: 'left' | 'right'; skill: 'smash' | 'dash'}};
 
 export type ServerMessage = 
-	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'; isTournament?: boolean; tournamentId?: string; players?: {left?: string; right?: string}}
+	| {type: 'welcome'; side: 'left' | 'right' | 'spectator'; isTournament?: boolean; tournamentId?: string; players?: {left?: string; right?: string}; avatars?: {left?: string; right?: string}}
 	| {type: 'state'; state: PublicState; serverTime: number}
 	| {type: 'countdown'; value: number}
 	| {type: 'paused'}

@@ -5,6 +5,7 @@ import { createCleanupManager } from "../utils/CleanupManager";
 interface Player {
     id: string;
     username: string;
+    avatar?: string;
     currentTournament?: string;
     isEleminated: boolean;
 }
@@ -435,8 +436,18 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                     <!-- Player 1 -->
                     <div class="player-slot player-1 neon-border p-3 rounded ${match.winner?.id === match.player1?.id ? 'winner' : match.winner ? 'loser' : ''}" 
                          data-player-id="${match.player1?.id || ''}">
-                        <div class="flex items-center justify-between">
-                            <span class="pixel-font text-sm text-blue-300">
+                        <div class="flex items-center justify-between gap-2">
+                            ${match.player1 ? `
+                                <div class="w-8 h-8 rounded-full overflow-hidden border border-blue-500/30 flex-shrink-0">
+                                    <img 
+                                        src="${match.player1.avatar || '/sprites/cat.gif'}" 
+                                        alt="${match.player1.username}" 
+                                        class="w-full h-full object-cover"
+                                        style="image-rendering: pixelated;"
+                                    />
+                                </div>
+                            ` : ''}
+                            <span class="pixel-font text-sm text-blue-300 flex-1">
                                 ${match.player1?.username || 'TBD'}
                             </span>
                             ${match.winner?.id === match.player1?.id ? '<span class="text-xl winner-crown">👑</span>' : ''}
@@ -449,8 +460,18 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
                     <!-- Player 2 -->
                     <div class="player-slot player-2 neon-border p-3 rounded ${match.winner?.id === match.player2?.id ? 'winner' : match.winner ? 'loser' : ''}" 
                          data-player-id="${match.player2?.id || ''}">
-                        <div class="flex items-center justify-between">
-                            <span class="pixel-font text-sm text-blue-300">
+                        <div class="flex items-center justify-between gap-2">
+                            ${match.player2 ? `
+                                <div class="w-8 h-8 rounded-full overflow-hidden border border-blue-500/30 flex-shrink-0">
+                                    <img 
+                                        src="${match.player2.avatar || '/sprites/cat.gif'}" 
+                                        alt="${match.player2.username}" 
+                                        class="w-full h-full object-cover"
+                                        style="image-rendering: pixelated;"
+                                    />
+                                </div>
+                            ` : ''}
+                            <span class="pixel-font text-sm text-blue-300 flex-1">
                                 ${match.player2?.username || 'TBD'}
                             </span>
                             ${match.winner?.id === match.player2?.id ? '<span class="text-xl winner-crown">👑</span>' : ''}

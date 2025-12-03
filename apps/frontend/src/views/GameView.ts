@@ -203,8 +203,14 @@ export const GameView: ViewFunction = () => {
 							<div class="corner-decoration corner-decoration-blue corner-bl"></div>
 							
 							<div class="flex items-center gap-3">
-								<div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center border-2 border-blue-500/50">
-									<!-- PP du player -->
+								<div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center border-2 border-blue-500/50 overflow-hidden">
+									<img 
+										src="/sprites/cat.gif" 
+										alt="Player 1" 
+										class="w-full h-full object-cover"
+										style="image-rendering: pixelated;"
+										id="player-left-avatar"
+									/>
 								</div>
 								<div class="flex-1">
 									<div id="player-left-name" class="pixel-font text-lg text-blue-500 mb-1">
@@ -242,8 +248,14 @@ export const GameView: ViewFunction = () => {
 										<div class="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
 									</div>
 								</div>
-								<div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center border-2 border-red-500/50">
-									<!-- PP du player -->
+								<div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center border-2 border-red-500/50 overflow-hidden">
+									<img 
+										src="/sprites/cat.gif" 
+										alt="Player 2" 
+										class="w-full h-full object-cover"
+										style="image-rendering: pixelated;"
+										id="player-right-avatar"
+									/>
 								</div>
 							</div>
 						</div>

@@ -38,8 +38,14 @@ export const WaitingRoomView: ViewFunction = () => {
                         <!-- Votre carte -->
                         <div class="player-card neon-border rounded-lg p-6" id="your-card">
                             <div class="flex items-center gap-4 mb-4">
-                                <div class="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center border-2 border-blue-500/50">
-                                    <span class="text-3xl">👤</span>
+                                <div class="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center border-2 border-blue-500/50 overflow-hidden">
+                                    <img 
+                                        src="/sprites/cat.gif" 
+                                        alt="Your avatar" 
+                                        class="w-full h-full object-cover"
+                                        style="image-rendering: pixelated;"
+                                        data-auth-avatar
+                                    />
                                 </div>
                                 <div class="flex-1">
                                     <div class="pixel-font text-xs text-blue-300/60 mb-1">YOU</div>
@@ -61,19 +67,26 @@ export const WaitingRoomView: ViewFunction = () => {
                         <!-- Carte adversaire (en attente) -->
                         <div class="player-card neon-border rounded-lg p-6 opacity-50" id="opponent-card">
                             <div class="flex items-center gap-4 mb-4">
-                                <div class="w-16 h-16 rounded-full bg-gray-500/20 flex items-center justify-center border-2 border-gray-500/50">
-                                    <span class="text-3xl">❓</span>
+                                <div class="w-16 h-16 rounded-full bg-gray-500/20 flex items-center justify-center border-2 border-gray-500/50 overflow-hidden" id="opponent-avatar-container">
+                                    <span class="text-3xl" id="opponent-avatar-placeholder">❓</span>
+                                    <img 
+                                        src="/sprites/cat.gif" 
+                                        alt="Opponent avatar" 
+                                        class="w-full h-full object-cover hidden"
+                                        style="image-rendering: pixelated;"
+                                        id="opponent-avatar"
+                                    />
                                 </div>
                                 <div class="flex-1">
                                     <div class="pixel-font text-xs text-gray-400 mb-1">OPPONENT</div>
-                                    <div class="pixel-font text-xl text-gray-400">Waiting...</div>
+                                    <div class="pixel-font text-xl text-gray-400" id="opponent-username">Waiting...</div>
                                 </div>
-                                <div class="w-3 h-3 rounded-full bg-gray-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-gray-500" id="opponent-status"></div>
                             </div>
                             
                             <div class="mt-4 pt-4 border-t border-gray-500/30">
                                 <div class="pixel-font text-xs text-gray-400 mb-2">SKILL:</div>
-                                <div class="pixel-font text-lg text-gray-400">???</div>
+                                <div class="pixel-font text-lg text-gray-400" id="opponent-skill">???</div>
                             </div>
                         </div>
                     </div>

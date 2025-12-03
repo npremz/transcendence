@@ -13,6 +13,8 @@ interface GameDetail {
     player_right_id: string;
     player_left_username: string;
     player_right_username: string;
+    player_left_avatar?: string;
+    player_right_avatar?: string;
     winner_username?: string;
     score_left: number;
     score_right: number;
@@ -319,6 +321,14 @@ export const gameDetailLogic = (params?: Record<string, string>): (() => void) =
                 <!-- Score -->
                 <div class="grid grid-cols-3 gap-8 items-center">
                     <div class="text-center">
+                        <div class="w-16 h-16 mx-auto mb-3 rounded-full overflow-hidden border-2 ${game.score_left > game.score_right ? 'border-green-400' : 'border-white/30'}">
+                            <img 
+                                src="${game.player_left_avatar || '/sprites/cat.gif'}" 
+                                alt="${game.player_left_username}" 
+                                class="w-full h-full object-cover"
+                                style="image-rendering: pixelated;"
+                            />
+                        </div>
                         <div class="text-white text-2xl font-semibold mb-3">
                             ${game.player_left_username}
                         </div>
@@ -330,6 +340,14 @@ export const gameDetailLogic = (params?: Record<string, string>): (() => void) =
                         <div class="text-white/40 text-3xl font-bold">VS</div>
                     </div>
                     <div class="text-center">
+                        <div class="w-16 h-16 mx-auto mb-3 rounded-full overflow-hidden border-2 ${game.score_right > game.score_left ? 'border-green-400' : 'border-white/30'}">
+                            <img 
+                                src="${game.player_right_avatar || '/sprites/cat.gif'}" 
+                                alt="${game.player_right_username}" 
+                                class="w-full h-full object-cover"
+                                style="image-rendering: pixelated;"
+                            />
+                        </div>
                         <div class="text-white text-2xl font-semibold mb-3">
                             ${game.player_right_username}
                         </div>

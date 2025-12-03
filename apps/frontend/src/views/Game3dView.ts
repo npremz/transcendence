@@ -9,8 +9,19 @@ export const Game3dView: ViewFunction = () => {
 				<div class="container mx-auto px-4 py-4">
 					<div class="flex items-center justify-between gap-4">
 
-						<!-- Player 1 Name -->
-						<div id="player-left-name" class="text-xl font-bold text-white drop-shadow-lg mx-4">Player 1</div>
+						<!-- Player 1 -->
+						<div class="flex items-center gap-3">
+							<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-500/50">
+								<img 
+									src="/sprites/cat.gif" 
+									alt="Player 1" 
+									class="w-full h-full object-cover"
+									style="image-rendering: pixelated;"
+									id="player-left-avatar"
+								/>
+							</div>
+							<div id="player-left-name" class="text-xl font-bold text-white drop-shadow-lg">Player 1</div>
+						</div>
 
 						<!-- Center: Status indicator -->
 						<div class="flex items-center gap-3">
@@ -20,8 +31,19 @@ export const Game3dView: ViewFunction = () => {
 							</span>
 						</div>
 
-						<!-- Player 2 Name -->
-						<div id="player-right-name" class="text-xl font-bold text-white drop-shadow-lg mx-4">Player 2</div>
+						<!-- Player 2 -->
+						<div class="flex items-center gap-3">
+							<div id="player-right-name" class="text-xl font-bold text-white drop-shadow-lg">Player 2</div>
+							<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-red-500/50">
+								<img 
+									src="/sprites/cat.gif" 
+									alt="Player 2" 
+									class="w-full h-full object-cover"
+									style="image-rendering: pixelated;"
+									id="player-right-avatar"
+								/>
+							</div>
+						</div>
 
 						<!-- Right: Forfeit button (si pas mode local) -->
 						<button

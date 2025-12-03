@@ -29,7 +29,7 @@ export type PublicState = {
 };
 
 type ServerMsg = 
-	| {type: 'welcome'; side: 'left' | 'right'; isTournament?: boolean; tournamentId?: string; players?: {left?: string; right?: string}}
+	| {type: 'welcome'; side: 'left' | 'right'; isTournament?: boolean; tournamentId?: string; players?: {left?: string; right?: string}; avatars?: {left?: string; right?: string}}
 	| {type: 'state'; state: PublicState; serverTime: number}
 	| {type: 'countdown'; value: number}
 	| {type: 'paused' | 'resumed'}
@@ -46,6 +46,7 @@ export class WSClient {
 	isTournament: boolean = false;
 	tournamentId?: string;
 	playerNames: {left?: string; right?: string} = {};
+	playerAvatars: {left?: string; right?: string} = {};
 	private playerIdOverride?: string;
 
 	onState?: (s: PublicState) => void;
@@ -57,7 +58,7 @@ export class WSClient {
 		left: {active: boolean; remainingMs: number};
 		right: {active: boolean; remainingMs: number}
 	}) => void;
-	onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}) => void;
+	onWelcome?: (side: 'left' | 'right' | 'spectator', playerNames?: {left?: string; right?: string}, playerAvatars?: {left?: string; right?: string}) => void;
 	onPong?: (serverTime: number) => void;
 
 	connect(url?: string, options?: { playerId?: string }) {
@@ -94,7 +95,8 @@ export class WSClient {
 					console.log('Welcome from server');
 					this.side = msg.side;
 					this.playerNames = msg.players || {};
-					this.onWelcome?.(msg.side, msg.players);
+					this.playerAvatars = msg.avatars || {};
+					this.onWelcome?.(msg.side, msg.players, msg.avatars);
 					break;
 				case 'state':
 					this.onState?.(msg.state);
@@ -238,6 +240,7 @@ export class WSClient {
 		this.isTournament = false;
 		this.tournamentId = undefined;
 		this.playerNames = {};
+		this.playerAvatars = {};
 		this.playerIdOverride = undefined;
 	}
 }

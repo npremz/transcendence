@@ -101,7 +101,9 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 				fastify.db.get(
 					`SELECT g.*,
 						u1.username as player_left_username,
+						u1.avatar as player_left_avatar,
 						u2.username as player_right_username,
+						u2.avatar as player_right_avatar,
 						u3.username as winner_username
 					FROM games g
 					LEFT JOIN users u1 ON g.player_left_id = u1.id
@@ -253,7 +255,9 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 				fastify.db.all(
 					`SELECT g.*,
 						u1.username as player_left_username,
+						u1.avatar as player_left_avatar,
 						u2.username as player_right_username,
+						u2.avatar as player_right_avatar,
 						u3.username as winner_username
 					FROM games g
 					JOIN users u1 ON g.player_left_id = u1.id
@@ -291,7 +295,9 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 				fastify.db.all(
 					`SELECT g.*,
 						u1.username as player_left_username,
+						u1.avatar as player_left_avatar,
 						u2.username as player_right_username,
+						u2.avatar as player_right_avatar,
 						CASE 
 							WHEN g.winner_id = ? THEN 'won'
 							WHEN g.winner_id IS NOT NULL THEN 'lost'
@@ -332,7 +338,9 @@ export function registerGameRoutes(fastify: FastifyInstance): void
 				fastify.db.get(
 					`SELECT g.*,
 						u1.username as player_left_username,
+						u1.avatar as player_left_avatar,
 						u2.username as player_right_username,
+						u2.avatar as player_right_avatar,
 						u3.username as winner_username
 					FROM games g
 					JOIN users u1 ON g.player_left_id = u1.id

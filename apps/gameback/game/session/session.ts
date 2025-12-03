@@ -7,7 +7,7 @@ import { safeParse } from "../ws/messageTypes";
 import type { SkillType } from "../engine/types";
 
 type Role = 'left' | 'right' | 'spectator';
-type Player = {id: string; username: string; selectedSkill?: SkillType};
+type Player = {id: string; username: string; avatar?: string; selectedSkill?: SkillType};
 
 interface GameStats {
 	paddle_hits: number;
@@ -310,6 +310,10 @@ class GameSession {
                         players: {
                             left: this.expected.left?.username,
                             right: this.expected.right?.username
+                        },
+                        avatars: {
+                            left: this.expected.left?.avatar,
+                            right: this.expected.right?.avatar
                         }
                     });
 

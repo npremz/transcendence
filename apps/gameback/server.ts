@@ -24,8 +24,8 @@ fastify.delete('/game/:roomId', async (request, reply) => {
 
 type CreateBody = {
     roomId: string;
-    player1: {id: string; username: string; selectedSkill?: 'smash' | 'dash'};
-    player2: {id: string; username: string; selectedSkill?: 'smash' | 'dash'};
+    player1: {id: string; username: string; avatar?: string; selectedSkill?: 'smash' | 'dash'};
+    player2: {id: string; username: string; avatar?: string; selectedSkill?: 'smash' | 'dash'};
 	isTournament?: boolean;
     tournamentId?: string;
     matchId?: string;
@@ -47,11 +47,13 @@ fastify.post('/create', async (request, reply) => {
 			left: {
 				id: body.player1.id,
 				username: body.player1.username || 'p1',
+				avatar: body.player1.avatar,
 				selectedSkill: body.player1.selectedSkill || 'smash'
 			},
 			right: {
 				id: body.player2.id,
 				username: body.player2.username || 'p2',
+				avatar: body.player2.avatar,
 				selectedSkill: body.player2.selectedSkill || 'smash'
 			}
 		},
