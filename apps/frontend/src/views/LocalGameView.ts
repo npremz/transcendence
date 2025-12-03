@@ -141,6 +141,28 @@ export const LocalGameView: ViewFunction = () => {
 							</div>
 						</div>
 
+						<!-- Options de jeu -->
+						<div class="neon-border rounded-lg p-6 bg-blue-500/5" id="game-options-card" style="opacity: 0;">
+							<h3 class="pixel-font text-xl text-blue-400 mb-4">GAME OPTIONS</h3>
+
+							<label class="flex items-center gap-3 cursor-pointer group">
+								<input
+									type="checkbox"
+									id="classic-mode-checkbox"
+									name="classic-mode"
+									class="w-5 h-5 cursor-pointer accent-blue-500"
+								/>
+								<div class="flex-1">
+									<div class="pixel-font text-sm text-blue-300 group-hover:text-white transition-colors">
+										🎯 CLASSIC MODE
+									</div>
+									<div class="pixel-font text-xs text-blue-400/60 mt-1">
+										Disable powerups and skills for a pure Pong experience
+									</div>
+								</div>
+							</label>
+						</div>
+
 						<!-- Message d'erreur -->
 						<div id="local-game-feedback" class="hidden neon-border bg-red-500/10 rounded-lg p-4 text-center">
 							<p class="pixel-font text-sm text-red-400"></p>
@@ -195,6 +217,7 @@ export const localGameLogic = (): CleanupFunction | void => {
 	cleanupManager.registerGsapTarget('#local-title');
 	cleanupManager.registerGsapTarget('#player-left-card');
 	cleanupManager.registerGsapTarget('#player-right-card');
+	cleanupManager.registerGsapTarget('#game-options-card');
 	cleanupManager.registerGsapTarget('#local-game-feedback');
 
 	// Animations d'entrée - UNE SEULE FOIS
@@ -221,14 +244,44 @@ export const localGameLogic = (): CleanupFunction | void => {
 		ease: 'power2.out'
 	});
 
+	gsap.to('#game-options-card', {
+		opacity: 1,
+		duration: 0.8,
+		delay: 0.5,
+		ease: 'power2.out'
+	});
+
 	const form = document.getElementById('local-game-form') as HTMLFormElement | null;
 	const feedbackEl = document.getElementById('local-game-feedback');
 	const feedbackText = feedbackEl?.querySelector('p');
 	const backBtn = document.getElementById('local-back-btn');
+	const classicModeCheckbox = document.getElementById('classic-mode-checkbox') as HTMLInputElement | null;
+	const leftSkillSelect = document.getElementById('local-left-skill') as HTMLSelectElement | null;
+	const rightSkillSelect = document.getElementById('local-right-skill') as HTMLSelectElement | null;
 
 	if (!form) {
 		return;
 	}
+
+	// Gérer l'activation/désactivation des skills selon le mode classique
+	const updateSkillsState = () => {
+		const isClassicMode = classicModeCheckbox?.checked || false;
+		if (leftSkillSelect) {
+			leftSkillSelect.disabled = isClassicMode;
+			leftSkillSelect.style.opacity = isClassicMode ? '0.5' : '1';
+			leftSkillSelect.style.cursor = isClassicMode ? 'not-allowed' : 'pointer';
+		}
+		if (rightSkillSelect) {
+			rightSkillSelect.disabled = isClassicMode;
+			rightSkillSelect.style.opacity = isClassicMode ? '0.5' : '1';
+			rightSkillSelect.style.cursor = isClassicMode ? 'not-allowed' : 'pointer';
+		}
+	};
+
+	classicModeCheckbox?.addEventListener('change', updateSkillsState);
+	cleanupManager.onCleanup(() => {
+		classicModeCheckbox?.removeEventListener('change', updateSkillsState);
+	});
 
 	const host = import.meta.env.VITE_HOST || 'localhost:8443';
 	const createEndpoint = import.meta.env.VITE_CREATEGAME_ENDPOINT || '/gameback/create';
@@ -278,8 +331,9 @@ export const localGameLogic = (): CleanupFunction | void => {
 
 		const leftName = (form.querySelector<HTMLInputElement>('input[name="left-name"]')?.value.trim() || 'Player 1');
 		const rightName = (form.querySelector<HTMLInputElement>('input[name="right-name"]')?.value.trim() || 'Player 2');
-		const leftSkill = (form.querySelector<HTMLSelectElement>('select[name="left-skill"]')?.value === 'dash') ? 'dash' : 'smash';
-		const rightSkill = (form.querySelector<HTMLSelectElement>('select[name="right-skill"]')?.value === 'dash') ? 'dash' : 'smash';
+		const isClassicMode = classicModeCheckbox?.checked || false;
+		const leftSkill = isClassicMode ? 'smash' : ((form.querySelector<HTMLSelectElement>('select[name="left-skill"]')?.value === 'dash') ? 'dash' : 'smash');
+		const rightSkill = isClassicMode ? 'smash' : ((form.querySelector<HTMLSelectElement>('select[name="right-skill"]')?.value === 'dash') ? 'dash' : 'smash');
 
 		const roomId = makeId();
 		const leftId = makeId();
@@ -292,7 +346,8 @@ export const localGameLogic = (): CleanupFunction | void => {
 				body: JSON.stringify({
 					roomId,
 					player1: { id: leftId, username: leftName, selectedSkill: leftSkill },
-					player2: { id: rightId, username: rightName, selectedSkill: rightSkill }
+					player2: { id: rightId, username: rightName, selectedSkill: rightSkill },
+					classicMode: isClassicMode
 				})
 			});
 
@@ -305,7 +360,8 @@ export const localGameLogic = (): CleanupFunction | void => {
 			sessionStorage.setItem('localGameConfig', JSON.stringify({
 				roomId,
 				left: { id: leftId, username: leftName, selectedSkill: leftSkill },
-				right: { id: rightId, username: rightName, selectedSkill: rightSkill }
+				right: { id: rightId, username: rightName, selectedSkill: rightSkill },
+				classicMode: isClassicMode
 			}));
 
 			// Redirection immédiate
