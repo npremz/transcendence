@@ -405,13 +405,6 @@ export class Router {
 			title: 'Admin Users'
 		});
 
-		// Dev 3D - Lazy
-		this.routes.push({
-			path: '/dev3d',
-            lazyView: () => import('../views/Game3dView'),
-			title: 'game 3D'
-		});
-
 		// Blockchain - Lazy
 		this.routes.push({
 			path: '/blockchain',
