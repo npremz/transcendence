@@ -8,8 +8,8 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
 		const { matchId, tournamentId, player1, player2 } = request.body as {
 			matchId: string;
 			tournamentId: string;
-			player1: { id: string; username: string };
-			player2: { id: string; username: string };
+			player1: { id: string; username: string; avatar?: string };
+			player2: { id: string; username: string; avatar?: string };
 		};
 
 		if (!matchId || !tournamentId || !player1 || !player2)
@@ -25,8 +25,8 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
 		{
 			const room = roomManager.createTournamentRoom(
                 roomId,
-                { id: player1.id, username: player1.username, isReady: true },
-                { id: player2.id, username: player2.username, isReady: true },
+                { id: player1.id, username: player1.username, avatar: player1.avatar, isReady: true },
+                { id: player2.id, username: player2.username, avatar: player2.avatar, isReady: true },
                 tournamentId,
                 matchId
             );
@@ -38,8 +38,16 @@ export function handleTournamentQuickPlay(fastify: FastifyInstance, roomManager:
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					roomId,
-					player1,
-					player2,
+					player1: {
+						id: player1.id,
+						username: player1.username,
+						avatar: player1.avatar
+					},
+					player2: {
+						id: player2.id,
+						username: player2.username,
+						avatar: player2.avatar
+					},
 					isTournament: true,
 					tournamentId,
 					matchId

@@ -1,7 +1,11 @@
 import type { ViewFunction, CleanupFunction, RouteParams } from "../router/types";
 import { gsap } from "gsap";
 import { createCleanupManager } from "../utils/CleanupManager";
+<<<<<<< HEAD
 import { renderAuthControls } from "../components/AuthControls";
+=======
+import { Layout } from "../components/Layout";
+>>>>>>> 16d04851e35b21ccc425c107140a0da256e900fd
 
 interface Player {
     id: string;
@@ -40,126 +44,102 @@ interface Tournament {
 }
 
 export const BracketView: ViewFunction = () => {
-    return `
-        <!-- Fond avec grille animée -->
-        <div class="fixed inset-0 bg-black overflow-hidden">
-            <!-- Grille de fond -->
-            <div class="absolute inset-0" style="
-                background-image: 
-                    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-                background-size: 50px 50px;
-                animation: gridMove 20s linear infinite;
-            "></div>
-            
-            <style>
-                .match-card {
-                    transition: all 0.3s ease;
-                    background: rgba(15, 23, 42, 0.8);
-                    backdrop-filter: blur(10px);
-                    position: relative;
-                    min-width: 200px;
-                }
+    const content = `
+        <style>
+            .bracket-tree {
+                display: flex;
+                gap: 40px;
+                overflow-x: auto;
+                padding: 20px;
+                min-height: 400px;
+            }
 
-                .match-card.finished {
-                    border-color: rgba(34, 197, 94, 0.8);
-                }
+            .round-column {
+                display: flex;
+                flex-direction: column;
+                justify-content: space-around;
+                gap: 20px;
+                min-width: 280px;
+            }
 
-                .match-card.in_progress {
-                    border-color: rgba(234, 179, 8, 0.8);
-                    animation: matchPulse 2s ease-in-out infinite;
-                }
+            .match-card {
+                background: rgba(15, 23, 42, 0.8);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(59, 130, 246, 0.3);
+                transition: all 0.3s ease;
+            }
 
-                @keyframes matchPulse {
-                    0%, 100% { 
-                        box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
-                    }
-                    50% { 
-                        box-shadow: 0 0 20px rgba(234, 179, 8, 0.8);
-                    }
-                }
+            .match-card:hover {
+                border-color: rgba(59, 130, 246, 0.6);
+                transform: translateY(-2px);
+            }
 
-                .player-slot {
-                    transition: all 0.2s ease;
-                }
+            .match-card.current-match {
+                border-color: rgba(234, 179, 8, 0.8);
+                box-shadow: 0 0 20px rgba(234, 179, 8, 0.3);
+            }
 
-                .player-slot.winner {
-                    background: rgba(34, 197, 94, 0.2);
-                    border-color: rgba(34, 197, 94, 0.5);
-                }
+            .match-card.finished {
+                opacity: 0.7;
+            }
 
-                .player-slot.loser {
-                    opacity: 0.5;
-                }
+            .player-slot {
+                padding: 8px 12px;
+                background: rgba(30, 41, 59, 0.5);
+                transition: all 0.2s ease;
+            }
 
-                /* Tree connections */
-                .bracket-tree {
-                    display: flex;
-                    gap: 80px;
-                    padding: 40px;
-                    overflow-x: auto;
-                    min-height: 600px;
-                    position: relative;
-                }
+            .player-slot.winner {
+                background: rgba(34, 197, 94, 0.2);
+                border-color: rgba(34, 197, 94, 0.5);
+            }
 
-                .round-column {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-around;
-                    min-width: 220px;
-                    position: relative;
-                }
+            .player-slot.loser {
+                opacity: 0.5;
+            }
 
-                .round-header {
-                    text-align: center;
-                    margin-bottom: 20px;
-                    position: sticky;
-                    top: 0;
-                    background: rgba(4, 7, 26, 0.9);
-                    padding: 10px;
-                    border-radius: 8px;
-                    z-index: 10;
-                }
+            .connector-line {
+                position: absolute;
+                background: rgba(59, 130, 246, 0.3);
+                z-index: -1;
+            }
 
-                /* Lignes de connexion */
-                .connector-line {
-                    position: absolute;
-                    background: rgba(59, 130, 246, 0.4);
-                    z-index: 0;
-                }
+            .round-header {
+                text-align: center;
+                margin-bottom: 20px;
+                padding: 10px;
+                background: rgba(59, 130, 246, 0.1);
+                border-radius: 8px;
+            }
 
-                .connector-horizontal {
-                    height: 2px;
-                }
+            @keyframes pulse-border {
+                0%, 100% { border-color: rgba(234, 179, 8, 0.4); }
+                50% { border-color: rgba(234, 179, 8, 0.8); }
+            }
 
-                .connector-vertical {
-                    width: 2px;
-                }
+            .match-card.in-progress {
+                animation: pulse-border 2s ease-in-out infinite;
+            }
 
-                /* Animation des connexions */
-                @keyframes flowRight {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(100%); }
-                }
+            .winner-crown {
+                animation: bounce 1s ease-in-out infinite;
+            }
 
-                .connector-line.active::after {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 20px;
-                    height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.8), transparent);
-                    animation: flowRight 2s ease-in-out infinite;
-                }
-            </style>
-            
-            <!-- Scanline effect -->
-            <div class="absolute inset-0 pointer-events-none opacity-10">
-                <div class="absolute w-full h-1 bg-blue-400" style="animation: scanline 8s linear infinite;"></div>
+            @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-5px); }
+            }
+        </style>
+
+        <!-- Container principal -->
+        <div class="flex-1 px-4 py-8">
+            <!-- Loading state -->
+            <div id="tournament-loading" class="text-center py-12">
+                <div class="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-400 border-t-transparent"></div>
+                <p class="pixel-font text-blue-300 mt-4">Loading tournament...</p>
             </div>
-        </div>
 
+<<<<<<< HEAD
         <!-- Contenu principal -->
         <div class="relative z-10 min-h-screen flex flex-col">
             <!-- Header avec BackButton -->
@@ -197,14 +177,33 @@ export const BracketView: ViewFunction = () => {
                     <h3 class="pixel-font text-2xl text-red-400 mb-2">Tournament not found</h3>
                     <p class="pixel-font text-sm text-blue-300/60">Unable to load tournament data</p>
                 </div>
+=======
+            <!-- Content -->
+            <div id="tournament-content" style="display: none;">
+                <!-- Header du tournoi -->
+                <div id="tournament-header" class="mb-8"></div>
+                
+                <!-- Brackets en arbre -->
+                <div id="tournament-brackets" class="bracket-tree"></div>
+>>>>>>> 16d04851e35b21ccc425c107140a0da256e900fd
             </div>
 
-            <!-- Footer -->
-            <footer class="text-center py-6 pixel-font text-xs text-blue-400 opacity-50">
-                <p>© 2025 PONG - SKILL ISSUE</p>
-            </footer>
+            <!-- Error state -->
+            <div id="tournament-error" style="display: none;" class="text-center py-12">
+                <div class="text-6xl mb-4">⚠️</div>
+                <h3 class="pixel-font text-2xl text-red-400 mb-2">Tournament not found</h3>
+                <p class="text-blue-300/60 mb-6">The tournament you're looking for doesn't exist or has been removed.</p>
+                <a href="/tournaments" class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all inline-block">
+                    ← Back to Tournaments
+                </a>
+            </div>
         </div>
     `;
+
+    return Layout.render(content, {
+        showBackButton: true,
+        showFooter: false
+    });
 };
 
 export const bracketLogic = (params: RouteParams | undefined): CleanupFunction => {
@@ -214,7 +213,12 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     const tournamentId = params?.id;
     const myPlayerId = window.simpleAuth.getPlayerId();
 
+<<<<<<< HEAD
 	window.simpleAuth.syncAuthDom();
+=======
+    // Synchroniser le DOM d'authentification
+    window.simpleAuth.syncAuthDom();
+>>>>>>> 16d04851e35b21ccc425c107140a0da256e900fd
 
     let pollInterval: number | null = null;
     let isFirstRender = true;
