@@ -1,6 +1,7 @@
 import type { ViewFunction, CleanupFunction, RouteParams } from "../router/types";
 import { gsap } from "gsap";
 import { createCleanupManager } from "../utils/CleanupManager";
+import { renderAuthControls } from "../components/AuthControls";
 
 interface Player {
     id: string;
@@ -170,12 +171,7 @@ export const BracketView: ViewFunction = () => {
                 >
                     ← BACK
                 </button>
-                
-                <!-- Bouton Sign in -->
-                <a href="/login" 
-                   class="pixel-font bg-blue-500 text-black px-6 py-3 text-sm md:text-base hover:bg-blue-400 transition-all neon-border flex items-center gap-2">
-                    <span>SIGN IN</span>
-                </a>
+				${renderAuthControls}
             </header>
 
             <!-- Container principal -->
@@ -217,6 +213,8 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     const cleanupManager = createCleanupManager();
     const tournamentId = params?.id;
     const myPlayerId = window.simpleAuth.getPlayerId();
+
+	window.simpleAuth.syncAuthDom();
 
     let pollInterval: number | null = null;
     let isFirstRender = true;

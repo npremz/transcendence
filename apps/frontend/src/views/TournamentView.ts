@@ -187,7 +187,7 @@ export const TournamentView: ViewFunction = () => {
 
     return Layout.render(content, {
         showBackButton: true,
-         showSignInButton: true,
+         showSignInButton: false,
         showFooter: true
     });
 };
