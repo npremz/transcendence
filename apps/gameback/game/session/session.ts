@@ -71,6 +71,8 @@ class GameSession {
 	private tournamentId?: string;
 	private matchId?: string;
 	private classicMode: boolean = false;
+	private tournamentConnectionTimeout?: NodeJS.Timeout;
+	private readonly TOURNAMENT_CONNECTION_TIMEOUT_MS = 10000; // 10 secondes
 
 	constructor(private readonly roomId?: string, log?: FastifyBaseLogger) {
 		this.startLoops();
@@ -127,6 +129,7 @@ class GameSession {
 		{
 			clearInterval(this.broadcastTimer);
 		}
+		this.clearTournamentConnectionTimeout();
 		this.clients.clear();
 		this.roles.clear();
 		this.leftCtrl = undefined;
@@ -161,6 +164,11 @@ class GameSession {
 			}
 		}
 
+		// Pour les tournois, démarrer un timer de connexion
+		if (this.isTournament) {
+			this.startTournamentConnectionTimeout();
+		}
+
         this.log?.info({roomId: this.roomId, players: this.expected, classicMode: this.classicMode}, 'match set');
     }
 
@@ -168,6 +176,65 @@ class GameSession {
 		ws.on('message', (raw: Buffer) => this.onMessage(ws, raw));
 		ws.on('close', () => this.onClose(ws));
 		ws.on('error', () => this.onClose(ws));
+	}
+
+	private startTournamentConnectionTimeout(): void {
+		// Annuler tout timer existant
+		if (this.tournamentConnectionTimeout) {
+			clearTimeout(this.tournamentConnectionTimeout);
+		}
+
+		this.log?.info({ roomId: this.roomId }, `Tournament match: waiting ${this.TOURNAMENT_CONNECTION_TIMEOUT_MS}ms for players to connect`);
+
+		this.tournamentConnectionTimeout = setTimeout(() => {
+			// Vérifier si les deux joueurs sont connectés et prêts
+			const leftConnected = !!this.leftCtrl;
+			const rightConnected = !!this.rightCtrl;
+
+			if (!this.gameStarted) {
+				if (!leftConnected && !rightConnected) {
+					// Les deux joueurs absents - annuler le match (pas de gagnant)
+					this.log?.warn({ roomId: this.roomId }, 'Tournament match cancelled: both players failed to connect');
+					this.endGameWithWinner('nobody');
+				} else if (!leftConnected) {
+					// Joueur gauche absent - joueur droit gagne par forfait
+					this.log?.warn({ roomId: this.roomId }, 'Tournament forfeit: left player failed to connect');
+					this.endGameWithWinner('right');
+				} else if (!rightConnected) {
+					// Joueur droit absent - joueur gauche gagne par forfait
+					this.log?.warn({ roomId: this.roomId }, 'Tournament forfeit: right player failed to connect');
+					this.endGameWithWinner('left');
+				}
+				// Si les deux sont connectés mais pas prêts, on laisse le timer normal gérer
+			}
+		}, this.TOURNAMENT_CONNECTION_TIMEOUT_MS);
+	}
+
+	private clearTournamentConnectionTimeout(): void {
+		if (this.tournamentConnectionTimeout) {
+			clearTimeout(this.tournamentConnectionTimeout);
+			this.tournamentConnectionTimeout = undefined;
+		}
+	}
+
+	private endGameWithWinner(winner: 'left' | 'right' | 'nobody'): void {
+		this.world.state.isGameOver = true;
+		this.world.state.winner = winner === 'nobody' ? '' : winner;
+
+		// Broadcast game over
+		this.broadcast({
+			type: 'gameover',
+			winner: winner,
+			isTournament: this.isTournament,
+			tournamentId: this.tournamentId
+		});
+
+		// Notifier le tournamentback si c'est un match de tournoi
+		if (winner !== 'nobody') {
+			this.notifyGameEnd('forfeit', winner);
+		}
+
+		this.log?.info({ roomId: this.roomId, winner }, 'Game ended due to connection timeout');
 	}
 
 	private assignRole(ws: WebSocket, playerId?: string): Role {
@@ -348,6 +415,9 @@ class GameSession {
                 const bothReady = this.leftReady && this.rightReady;
                 const bothConnected = !!this.leftCtrl && !!this.rightCtrl;
                 if (bothReady && bothConnected && !this.gameStarted) {
+                    // Annuler le timer de connexion tournoi
+                    this.clearTournamentConnectionTimeout();
+                    
                     this.world.startCountdown();
                     this.notifyGameStarted();
                     this.gameStarted = true;
@@ -797,6 +867,7 @@ class GameSession {
             clearInterval(this.broadcastTimer);
             this.broadcastTimer = undefined;
         }
+        this.clearTournamentConnectionTimeout();
         this.clients.clear();
         this.roles.clear();
         this.log?.info({ roomId: this.roomId }, 'GameSession cleaned up');
