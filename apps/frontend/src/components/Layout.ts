@@ -161,9 +161,9 @@ export class Layout {
 		return `
 			<header class="flex justify-between items-center px-8 py-6">
 				<!-- Logo PONG -->
-				<div class="pixel-font text-4xl md:text-5xl text-blue-400" style="animation: neonPulse 2s ease-in-out infinite;">
+				<a href="/" class="pixel-font text-4xl md:text-5xl text-blue-400 hover:text-white transition-colors" style="animation: neonPulse 2s ease-in-out infinite;">
 					PONG
-				</div>
+				</a>
 
 				${renderAuthControls()}
 			</header>

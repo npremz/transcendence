@@ -18,6 +18,9 @@ export class Router {
     private globalBeforeEach?: NavigationGuard;
 	private navigationHistory: string[] = [];
     private readonly MAX_HISTORY = 10;
+	private moduleCache: Map<string, ViewModule> = new Map();
+	private loadingPromises: Map<string, Promise<ViewModule>> = new Map();
+	private historyPointer: number = 0;
     
     constructor()
     {
@@ -235,35 +238,6 @@ export class Router {
         // Fallback → accueil
         return '/';
     }
-
-	public getPreviousRoute(): string {
-        if (this.navigationHistory.length >= 2) {
-            return this.navigationHistory[this.navigationHistory.length - 2];
-        }
-        return this.getDefaultBackRoute(this.currentRoute?.path || '/');
-    }
-
-	private getDefaultBackRoute(currentPath: string): string {
-        if (currentPath.startsWith('/game/') || currentPath.startsWith('/game3d/')) {
-            return '/play';
-        }
-        if (currentPath === '/play/waiting') {
-            return '/play';
-        }
-        if (currentPath === '/local') {
-            return '/play';
-        }
-        if (currentPath.startsWith('/tournament/') && currentPath !== '/tournament') {
-            return '/tournament';
-        }
-        if (currentPath.startsWith('/history/')) {
-            return '/history';
-        }
-        if (['/play', '/tournament', '/history', '/login', '/create'].includes(currentPath)) {
-            return '/';
-        }
-        return '/';
-    }
     
     private setupRoutes(): void
     {
@@ -445,6 +419,13 @@ export class Router {
 			title: 'Blockchain Registry'
 		});
 
+		// 404 Page - Lazy
+		this.routes.push({
+			path: '/404',
+            lazyView: () => import('../views/NotFoundView'),
+			title: '404 - Page Not Found'
+		});
+
         this.compileRoutes();
     }
 
@@ -597,26 +578,13 @@ export class Router {
                 }
             }
 
-			this.navigationHistory.push(path);
-            if (this.navigationHistory.length > this.MAX_HISTORY) {
-                this.navigationHistory.shift();
-            }
-            
-            const htmlContent = route.view(params);
-            const app = document.getElementById('app');
-            if (app) {
-                app.innerHTML = htmlContent;
-            }
-            
-            document.title = route.title || 'Transcendence';
-            
-            if (updateHistory && window.location.pathname !== path) {
-                window.history.pushState({}, '', path);
-            }
+			if (recordHistory) {
+				this.recordNavigation(path);
+			}
 
             const historyState = { navIndex: this.historyPointer };
 
-            if (shouldRecordHistory) {
+            if (recordHistory) {
                 if (updateHistory) {
                     if (window.location.pathname === path) {
                         window.history.replaceState(historyState, '', path);
@@ -730,9 +698,34 @@ export class Router {
         return undefined;
     }
     
-    private show404(): void
+    private async show404(): Promise<void>
     {
-        document.getElementById('app')!.innerHTML = '<h1>Erm... This page does not exist.</h1>';
+        try {
+            const module = await import('../views/NotFoundView');
+            const { NotFoundView, notFoundLogic } = module;
+
+            const app = document.getElementById('app');
+            if (app) {
+                app.innerHTML = NotFoundView();
+            }
+
+            document.title = '404 - Page Not Found | Transcendence';
+
+            this.componentManager.scanAndMount();
+
+            if (notFoundLogic) {
+                const cleanup = notFoundLogic();
+                if (cleanup && typeof cleanup === 'function') {
+                    this.currentCleanup = cleanup;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load 404 view:', error);
+            const app = document.getElementById('app');
+            if (app) {
+                app.innerHTML = '<h1>Erm... This page does not exist.</h1>';
+            }
+        }
     }
 
     public setGlobalGuard(guard: NavigationGuard): void {
