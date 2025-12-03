@@ -1,11 +1,7 @@
 import type { ViewFunction, CleanupFunction, RouteParams } from "../router/types";
 import { gsap } from "gsap";
 import { createCleanupManager } from "../utils/CleanupManager";
-<<<<<<< HEAD
-import { renderAuthControls } from "../components/AuthControls";
-=======
 import { Layout } from "../components/Layout";
->>>>>>> 16d04851e35b21ccc425c107140a0da256e900fd
 
 interface Player {
     id: string;
@@ -139,45 +135,6 @@ export const BracketView: ViewFunction = () => {
                 <p class="pixel-font text-blue-300 mt-4">Loading tournament...</p>
             </div>
 
-<<<<<<< HEAD
-        <!-- Contenu principal -->
-        <div class="relative z-10 min-h-screen flex flex-col">
-            <!-- Header avec BackButton -->
-            <header class="flex justify-between items-center px-8 py-6">
-                <button
-                    onclick="window.router.goBack()"
-                    class="pixel-font px-6 py-3 neon-border bg-transparent text-blue-400 hover:bg-blue-500/10 transition-all"
-                    id="back-button"
-                >
-                    ← BACK
-                </button>
-				${renderAuthControls}
-            </header>
-
-            <!-- Container principal -->
-            <div class="flex-1 px-4 py-8">
-                <!-- Loading state -->
-                <div id="tournament-loading" class="text-center py-12">
-                    <div class="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-400 border-t-transparent"></div>
-                    <p class="pixel-font text-blue-300 mt-4">Loading tournament...</p>
-                </div>
-
-                <!-- Content -->
-                <div id="tournament-content" style="display: none;">
-                    <!-- Header du tournoi -->
-                    <div id="tournament-header" class="mb-8"></div>
-                    
-                    <!-- Brackets en arbre -->
-                    <div id="tournament-brackets" class="bracket-tree"></div>
-                </div>
-
-                <!-- Error state -->
-                <div id="tournament-error" style="display: none;" class="text-center py-12">
-                    <div class="text-6xl mb-4">⚠️</div>
-                    <h3 class="pixel-font text-2xl text-red-400 mb-2">Tournament not found</h3>
-                    <p class="pixel-font text-sm text-blue-300/60">Unable to load tournament data</p>
-                </div>
-=======
             <!-- Content -->
             <div id="tournament-content" style="display: none;">
                 <!-- Header du tournoi -->
@@ -185,7 +142,6 @@ export const BracketView: ViewFunction = () => {
                 
                 <!-- Brackets en arbre -->
                 <div id="tournament-brackets" class="bracket-tree"></div>
->>>>>>> 16d04851e35b21ccc425c107140a0da256e900fd
             </div>
 
             <!-- Error state -->
@@ -213,12 +169,8 @@ export const bracketLogic = (params: RouteParams | undefined): CleanupFunction =
     const tournamentId = params?.id;
     const myPlayerId = window.simpleAuth.getPlayerId();
 
-<<<<<<< HEAD
-	window.simpleAuth.syncAuthDom();
-=======
     // Synchroniser le DOM d'authentification
     window.simpleAuth.syncAuthDom();
->>>>>>> 16d04851e35b21ccc425c107140a0da256e900fd
 
     let pollInterval: number | null = null;
     let isFirstRender = true;
