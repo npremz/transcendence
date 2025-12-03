@@ -1,5 +1,7 @@
 import { randomBytes, randomUUID, pbkdf2Sync, timingSafeEqual } from 'crypto';
 import type { FastifyInstance } from 'fastify';
+import { createSession, validateSession, deleteSession } from '../sessionManager';
+import { requireSession } from '../middleware/sessionAuth';
 
 type CreateUserBody = {
 	username?: string;
@@ -112,11 +114,26 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
 			});
 		}
 
+		// Récupérer ou créer le sessionId
+		let sessionId = request.cookies.player_session;
+		if (!sessionId) {
+			// Créer un nouveau UUID pour la session si le cookie n'existe pas
+			sessionId = randomUUID();
+			// Définir le cookie (30 jours)
+			reply.setCookie('player_session', sessionId, {
+				path: '/',
+				maxAge: 30 * 24 * 60 * 60, // 30 jours en secondes
+				sameSite: 'strict',
+				httpOnly: false, // Le frontend doit pouvoir lire le cookie
+				secure: true // HTTPS uniquement
+			});
+		}
+
 		return new Promise((resolve) => {
 			fastify.db.get(
 				`SELECT id, username, password_hash FROM users WHERE username = ?`,
 				[username],
-				(err, row) => {
+				async (err, row) => {
 					if (err) {
 						resolve(reply.status(500).send({
 							success: false,
@@ -133,12 +150,31 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
 						return;
 					}
 
+					// Mettre à jour last_seen
 					fastify.db.run(`UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?`, [row.id], () => {});
 
-					resolve(reply.send({
-						success: true,
-						user: { id: row.id, username: row.username }
-					}));
+					// Créer la session en DB (expiration après 30 jours)
+					try {
+						await createSession(fastify.db, sessionId, row.id, 30);
+						resolve(reply.send({
+							success: true,
+							user: { id: row.id, username: row.username }
+						}));
+					} catch (sessionErr: any) {
+						// Si la session existe déjà (login multiple), on ignore l'erreur
+						if (sessionErr.message?.includes('UNIQUE constraint failed')) {
+							resolve(reply.send({
+								success: true,
+								user: { id: row.id, username: row.username }
+							}));
+						} else {
+							fastify.log.error('Failed to create session:', sessionErr);
+							resolve(reply.status(500).send({
+								success: false,
+								error: 'Login successful but session creation failed'
+							}));
+						}
+					}
 				}
 			);
 		});
@@ -308,4 +344,61 @@ export function registerUserRoutes(fastify: FastifyInstance): void {
             );
         });
     });
+
+	// POST /users/validate - Valider une session existante
+	fastify.post('/users/validate', async (request, reply) => {
+		const sessionId = request.cookies.player_session;
+
+		if (!sessionId) {
+			return reply.status(401).send({
+				success: false,
+				error: 'No session cookie found',
+				code: 'SESSION_MISSING'
+			});
+		}
+
+		const result = await validateSession(fastify.db, sessionId);
+
+		if (!result.valid || !result.user) {
+			return reply.status(401).send({
+				success: false,
+				error: 'Invalid or expired session',
+				code: 'SESSION_INVALID'
+			});
+		}
+
+		return reply.send({
+			success: true,
+			user: {
+				id: result.user.id,
+				username: result.user.username
+			}
+		});
+	});
+
+	// POST /users/logout - Supprimer la session (déconnexion)
+	fastify.post('/users/logout', async (request, reply) => {
+		const sessionId = request.cookies.player_session;
+
+		if (!sessionId) {
+			return reply.send({
+				success: true,
+				message: 'No session to logout'
+			});
+		}
+
+		try {
+			await deleteSession(fastify.db, sessionId);
+			return reply.send({
+				success: true,
+				message: 'Session deleted successfully'
+			});
+		} catch (err: any) {
+			fastify.log.error('Error deleting session:', err);
+			return reply.status(500).send({
+				success: false,
+				error: 'Failed to delete session'
+			});
+		}
+	});
 }

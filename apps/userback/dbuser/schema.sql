@@ -12,6 +12,18 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
+-- Sessions pour l'authentification (validation côté serveur)
+CREATE TABLE IF NOT EXISTS sessions (
+    session_id TEXT PRIMARY KEY,                -- UUID depuis le cookie player_session
+    user_id TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME,                        -- Expiration optionnelle (NULL = pas d'expiration)
+    last_activity DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
 -- Réglages/Préférences (chat & vie privée)
 CREATE TABLE IF NOT EXISTS user_settings (
     user_id TEXT PRIMARY KEY,

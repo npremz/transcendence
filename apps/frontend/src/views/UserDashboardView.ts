@@ -361,8 +361,8 @@ export const userDashboardLogic = (): (() => void) => {
 
 		try {
 			const [userRes, historyRes] = await Promise.all([
-				fetch(`https://${host}/userback/users?username=${encodeURIComponent(username)}`),
-				fetch(`https://${host}/gamedb/games/history`)
+				fetch(`https://${host}/userback/users?username=${encodeURIComponent(username)}`, { credentials: 'include' }),
+				fetch(`https://${host}/gamedb/games/history`, { credentials: 'include' })
 			]);
 
 			const userData = await userRes.json().catch(() => ({}));
@@ -409,8 +409,8 @@ export const userDashboardLogic = (): (() => void) => {
 
 		try {
 			const [userRes, historyRes] = await Promise.all([
-				fetch(`https://${host}/userback/users?username=${encodeURIComponent(username)}`),
-				fetch(`https://${host}/gamedb/games/history`)
+				fetch(`https://${host}/userback/users?username=${encodeURIComponent(username)}`, { credentials: 'include' }),
+				fetch(`https://${host}/gamedb/games/history`, { credentials: 'include' })
 			]);
 
 			const userData = await userRes.json().catch(() => ({}));

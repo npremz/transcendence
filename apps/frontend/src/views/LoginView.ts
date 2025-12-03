@@ -253,6 +253,7 @@ export const loginLogic = (): (() => void) => {
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include', // Important pour envoyer le cookie player_session
                 body: JSON.stringify({ username, password })
             });
 

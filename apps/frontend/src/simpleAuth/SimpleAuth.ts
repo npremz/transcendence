@@ -51,12 +51,95 @@ export class SimpleAuth
                 document.addEventListener('DOMContentLoaded', () => {
                     this.syncAuthDom();
                     this.initAvatarPicker();
+                    this.validateSessionOnStartup();
                 });
             } else {
                 this.syncAuthDom();
                 this.initAvatarPicker();
+                this.validateSessionOnStartup();
             }
         }
+    }
+
+    /**
+     * Valide la session au démarrage de l'application
+     * Si la session n'est pas valide côté serveur, déconnecte l'utilisateur
+     */
+    private async validateSessionOnStartup(): Promise<void> {
+        // Ne valider que si l'utilisateur pense être connecté
+        if (!this.isAuthenticated) {
+            return;
+        }
+
+        try {
+            const hostRaw = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
+            const host = (hostRaw || '').replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
+            const protocol = window.location.protocol;
+
+            const response = await fetch(`${protocol}//${host}/userback/users/validate`, {
+                method: 'POST',
+                credentials: 'include' // Important pour envoyer les cookies
+            });
+
+            if (!response.ok) {
+                // Session invalide, déconnecter l'utilisateur
+                console.warn('Session validation failed, logging out');
+                this.forceLogout();
+            } else {
+                console.log('Session validated successfully');
+            }
+        } catch (error) {
+            console.error('Session validation error:', error);
+            // En cas d'erreur réseau, on garde l'utilisateur connecté
+            // pour ne pas le déconnecter si le serveur est temporairement indisponible
+        }
+    }
+
+    /**
+     * Déconnexion forcée (sans appel serveur, juste nettoyage local)
+     */
+    private forceLogout(): void {
+        this.clearStoredUsername();
+        this.setAvatar(null);
+        this.setAuthenticated(false);
+        // On garde le cookie player_session pour permettre une reconnexion
+    }
+
+    /**
+     * Vérifie une réponse fetch et déconnecte l'utilisateur si 401
+     * À appeler après chaque fetch pour gérer automatiquement les sessions expirées
+     */
+    public handleFetchResponse(response: Response): void {
+        if (response.status === 401) {
+            const sessionInvalid = response.headers.get('X-Session-Invalid') ||
+                                  response.url.includes('SESSION_INVALID') ||
+                                  response.url.includes('SESSION_MISSING');
+
+            if (sessionInvalid || this.isAuthenticated) {
+                console.warn('Session expired or invalid (401), logging out');
+                this.forceLogout();
+
+                // Rediriger vers la page de login
+                if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+                    window.location.href = '/login';
+                }
+            }
+        }
+    }
+
+    /**
+     * Wrapper pour fetch qui gère automatiquement les erreurs 401
+     */
+    public async fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+        // Toujours inclure les credentials pour envoyer les cookies
+        const fetchOptions: RequestInit = {
+            ...options,
+            credentials: 'include'
+        };
+
+        const response = await fetch(url, fetchOptions);
+        this.handleFetchResponse(response);
+        return response;
     }
 
     private updateStoredUsername(username: string): void {
@@ -157,8 +240,24 @@ else
         CookieManager.setCookie(SimpleAuth.COOKIE_NAME, this.playerId, 30);
     }
 
-    logout(): void
+    async logout(): Promise<void>
 {
+        // Appeler l'API pour supprimer la session côté serveur
+        try {
+            const hostRaw = import.meta.env.VITE_HOST || `${window.location.hostname}:8443`;
+            const host = (hostRaw || '').replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
+            const protocol = window.location.protocol;
+
+            await fetch(`${protocol}//${host}/userback/users/logout`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            console.log('Session deleted on server');
+        } catch (error) {
+            console.error('Failed to logout on server:', error);
+        }
+
+        // Nettoyage local
         CookieManager.deleteCookie(SimpleAuth.COOKIE_NAME);
         this.playerId = uuidv4();
         CookieManager.setCookie(SimpleAuth.COOKIE_NAME, this.playerId, 30);
