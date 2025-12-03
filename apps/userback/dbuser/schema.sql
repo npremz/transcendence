@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,                     -- UUID/ULID/42_id
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT,                      -- si auth locale (sinon NULL)
+    github_id TEXT UNIQUE,                   -- si auth GitHub OAuth
     avatar_url TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_seen DATETIME,
@@ -11,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     total_losses INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_github ON users(github_id);
 
 -- Sessions pour l'authentification (validation côté serveur)
 CREATE TABLE IF NOT EXISTS sessions (

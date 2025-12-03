@@ -6,6 +6,7 @@ import sqlite3 from 'sqlite3';
 import { initDatabase, closeDatabase } from './database';
 import { registerUserRoutes } from './routes/users';
 import { registerChatRoutes } from './routes/chat';
+import { registerGithubAuthRoutes } from './routes/github';
 import { cleanExpiredSessions } from './sessionManager';
 
 declare module 'fastify' {
@@ -55,6 +56,7 @@ async function start() {
 
 	registerUserRoutes(fastify);
 	registerChatRoutes(fastify);
+	registerGithubAuthRoutes(fastify);
 
 	fastify.get('/', (request, reply) => {
 		reply.send({ status: 'ok' });
